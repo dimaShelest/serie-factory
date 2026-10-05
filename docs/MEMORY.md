@@ -23,6 +23,10 @@
 - 2026-10-05 · Скриньки comms: нові листи внизу; HANDOFF і DECISIONS: найновіші зверху. Час ставить `collab.py`.
 - 2026-10-05 · Журнали (HANDOFF, DECISIONS, comms, prompts) мають `merge=union` у `.gitattributes`.
 - 2026-10-05 · Медіа — не в Git (R2 + `output/`); у Git лише маніфести.
+- 2026-10-05 · Формат: історія = 4 частини по 6–8 хв (2 на тиждень) + Película completa 25–30 хв + тизери 30–40 с.
+  Перша історія — LA GARGANTA (`series/la-garganta/`); відкладені — `series/_archive/`.
+- 2026-10-05 · Мітки бітів — фіксований набір (`docs/PLAYBOOK.md` → «Мітки бітів»). Нова мітка — тільки через
+  `/decision` і лист партнеру, бо від неї залежать схеми фабрики.
 
 ## Уроки
 
@@ -35,6 +39,12 @@
 - 2026-10-05 · Хуки й `/start` підхоплюються лише тоді, коли Claude Code відкрито в КОРЕНІ репо
   (у VS Code — тека `serie-factory`). Відкрито батьківську теку → `.claude/` не діє, а промпти не журналюються.
 
+- 2026-10-05 · `Path.write_text(..., newline=<невалідне>)` спершу ОБРІЗАЄ файл, а потім падає на перевірці
+  параметра, тож файл лишається порожнім. Масові правки — через `git diff` одразу після запису.
+
 ## Що не працює
 
 - 2026-10-05 · `gh project …` з токеном A без scope `project` → спершу `gh auth refresh -h github.com -s project`.
+- 2026-10-05 · SessionStart-хук: `git pull --rebase` інколи падає з «Cannot rebase onto multiple branches». Одночасний
+  `git fetch` (автофетч VS Code) записує `main` у `.git/FETCH_HEAD` двічі. Помилка разова, хук не падає.
+  Виправлення (зона B): `git fetch` + `git rebase --autostash @{u}` замість `git pull --rebase`.

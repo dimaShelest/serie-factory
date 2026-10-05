@@ -6,7 +6,7 @@
 version: 1
 slug: el-precio
 title: "El Precio"
-status: draft            # draft → approved (людина затвердила всі блоки)
+status: archived         # 2026-10-05: замінено на LA GARGANTA (див. docs/DECISIONS.md)
 
 # ---------------------------------------------------------------- а) концепція
 concept:

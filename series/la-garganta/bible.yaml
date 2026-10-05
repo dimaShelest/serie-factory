@@ -1,0 +1,81 @@
+# Біблія «LA GARGANTA» — зона Claude A (series/).
+# Опис — українською; діалоги й репліки — іспанською.
+# Фабрика читає цей файл на етапах script / shots / refs / voice. id — латиницею, без пробілів.
+# Статус: КАРКАС. Сюжет, персонажі, локації й правила заповнюємо з тексту людини.
+
+version: 1
+slug: la-garganta
+title: "LA GARGANTA"
+status: draft                    # draft → approved (людина затвердила)
+genre: [хорор, детектив]
+premise_short: >-
+  Підлітки 16–17 років отримують телекінез після обвалу в шахті.
+logline: null                    # TODO з тексту людини
+
+# ---------------------------------------------------------------- формат
+format:
+  parts: 4
+  part_minutes: [6, 8]
+  release_cadence: 2 частини на тиждень
+  part_video: {aspect: "16:9", platform: YouTube}
+  teaser_video:
+    aspect: "9:16"
+    seconds: [30, 40]
+    platforms: [TikTok, YouTube Shorts]
+    span: TEASER{n}_START → TEASER{n}_CUT_BEFORE   # обрив на хуку
+  film:
+    title_es: "LA GARGANTA — Película completa"
+    minutes: [25, 30]
+    after_part: 4
+    excludes: [recaps, end_cards]  # «Anteriormente en LA GARGANTA…», «Continuará…»
+
+# ---------------------------------------------------------------- місце дії
+setting:
+  country: null                  # TODO: країна / регіон
+  accent: null                   # TODO: акцент іспанської (впливає на голоси ElevenLabs)
+  town: null                     # TODO: шахтарське містечко
+  era: null                      # TODO: час дії
+
+# ---------------------------------------------------------------- правила світу
+# Тримають консистентність між частинами і в генерації: що можливо, що ні, як це виглядає в кадрі.
+rules:
+  telekinesis: []                # TODO: що можуть / не можуть, ціна сили, як росте, як виглядає (VFX)
+  mine: []                       # TODO: що сталося під час обвалу, що там досі є
+  horror: []                     # TODO: що лякає і як (див. мітку SCREAMER у docs/PLAYBOOK.md)
+
+# ---------------------------------------------------------------- персонажі
+characters: []                   # TODO з тексту людини
+# Шаблон:
+# - id: lucia                    # латиницею — ним посилаються script.json / shots.json
+#   name: Lucía
+#   age: 16
+#   role: …
+#   visual_dna: [ …, …, … ]      # 3–4 ознаки, НЕЗМІННІ в кожному кадрі (refs і QC перевіряють саме їх)
+#   wardrobe: …
+#   personality: …
+#   goal: …
+#   fear: …
+#   secret: …
+#   power: …                     # як телекінез проявляється саме в цього персонажа
+#   voice: {description: …, voice_id: null, sample_line_es: "…"}
+
+# ---------------------------------------------------------------- локації
+locations: []                    # TODO з тексту людини
+# Шаблон:
+# - id: mina
+#   name: …
+#   description: …
+#   light: …                     # освітлення / час доби — для промптів video і refs
+#   mood: …
+#   parts: [1, 2]
+
+# ---------------------------------------------------------------- табу
+taboos: []                       # TODO: погодити з людиною (див. risks.minors-in-horror)
+
+# ---------------------------------------------------------------- ризики
+risks:
+  - id: minors-in-horror
+    note: >-
+      Головним героям 16–17, тобто це неповнолітні в хорорі. Відеомоделі можуть відмовляти генерувати
+      сцени небезпеки чи насильства з неповнолітніми, а YouTube може обмежити монетизацію.
+    decision: null               # TODO людина: лишити 16–17 і тримати насильство за кадром, чи 18–19
