@@ -1,0 +1,14 @@
+[project]
+name = "serie-factory"
+version = "0.1.0"
+description = "Генератор іспаномовних AI-серіалів: серії для YouTube і тизери для TikTok/Shorts"
+readme = "README.md"
+requires-python = ">=3.12"
+# Залежності фабрики (typer, pydantic, ...) додає Claude B у задачі «Каркас fabrica».
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

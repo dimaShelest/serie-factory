@@ -1,0 +1,44 @@
+name: Задача
+description: Робота для Claude A або Claude B
+title: "[area] "
+body:
+  - type: dropdown
+    id: owner
+    attributes:
+      label: Хто робить
+      description: Після створення постав мітку owner:A / owner:B і виконавця.
+      options:
+        - Claude A (dimaShelest, контент і продакшн)
+        - Claude B (nuchay69-max, код і автоматизація)
+        - Обидва
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Область
+      options: [script, video, publish, infra]
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Навіщо / контекст
+      placeholder: Яку проблему вирішує, з чим пов'язано (Issue, DECISIONS, PR).
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Готово, коли…
+      description: Перевірювані критерії. Для коду — тести і запуск на macOS + Windows.
+      placeholder: |
+        - [ ] …
+        - [ ] uv run pytest проходить
+    validations:
+      required: true
+  - type: textarea
+    id: refs
+    attributes:
+      label: Де дивитись
+      placeholder: docs/ARCHITECTURE.md#…, fabrica/…, series/…

@@ -1,0 +1,49 @@
+# --- Секрети і локальне (НІКОЛИ не в Git) ---
+.env
+.env.*
+!.env.example
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/tmp/
+
+# --- Python / uv ---
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+build/
+dist/
+
+# --- Результати і медіа (зберігаються в R2, у Git — лише маніфести) ---
+output/
+*.mp4
+*.mov
+*.wav
+*.mp3
+*.m4a
+*.aac
+*.webm
+# Великі зображення: референси/кадри — в R2. Дозволені лише docs/ і прев'ю *.thumb.png
+*.png
+*.jpg
+*.jpeg
+*.webp
+!docs/**/*.png
+!docs/**/*.jpg
+!**/*.thumb.png
+!**/*.thumb.jpg
+
+# --- Локальні бази ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- ОС / редактори ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/

@@ -1,0 +1,27 @@
+name: Баг
+description: Щось не працює (код, хук, команда, генерація)
+title: "[bug] "
+labels: [bug]
+body:
+  - type: dropdown
+    id: os
+    attributes:
+      label: Де
+      options: [macOS (A), Windows (B), обидві]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: Що сталося
+      description: Команда, вивід помилки (без ключів!), що очікували.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Як відтворити
+  - type: input
+    id: cost
+    attributes:
+      label: Втрачені гроші (USD), якщо були

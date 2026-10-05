@@ -1,0 +1,19 @@
+* text=auto eol=lf
+
+# Бінарні файли
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.mp4 binary
+*.mov binary
+*.wav binary
+*.mp3 binary
+*.sqlite binary
+
+# Журнали, куди пишуть обидва Claude: при паралельних записах git зберігає ОБИДВІ версії
+# замість конфлікту. Після rebase перевір порядок записів.
+docs/HANDOFF.md merge=union
+docs/DECISIONS.md merge=union
+docs/comms/*.md merge=union
+docs/prompts/*.md merge=union
