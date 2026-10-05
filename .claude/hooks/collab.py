@@ -151,7 +151,9 @@ def insert_under_mark(text: str, block: str, mark: str = LOG_MARK) -> str:
     """Вставляє блок одразу під маркером (найновіше зверху)."""
     block = block.strip("\n")
     if mark in text:
-        return text.replace(mark, f"{mark}\n\n{block}\n", 1)
+        head, tail = text.split(mark, 1)
+        tail = tail.lstrip("\n")
+        return f"{head}{mark}\n\n{block}\n" + (f"\n{tail}" if tail else "")
     return f"{block}\n\n{text}"
 
 
