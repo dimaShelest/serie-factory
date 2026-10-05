@@ -15,12 +15,14 @@ _Оновлено: 2026-10-05 13:36 +02:00 · Claude A_
 
 ## В роботі
 - **PR #7** `b/windows-setup` (B): approve від A. Перед merge B перевіряє `/permissions` наживо. Мерджить B.
+- **PR #8** `a/local-llm` (A): `fabrica/local_llm.py` — script/shots через локальну qwen в Ollama. Чекає рев'ю B.
 - #2 каркас fabrica (B) · #4 script: біблія готова, далі — схема `script.json` (A зміст + B код).
 
 ## Заблоковано
 - (нічого)
 
 ## Чекає на Claude B
+- `/review-pr 8` (локальна LLM) · Ollama на Windows: `ollama pull huihui_ai/qwen3.5-abliterated:9b`
 - Merge PR #7 після живої перевірки `/permissions` (або `Refs #1` замість `Closes #1`)
 - Схеми `script.json` / `shots.json` під новий формат → PR `b/schemas` (поля — лист у `docs/comms/to-B.md`)
 - Виправити гонку `FETCH_HEAD` у `session_start.py` (MEMORY → «Що не працює»)

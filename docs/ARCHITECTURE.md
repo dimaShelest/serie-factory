@@ -6,7 +6,7 @@
 ## Стек
 
 Python 3.12 + uv · Typer (CLI `fabrica`) · Pydantic (моделі й валідація) · FFmpeg (монтаж) ·
-SQLite (стан конвеєра й витрати) · R2 (медіа) · Claude API (сценарій) · Seedance (відео) ·
+SQLite (стан конвеєра й витрати) · R2 (медіа) · локальна LLM через Ollama (сценарій, шоти) · Seedance (відео) ·
 ElevenLabs (голос) · IMAGE API (референси) · Sync (lip-sync) · YouTube Data API (публікація).
 
 ## 10 етапів
@@ -16,8 +16,8 @@ ElevenLabs (голос) · IMAGE API (референси) · Sync (lip-sync) · 
 
 | # | Етап | Вхід | Вихід | Сервіс |
 |---|---|---|---|---|
-| 1 | **script** | `bible.yaml`, біти частини зі `story.md`, `clues.md` | `script.json`: сцени, репліки (ES), ремарки, мітки бітів, підказки | Claude API |
-| 2 | **shots** | script | `shots.json`: шоти 1–10 с (`SCREAMER` — 0,5–2 с) — план, камера, дія, промпт відео, репліки, мітки, звукові удари | Claude API |
+| 1 | **script** | `bible.yaml`, біти частини зі `story.md`, `clues.md` | `script.json`: сцени, репліки (ES), ремарки, мітки бітів, підказки | Ollama: qwen3.5-abliterated 9B (локально) |
+| 2 | **shots** | script | `shots.json`: шоти 1–10 с (`SCREAMER` — 0,5–2 с) — план, камера, дія, промпт відео, репліки, мітки, звукові удари | Ollama: qwen3.5-abliterated 9B (локально) |
 | 3 | **refs** | біблія (персонажі, локації), shots | референс-зображення персонажів і локацій, кеш за хешем | IMAGE API |
 | 4 | **voice** | script, голоси персонажів | `wav` на кожну репліку + тривалості (вони задають довжину шота) | ElevenLabs |
 | 5 | **video** | shots, refs, voice | кліп на шот (image-to-video), lip-sync для шотів з діалогом | Seedance, Sync |
