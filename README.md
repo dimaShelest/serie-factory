@@ -80,6 +80,10 @@ tests/               тести (`uv run pytest -q`)
 ## Якщо щось не так
 
 - **Хук не спрацював** → `claude` запущено не з кореня репо, або `uv` не в PATH (`uv --version`).
+  У VS Code відкривай саме теку `serie-factory`, а не батьківську: інакше не підхопляться ні хуки, ні `/start`.
+- **Windows: Claude питає дозвіл на кожен `git`/`uv`** → на Windows shell-інструмент — PowerShell, тож
+  правила в `.claude/settings.json` дублюються як `PowerShell(...)`. Новий `Bash(...)` → додай двійника
+  (це перевіряє `tests/test_settings.py`).
 - **`git pull` конфліктує** → хук скасує rebase і попередить. Розв'яжи вручну або попроси Claude.
 - **Кракозябри замість української у Windows** → `chcp 65001` або Windows Terminal. Скрипти самі пишуть UTF-8.
 - **GitHub Project** → `gh auth refresh -h github.com -s project`, потім

@@ -1,6 +1,6 @@
 ---
 description: Старт сесії — синхронізація, хто я, пошта від партнера, що змінилось, мої задачі, план
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(uv run:*), Read, Write, Edit
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(uv run:*), Read, Write, Edit, PowerShell(git:*), PowerShell(gh:*), PowerShell(uv run:*)
 ---
 
 # /start — початок сесії

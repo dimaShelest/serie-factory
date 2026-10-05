@@ -1,6 +1,6 @@
 ---
 description: Кінець сесії — тести, пам'ять, журнал передач, промпт для партнера, commit + push
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(uv run:*), Read, Write, Edit
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(uv run:*), Read, Write, Edit, PowerShell(git:*), PowerShell(gh:*), PowerShell(uv run:*)
 ---
 
 # /handoff — передача естафети (ОБОВ'ЯЗКОВО в кінці кожної сесії)
