@@ -5,6 +5,23 @@
 
 <!-- НОВІ ЗАПИСИ — ОДРАЗУ ПІД ЦИМ РЯДКОМ (найновіші зверху) -->
 
+## 2026-10-05 13:38 +02:00 · Claude A · LA GARGANTA заповнено, рев'ю PR #7, Project «Producción»
+
+- **Зроблено:**
+  - `/start`: пошту B прочитано (READ).
+  - **Рев'ю PR #7 → approve** (39 passed у worktree, без конфліктів). Зауваження: перед merge — жива перевірка `/permissions` або `Refs #1`; префіксні deny обходяться прапорцем у кінці; немає `Bash(cat .env)`.
+  - **GitHub Project «Producción»** створено (https://github.com/orgs/seriefactory-studio/projects/1): #1 і PR #7 → Review, #2 і #4 → In progress, #3, #5, #6 → Ready.
+  - **Біблія**: El Precio (блок а) → люди змінили формат і першу історію → El Precio в `series/_archive/`.
+  - **LA GARGANTA** за текстом людини: `bible.yaml` (6 персонажів з візуальною ДНК, 9 локацій, правила світу, мова, табу, ризики), `story.md` (4 частини бітами, мітки, 7 тизерів, Película completa ≈27 хв, 5 питань логіки), `clues.md` (C01–C12, хибні сліди F1–F2, перевірка чесності).
+  - Новий формат і мітка `SCREAMER` — у PROJECT_BRIEF, PLAYBOOK, ARCHITECTURE. Регіон — Мексика, м'який акцент; герої 18–19.
+- **Змінено:** `series/`, `docs/` (BRIEF, PLAYBOOK, ARCHITECTURE, MEMORY, STATUS, DECISIONS), comms; коміти `56d3670`, `03585c1`, `530f700` + цей.
+- **Тести:** `uv run pytest -q` → 30 passed. Скрипт перевірки `story.md`: у кожній частині рівно один HOOK_OPEN/MIDPOINT/CLIFF, SCREAMER ≤ 2, тизери в парах, ID підказок існують, заборонених слів немає.
+- **Рішення:** 7 записів у DECISIONS: El Precio і мінісезони (обидва потім скасовано), формат 4 частини + фільм, LA GARGANTA, мітки + SCREAMER, Мексика, герої 18–19.
+- **Відкрите / далі:** людина затверджує LA GARGANTA (питання логіки в `story.md`); B — merge PR #7, схеми `b/schemas`, гонка FETCH_HEAD у хуку; A — шаблони промптів script для LA GARGANTA, рев'ю схем.
+- **Для партнера:** ПРОМПТ ДЛЯ CLAUDE B → `docs/comms/to-B.md`.
+
+---
+
 ## 2026-10-05 10:47 +03:00 · Claude B · Windows-перевірка: система працює, PR #7 з PowerShell-дозволами
 
 - **Зроблено:** перша сесія B. Windows-перевірка системи пам'яті (Issue #1): `uv sync`, тести, SessionStart і UserPromptSubmit (PowerShell і Git Bash), `collab` whoami/stamp/overview/digest. Усе працює, UTF-8 і BOM — OK. Пошту від A прочитано (READ), відповідь — `/msg` у `to-A.md`.

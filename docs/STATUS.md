@@ -1,32 +1,38 @@
 # STATUS
 
-_Оновлено: 2026-10-05 10:46 +03:00 · Claude B_
+_Оновлено: 2026-10-05 13:36 +02:00 · Claude A_
+
+Дошка: [Producción](https://github.com/orgs/seriefactory-studio/projects/1)
 
 ## Зроблено
-- Система спільної пам'яті двох Claude: `CLAUDE.md`, `docs/*`, скриньки `docs/comms/`, журнал промптів
-  `docs/prompts/`, `collab.py` + хуки SessionStart / UserPromptSubmit, 6 слеш-команд, rules, агент pr-reviewer.
-  Перевірено на macOS (30 тестів) і на Windows 11 / PowerShell + Git Bash (B): хуки, collab, тести.
-- GitHub: мітки `area:*` / `owner:*`, шаблони Issue і PR, CODEOWNERS, Issues тижня 1: #1–#6.
+- Система спільної пам'яті A↔B працює на macOS і Windows (30 тестів у main).
+- GitHub Project «Producción» створено; на дошці Issues #1–#6 і PR #7 зі статусами.
+- Формат каналу: історія = 4 частини по 6–8 хв + Película completa 25–30 хв + тизери; мітки бітів з `SCREAMER`.
+- **LA GARGANTA** (`series/la-garganta/`): біблія (6 персонажів з візуальною ДНК, 9 локацій, правила світу, табу,
+  ризики), сюжет 4 частинами з мітками і 7 тизерами, ланцюжок 12 підказок + 2 хибні сліди. Статус — чернетка
+  на затвердження людиною.
+- Регіон — Мексика, м'який акцент; герої 18–19. El Precio — в архіві.
 
 ## В роботі
-- **PR #7 `b/windows-setup`** (B): PowerShell-двійники дозволів і заборон + `tests/test_settings.py`. Чекає рев'ю A.
-- B: живий запуск хуків і слеш-команд у Claude Code (сесію треба перезапустити з кореня репо).
+- **PR #7** `b/windows-setup` (B): approve від A. Перед merge B перевіряє `/permissions` наживо. Мерджить B.
+- #2 каркас fabrica (B) · #4 script: біблія готова, далі — схема `script.json` (A зміст + B код).
 
 ## Заблоковано
-- **GitHub Project «Producción»** — у токена A нема scope `project`.
-  Розблокувати: `gh auth refresh -h github.com -s project` → `uv run --no-project .github/scripts/setup_github.py`
+- (нічого)
 
 ## Чекає на Claude B
-- #1: після перезапуску в корені — перевірити хуки й `/start` наживо, синтаксис `PowerShell(...)` у `/permissions`; дописати в PR #7
-- #2 каркас fabrica · #3 облік витрат з лімітами
+- Merge PR #7 після живої перевірки `/permissions` (або `Refs #1` замість `Closes #1`)
+- Схеми `script.json` / `shots.json` під новий формат → PR `b/schemas` (поля — лист у `docs/comms/to-B.md`)
+- Виправити гонку `FETCH_HEAD` у `session_start.py` (MEMORY → «Що не працює»)
+- #2 каркас fabrica · #3 облік витрат
 
 ## Чекає на Claude A
-- **`/review-pr 7`** (`b/windows-setup`) і merge після approve — мерджить B
-- #4 script: біблія першого серіалу, план E01, промпти, схема `script.json` (разом з B)
-- Створити Project, щойно з'явиться scope
+- Після merge PR #7 — перевірити `/permissions` на Mac (чи не дають помилок правила `PowerShell(...)`)
+- Рев'ю контентної частини схем B; шаблони промптів `fabrica/prompts/script/` для LA GARGANTA
+- Внести відповіді людини на «Питання логіки» в `story.md`
 
 ## Чекає на людей
-- dimaShelest: `gh auth refresh -h github.com -s project`
-- Обоє: ідея й жанр першого серіалу; TODO у `PROJECT_BRIEF.md` (регіон/акцент, KPI); ліміти бюджету
+- dimaShelest: затвердити LA GARGANTA — 5 питань логіки (`story.md`), візуальна ДНК, імена сімох, C12, SCREAMER у фіналі
+- Обоє: числа KPI в `PROJECT_BRIEF.md`; ліміти бюджету (`.env` → `BUDGET_*`)
 - Кожен: ключі API у своєму `.env`
-- nuchay69-max: відкривати в VS Code теку `serie-factory`, а не `C:\project`
+- Ідея: фінал (Día de Muertos) і фільм випустити 31.10–2.11

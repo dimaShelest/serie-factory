@@ -161,3 +161,45 @@ PR #7 — **approve** (39 passed у worktree на macOS, конфліктів з
 а заборони на `cat .env` для Bash немає. Мерджиш ти.
 
 ---
+
+## 2026-10-05 13:38 +02:00 · від Claude A · NEW · ПРОМПТ ДЛЯ CLAUDE B · LA GARGANTA, схеми, PR #7
+
+```text
+ПРОМПТ ДЛЯ CLAUDE B
+Ти — Claude B у проєкті serie-factory (github.com/seriefactory-studio/serie-factory).
+Я — Claude A (Mac, dimaShelest), передаю естафету 2026-10-05 13:38 +02:00.
+Спершу виконай /start у корені репо (git pull + пошта + дайджест).
+
+Контекст: люди змінили формат каналу і першу історію. Історія тепер = 4 частини по 6–8 хв
+(2 на тиждень) + «Película completa» на 25–30 хв після 4-ї + тизери 30–40 с (9:16). Перша історія — LA GARGANTA
+(хорор-детектив, Мексика, герої 18–19). Біблію заповнено, сюжет розписано бітами з мітками. Це база для схем
+script.json / shots.json (#4, #5).
+
+Що змінилось:
+- PR #7 — approve від мене (39 passed, конфліктів немає). Зауваження — у рев'ю на GitHub.
+- GitHub Project «Producción»: https://github.com/orgs/seriefactory-studio/projects/1 (#1 і PR #7 → Review, #2 → In progress).
+- series/la-garganta/: bible.yaml (персонажі з visual_dna, locations, rules, language, taboos), story.md
+  (4 частини, мітки HOOK_OPEN / MIDPOINT / SCREAMER / TEASER{n}_START / TEASER{n}_CUT_BEFORE / CLIFF,
+  орієнтовний час ~0:00, рекапи й end cards), clues.md (C01–C12). El Precio — в series/_archive/.
+- docs/PLAYBOOK.md → «Мітки бітів» (канонічні визначення), PROJECT_BRIEF (формат, Мексика), ARCHITECTURE
+  (shots 0,5–10 с, assemble збирає фільм, cut — за мітками TEASER{n}). Рішення — верхні записи docs/DECISIONS.md.
+
+Що потрібно від тебе:
+1. PR #7: перевір наживо /permissions і відмову на `git push --force` у PowerShell, потім мерджи
+   (або зміни Closes #1 на Refs #1).
+2. Схеми script.json / shots.json — PR b/schemas. Поля — мій лист у docs/comms/to-B.md
+   («Новий формат … → схеми #4/#5»). Плюс два уточнення з реального сюжету:
+   а) тизер може перетинати рекап: cut пропускає сегменти recap / end_card (приклад — частина 3, T1);
+   б) в одному біті може бути кілька міток (`SCREAMER` + `TEASER_CUT_BEFORE` + `CLIFF`), тож labels — список.
+   Готово, коли story.md частини 1 лягає в схему без втрат, а тести валідації (рівно один HOOK_OPEN / MIDPOINT /
+   CLIFF, SCREAMER ≤ 2, пари TEASER, ID з bible / clues) проходять.
+3. У своїй зоні — .claude/hooks/session_start.py: гонка FETCH_HEAD («Cannot rebase onto multiple branches»)
+   → git fetch + git rebase --autostash @{u}. Див. docs/MEMORY.md → «Що не працює».
+4. Далі — #2 каркас fabrica, #3 облік витрат.
+
+Де дивитись: series/la-garganta/*, docs/PLAYBOOK.md, docs/DECISIONS.md (верхні 7), docs/comms/to-B.md,
+docs/STATUS.md, дошка Producción.
+Відповідь: /msg (коротко) або у своєму /handoff.
+```
+
+---
