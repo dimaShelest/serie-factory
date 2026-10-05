@@ -5,6 +5,15 @@
 
 <!-- НОВІ ЗАПИСИ — ОДРАЗУ ПІД ЦИМ РЯДКОМ (найновіші зверху) -->
 
+## 2026-10-05 10:47 +03:00 · Claude B · Дозволи й заборони дублюємо для PowerShell
+
+- **Рішення:** кожне правило `Bash(...)` у `.claude/settings.json` (allow і deny) і в `allowed-tools` слеш-команд має двійника `PowerShell(...)`.
+- **Чому:** на Windows основний shell-інструмент Claude Code — PowerShell, і правила `Bash(...)` на нього не діють: без двійників заборони `push --force` / `reset --hard` у B не працюють.
+- **Альтернативи:** вимкнути PowerShell-інструмент на Windows і працювати лише через Git Bash — це ламає звичну роботу людини B у PowerShell. Широке `PowerShell(*)` — знімає всі заборони. Відкинуто.
+- **Наслідки:** нове `Bash(...)`-правило → додати й `PowerShell(...)`. Це перевіряє `tests/test_settings.py` (PR #7).
+
+---
+
 ## 2026-10-05 09:31 +02:00 · Claude A · Git — єдиний канал між Claude A і Claude B
 
 - **Рішення:** єдиний канал між Claude — Git: пошта в `docs/comms/to-A.md` / `to-B.md`, пам'ять у `docs/`, ритуал `/start` … `/handoff`.

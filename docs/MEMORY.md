@@ -11,6 +11,8 @@
   (`.python-version`). Утиліти запускаємо через `uv run`.
 - 2026-10-05 · Хуки Claude Code: `uv run --no-project --quiet .claude/hooks/<скрипт>.py`, відносно кореня репо.
   Тому `claude` треба запускати з кореня репо.
+- 2026-10-05 · На Windows B: `python` = 3.12, `python3` = заглушка Microsoft Store, є `py`. uv 0.12.23, Git Bash є.
+  Часові пояси: A пише +02:00, B — +03:00; `collab.py` порівнює з поясом, це нормально.
 
 ## Домовленості
 
@@ -28,6 +30,10 @@
   або перевір через `/hooks`.
 - 2026-10-05 · `@dataclass` у модулі, який завантажено через `importlib` без `sys.modules`, падає
   з `from __future__ import annotations`. У тестах імпортуємо хуки звичайним `import` через `sys.path`.
+- 2026-10-05 · На Windows shell-інструмент Claude Code — **PowerShell**, правила `Bash(...)` на нього НЕ діють
+  (ні allow, ні deny). Кожне правило дублюємо як `PowerShell(...)`; перевіряє `tests/test_settings.py`.
+- 2026-10-05 · Хуки й `/start` підхоплюються лише тоді, коли Claude Code відкрито в КОРЕНІ репо
+  (у VS Code — тека `serie-factory`). Відкрито батьківську теку → `.claude/` не діє, а промпти не журналюються.
 
 ## Що не працює
 
