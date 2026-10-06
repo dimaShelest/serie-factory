@@ -142,7 +142,16 @@ def _request(url: str, path: str, body: dict | None = None, model: str = "", tim
 def available_models() -> list[str]:
     """Моделі, завантажені в Ollama. Ollama не запущена -> OllamaNotRunningError."""
     url, _ = settings()
-    return [m["name"] for m in _request(url, "/api/tags", timeout=TAGS_TIMEOUT_S).get("models", [])]
+    try:
+        tags = _request(url, "/api/tags", timeout=TAGS_TIMEOUT_S)
+    except OllamaNotRunningError:
+        raise
+    except LocalLLMError as e:          # таймаут /api/tags = Ollama недоступна, а не «модель завелика»
+        raise OllamaNotRunningError(
+            f"Ollama недоступна за адресою {url}: немає відповіді за {TAGS_TIMEOUT_S:g} с.\n"
+            "Запусти Ollama (ollama serve) або перевір OLLAMA_URL у .env."
+        ) from e
+    return [m["name"] for m in tags.get("models", [])]
 
 
 # ---------------------------------------------------------------- генерація

@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [project.scripts]
-fabrica = "fabrica.cli:app"          # uv run fabrica --help
+fabrica = "fabrica.cli:main"         # uv run fabrica --help
 
 [build-system]
 requires = ["hatchling"]
