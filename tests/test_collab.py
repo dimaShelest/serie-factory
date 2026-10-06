@@ -159,6 +159,63 @@ def test_session_start_report(repo: Path) -> None:
     assert "Привіт, B" in out
 
 
+def _git(cwd: Path, *args: str) -> str:
+    r = subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "init.defaultBranch=main",
+                        *args], cwd=cwd, capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    return r.stdout.strip()
+
+
+@pytest.fixture
+def clones(tmp_path: Path) -> tuple[Path, Path]:
+    """Голий origin і два клони: `me` (де працює хук) і `other` (партнер, що пушить)."""
+    _git(tmp_path, "init", "--bare", "origin.git")
+    for name in ("me", "other"):
+        _git(tmp_path, "clone", "-q", "origin.git", name)
+        for k, v in (("user.name", name), ("user.email", f"{name}@t")):
+            _git(tmp_path / name, "config", k, v)
+    (tmp_path / "me" / "a.txt").write_text("1\n", encoding="utf-8")
+    _git(tmp_path / "me", "add", "a.txt")
+    _git(tmp_path / "me", "commit", "-qm", "init")
+    _git(tmp_path / "me", "push", "-q", "-u", "origin", "HEAD:main")
+    _git(tmp_path / "other", "pull", "-q", "origin", "main")
+    return tmp_path / "me", tmp_path / "other"
+
+
+def _partner_commits(other: Path, text: str) -> None:
+    (other / "a.txt").write_text(text, encoding="utf-8")
+    _git(other, "commit", "-qam", "partner")
+    _git(other, "push", "-q", "origin", "HEAD:main")
+
+
+def test_pull_survives_double_fetch_head(clones: tuple[Path, Path]) -> None:
+    """Гонка з автофетчем VS Code: main двічі у FETCH_HEAD ламала `git pull --rebase`."""
+    me, other = clones
+    _partner_commits(other, "2\n")
+    _git(me, "fetch", "-q")
+    fh = me / ".git" / "FETCH_HEAD"
+    fh.write_text(fh.read_text(encoding="utf-8") * 2, encoding="utf-8")
+    out = session_start.pull(me)
+    assert "⚠️" not in out, out
+    assert (me / "a.txt").read_text(encoding="utf-8") == "2\n"
+
+
+def test_pull_conflict_aborts_rebase(clones: tuple[Path, Path]) -> None:
+    me, other = clones
+    _partner_commits(other, "partner\n")
+    (me / "a.txt").write_text("mine\n", encoding="utf-8")
+    _git(me, "commit", "-qam", "mine")
+    out = session_start.pull(me)
+    assert "КОНФЛІКТ" in out
+    assert not (me / ".git" / "rebase-merge").exists() and not (me / ".git" / "rebase-apply").exists()
+    assert (me / "a.txt").read_text(encoding="utf-8") == "mine\n"
+
+
+def test_pull_without_upstream(tmp_path: Path) -> None:
+    _git(tmp_path, "init", "-q")
+    assert "немає upstream" in session_start.pull(tmp_path)
+
+
 def test_log_prompt_hook_is_silent(tmp_path: Path) -> None:
     """Хук через stdin, як його кличе Claude Code; stdout має бути порожнім."""
     r = subprocess.run([sys.executable, str(HOOKS / "log_prompt.py")], input=b"not json",

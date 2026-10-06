@@ -14,18 +14,25 @@ import collab  # noqa: E402
 
 
 def pull(root: Path) -> str:
+    """fetch + rebase на upstream. Не `git pull`: одночасний автофетч VS Code пише гілку в FETCH_HEAD
+    двічі, і pull падає з «Cannot rebase onto multiple branches». `@{u}` від FETCH_HEAD не залежить."""
     try:
         if (root / ".git" / "rebase-merge").exists() or (root / ".git" / "rebase-apply").exists():
             return "⚠️ git: незавершений rebase з минулого разу — розберись (git status) до початку роботи."
-        r = collab.git("pull", "--rebase", "--autostash", root=root, timeout=45)
+        if collab.git("rev-parse", "--abbrev-ref", "@{u}", root=root).returncode != 0:
+            return "⚠️ git: у поточної гілки немає upstream — синхронізацію пропущено."
+        r = collab.git("fetch", "--quiet", root=root, timeout=45)
+        if r.returncode != 0:
+            return "⚠️ git fetch не вдався (мережа/доступ?):\n" + r.stderr.strip()[-600:]
+        r = collab.git("rebase", "--autostash", "@{u}", root=root, timeout=45)
         if r.returncode == 0:
             last = (r.stdout.strip().splitlines() or ["OK"])[-1]
-            return f"git pull --rebase: {last}"
+            return f"git fetch + rebase @{{u}}: {last}"
         if (root / ".git" / "rebase-merge").exists() or (root / ".git" / "rebase-apply").exists():
             collab.git("rebase", "--abort", root=root)
-            return ("⚠️ git pull --rebase: КОНФЛІКТ — rebase скасовано, репо як було. "
+            return ("⚠️ git rebase @{u}: КОНФЛІКТ — rebase скасовано, репо як було. "
                     "Скажи людині й розв'яжи вручну перед роботою.\n" + r.stderr.strip()[-600:])
-        return "⚠️ git pull --rebase не вдався (мережа/доступ?):\n" + r.stderr.strip()[-600:]
+        return "⚠️ git rebase @{u} не вдався:\n" + r.stderr.strip()[-600:]
     except Exception as e:  # noqa: BLE001 — хук не має права падати
         return f"⚠️ git pull не виконано: {e}"
 
