@@ -97,20 +97,12 @@ def test_reuse_and_labels() -> None:
 # ---------------------------------------------------------------- що розкадровка порушує зараз (для A)
 
 
-@pytest.mark.xfail(strict=True, reason="T1 у part1_shotlist.md = 28 с (1.01 → 1.07), а PLAYBOOK: 30–40 с")
 def test_shotlist_follows_playbook() -> None:
     assert shots_errors(SHOTS) == []
 
 
-@pytest.mark.xfail(strict=True, reason="1.02: «¡Chuy, graba, graba!…», а story.md: «¡Graba, graba!…»")
 def test_shotlist_covers_script() -> None:
     assert check_shots(SHOTS, SCRIPT) == []
-
-
-def test_current_violations_are_exactly_known() -> None:
-    assert shots_errors(SHOTS) == ["TEASER1: 28 с, а має бути 30–40"]
-    assert [e for e in check_shots(SHOTS, SCRIPT)] == [
-        "репліка l01 (s01) «¡Graba, graba! Esto va para el anuario.» не потрапила в жоден шот"]
 
 
 def test_shots_json_roundtrip(tmp_path: Path) -> None:

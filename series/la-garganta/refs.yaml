@@ -1,0 +1,106 @@
+# Маніфест референсів LA GARGANTA — зона A. Самі файли лежать у R2 (у Git їх немає), тут лише опис.
+# Заповнюємо після кастингу (docs/casting/la-garganta.md). Поки що це ПРИКЛАД: усі записи status: example.
+#
+# Поля:
+#   id          — <owner>.<view>[.<variant>], унікальний; на нього посилаються етапи refs / video / qc
+#   owner       — id з bible.yaml: персонаж (characters / supporting.los_siete.members), локація або prop:<назва>
+#   kind        — character | location | prop
+#   view        — base | three_quarter | profile | full_body | emotion | plate
+#   variant     — null або стан: wet, 1994, young, dawn, tunnel, flooded, collapse, ceiling, 3_17, glass…
+#   status      — example → candidate → approved → retired. Генерація відео бере лише approved.
+#   file        — ключ у R2 (r2://<bucket>/<шлях>); локальна копія — output/refs/la-garganta/<той самий шлях>
+#   sha256      — хеш файлу (контроль, що в R2 саме затверджений файл)
+#   derived_from — id ref, з яким цей генерували як з референсом (лист персонажа, мокрий варіант, Tomás ← Mateo)
+#   generator   — інструмент, модель, seed; prompt — дослівно, як надіслали
+#   approved_by / approved_at — людина й дата затвердження
+
+version: 1
+story: la-garganta
+refs:
+  - id: mateo.base
+    owner: mateo
+    kind: character
+    view: base
+    variant: null
+    status: example
+    file: r2://serie-factory/refs/la-garganta/characters/mateo/base_v1.png
+    sha256: null
+    derived_from: null
+    generator: {tool: gemini, model: nano-banana, seed: null}
+    prompt: "Portrait of Mateo, an 18-year-old Mexican young man (adult). Very pale skin … [PORTRAIT] [STYLE]"
+    approved_by: null
+    approved_at: null
+    notes: Обличчя Mateo — джерело для tomas.base.1994 і для подряпаного фото C09. Затверджуємо першим.
+
+  - id: mateo.emotion.sadness
+    owner: mateo
+    kind: character
+    view: emotion
+    variant: sadness
+    status: example
+    file: r2://serie-factory/refs/la-garganta/characters/mateo/sheet_v1_sadness.png
+    sha256: null
+    derived_from: mateo.base
+    generator: {tool: gemini, model: nano-banana, seed: null}
+    prompt: "[SHEET] … (5) deep sadness …"
+    approved_by: null
+    approved_at: null
+
+  - id: tomas.base.1994
+    owner: tomas
+    kind: character
+    view: base
+    variant: "1994"
+    status: example
+    file: r2://serie-factory/refs/la-garganta/characters/tomas/base_1994_v1.png
+    sha256: null
+    derived_from: mateo.base
+    generator: {tool: gemini, model: nano-banana, seed: null}
+    prompt: "Same face as the reference, alive and healthy in 1994 … [1994]"
+    approved_by: null
+    approved_at: null
+
+  - id: beto.base.wet
+    owner: beto
+    kind: character
+    view: base
+    variant: wet
+    status: example
+    file: r2://serie-factory/refs/la-garganta/characters/beto/base_wet_v1.png
+    sha256: null
+    derived_from: beto.base.1994
+    generator: {tool: gemini, model: nano-banana, seed: null}
+    prompt: "Same person, same school uniform, now soaked … No gore, no wounds, no blood. [STYLE]"
+    approved_by: null
+    approved_at: null
+    notes: Обличчя VHS-скрімера (1.07) і хлопця в дзеркалі (8.11–8.15).
+
+  - id: mina.plate.dawn
+    owner: mina
+    kind: location
+    view: plate
+    variant: dawn
+    status: example
+    file: r2://serie-factory/refs/la-garganta/locations/mina/dawn_v1.png
+    sha256: null
+    derived_from: mina.plate
+    generator: {tool: gemini, model: nano-banana, seed: null}
+    prompt: "same entrance at dawn, pale golden light, low mist, small pebbles scattered on the ground"
+    approved_by: null
+    approved_at: null
+    notes: Стартовий кадр тесту T1 і шотів 4.01–4.09.
+
+  - id: prop.c05_night_shift_photo.glare
+    owner: prop:c05_night_shift_photo
+    kind: prop
+    view: plate
+    variant: glare
+    status: example
+    file: r2://serie-factory/refs/la-garganta/props/c05_night_shift_photo_glare_v1.png
+    sha256: null
+    derived_from: prop.c05_night_shift_photo
+    generator: {tool: gemini, model: nano-banana, seed: null}
+    prompt: "add a strong reflection glare on the glass over the central figure so his face cannot be seen"
+    approved_by: null
+    approved_at: null
+    notes: Шот 7.06 (ч.1). Ціле фото (без відблиску) — ч.3, кабінет мера (C12).

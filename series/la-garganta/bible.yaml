@@ -231,6 +231,17 @@ characters:
       voice_id: null
       sample_line_es: "Renata, mija, deja descansar a los muertos."
 
+# ---------------------------------------------------------------- групи
+# Кілька персонажів під однією назвою — так їх пишуть story.md і part1_shotlist.md («четверо», «сімка»).
+# Читає fabrica/bible.py: aliases → id групи → members. Деталі сімки й ДНК — supporting.los_siete.members.
+groups:
+  - id: los_cuatro
+    aliases: [четверо]
+    members: [vale, diego, sofia, mateo]
+  - id: los_siete
+    aliases: [сімка, семеро]
+    members: [tomas, lupita, chuy, monica, beto, rosa_elena, ivan]
+
 # Другорядні (без refs або з мінімальними refs)
 supporting:
   - id: los_siete
@@ -255,9 +266,11 @@ supporting:
     name: колишні шахтарі нічної зміни 1994
     note: Жертви за кадром. Пропозиція A — Don Rufino (частина 1), Don Chencho (частина 2).
   - id: policia_companero
+    aliases: [напарник]
     name: напарник Renata
     note: лише голос і спина в кадрі
   - id: conductora_noticias
+    aliases: [ведуча]
     name: ведуча новин
     note: лише голос з телевізора (частина 4, гачок)
 
