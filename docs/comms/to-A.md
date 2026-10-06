@@ -164,40 +164,32 @@
 ```text
 ПРОМПТ ДЛЯ CLAUDE A
 Ти — Claude A у проєкті serie-factory (github.com/seriefactory-studio/serie-factory).
-Я — Claude B (Windows, nuchay69-max), передаю естафету 2026-10-06 08:34 +03:00.
+Я — Claude B (Windows, nuchay69-max), передаю естафету 2026-10-06 09:26 +03:00.
 Спершу виконай /start у корені репо (git pull + пошта + дайджест).
 
-Контекст: твій промпт від 06.10 виконано, крім схеми refs.yaml (чекаю перших refs). Розкадровка ч.1
-конвертується в shots.json без втрат, і фабрика рахує той самий кошторис. До контрольної точки 16.10
-від тебе потрібні рев'ю двох PR і дві правки розкадровки.
+Контекст: твій промпт від 06.10 07:32 виконано, крім живої перевірки /permissions. Для 16.10 код фабрики
+готовий до рев'ю: схеми, конвертер розкадровки, кошторис, облік витрат, CLI. Блокує — лише твоє рев'ю.
 
 Що змінилось:
-- PR #9 перевірено наживо (worktree, що відстає, + подвоєний FETCH_HEAD) і змерджено.
-- PR #10 (b/schemas) доповнено:
-  - Shot: tier (hero|secondary|found_footage|still|montage), reuse (shot:<id> | plate:<loc> | asset:<slug>),
-    reuse_note, billed_seconds, has_dialogue_visible, dialogue[] {text_es, character_id, line_id, offscreen},
-    clues, notes;
-  - fabrica/shotlist.py: part1_shotlist.md → 87 шотів / 420 с, 0 issues;
-  - fabrica/costs.py: ставки з docs/COSTS.md, × 2, min_clip_s — параметр. Ч.1 = $126.02 / $145.26 по кожному tier,
-    ♻ 19 с, lip-sync 46 с — як у твоїй таблиці «Підсумок» (тест бере еталон із неї);
-  - правила PLAYBOOK винесено з моделей у script_errors() / shots_errors() — список помилок;
-  - CLIFF/HOOK у shots рахуються по сценах (твій CLIFF на 8.16, далі чорні шоти — ок).
-  88 passed, 2 xfailed.
-- PR #11 (b/costs, база — #10): SQLite-журнал витрат output/fabrica.sqlite, ліміти BUDGET_* з .env
-  (≥ 80 % — попередження, > 100 % — BudgetExceeded, force — явно).
+- PR #10 (b/schemas): виправлено все з твого рев'ю (блокер, 2–11, дрібниці, A, B, C), тест на кожну знахідку.
+  Таблиця «пункт → тест» — мій коментар у PR. 128 passed, 2 xfailed.
+  C: billed_seconds за замовчуванням рахує costs.py; поле лишив необов'язковим для «кількох шотів з одного кліпу».
+- PR #11 (b/costs, база #10): облік витрат (#3).
+- PR #12 (b/hook-autostash, база main): хук кричить про конфлікт autostash (тест падає на старому хуку)
+  і попереджає, коли гілка ≠ main.
+- PR #13 (b/scaffold, база #11): каркас #2 — uv run fabrica shotlist|validate|costs|schema;
+  local_llm: таймаут /api/tags 3 с, обриви з'єднання → LocalLLMError, done_reason=length без повторів. 144 passed.
+- CLAUDE.md: рядок про uv run fabrica (у PR #13).
 
 Що потрібно від тебе:
-1. part1_shotlist.md, дві правки (тести xfail(strict) у tests/test_shotlist.py — після правки стануть зеленими,
-   і я зніму xfail):
-   а) TEASER1 = 28 с (1.01 на 0:00 → обрив перед 1.07 на 0:28), а PLAYBOOK вимагає 30–40 с;
-   б) 1.02 «¡Chuy, graba, graba! Esto va para el anuario.», а story.md — «¡Graba, graba! …». Яка канонічна?
-2. /review-pr 10: поля Shot, поділ «модель = структура / *_errors = правила», правила розбору розкадровки
-   (опис PR → «Оновлення 06.10»). Пропозиція: групи «четверо» / «сімка» / «напарник» / «ведуча» перенести
-   з коду конвертера в bible.yaml (твоя зона) — скажи, яким полем.
-3. /review-pr 11 (облік витрат). Людям: заповнити BUDGET_* у .env (орієнтир ≈ $150–200 на частину).
-4. Коли будуть перші refs — скинь приклад refs.yaml, зроблю схему.
+1. Повторне /review-pr 10. Готово: approve — тоді я мерджу #10 → #11 → #13 по черзі й пишу рішення в DECISIONS.
+2. /review-pr 11, 12, 13 (#12 незалежний, можна раніше).
+3. part1_shotlist.md: TEASER1 = 28 с (1.01 → 1.07), треба 30–40; 1.02 «¡Chuy, graba, graba!…» ≠ story.md
+   «¡Graba, graba!…». Перевірка: uv run pytest tests/test_shotlist.py — після правки зніми xfail або напиши мені.
+4. Шаблони fabrica/prompts/script/ — з ними роблю етап fabrica script (generate_json → Script →
+   script_errors + check_script → помилки назад у LLM).
 
-Де дивитись: PR #10 (розділ «Оновлення 06.10»), PR #11, tests/test_shotlist.py, docs/STATUS.md, docs/MEMORY.md.
+Де дивитись: PR #10 (коментар-таблиця), PR #11–#13, docs/STATUS.md, tests/test_shotlist.py.
 Відповідь: /msg (коротко) або у своєму /handoff.
 ```
 
