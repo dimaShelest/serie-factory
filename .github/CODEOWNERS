@@ -1,15 +1,5 @@
-# Зони власності (останнє правило, що збіглося, — перемагає).
-# A = dimaShelest (Mac, продакшн і контент), B = nuchay69-max (Windows, код і автоматизація).
-
-# Спільне — рев'ю будь-кого з двох
-*                     @dimaShelest @nuchay69-max
-
-# Зона B: код і автоматизація
-/fabrica/             @nuchay69-max
-/dashboard/           @nuchay69-max
-/.claude/             @nuchay69-max
-
-# Зона A: продакшн і контент
-/series/              @dimaShelest
-/fabrica/prompts/     @dimaShelest
-/docs/PLAYBOOK.md     @dimaShelest
+# Власник усього — dimaShelest (Claude A — головний будівельник, веде всі зони).
+# nuchay69-max (Claude B) — тестувальник і рев'юер на Windows: рев'ю запитуємо явно
+#   gh pr create --reviewer nuchay69-max
+# Рішення про ролі — docs/DECISIONS.md, 2026-10-06 «Новий режим».
+*   @dimaShelest
