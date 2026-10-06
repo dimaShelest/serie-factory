@@ -216,6 +216,36 @@ def test_pull_without_upstream(tmp_path: Path) -> None:
     assert "немає upstream" in session_start.pull(tmp_path)
 
 
+def test_pull_reports_autostash_conflict(clones: tuple[Path, Path]) -> None:
+    """Незакомічена правка конфліктує з партнером: rebase повертає 0, але лишає UU і stash — хук мусить кричати."""
+    me, other = clones
+    _partner_commits(other, "partner\n")
+    (me / "a.txt").write_text("my uncommitted\n", encoding="utf-8")
+    out = session_start.pull(me)
+    assert "КОНФЛІКТ твоїх НЕЗАКОМІЧЕНИХ правок" in out, out
+    assert "a.txt" in out and "stash@{0}" in out
+
+
+def test_pull_autostash_without_conflict_is_quiet(clones: tuple[Path, Path]) -> None:
+    me, other = clones
+    (other / "b.txt").write_text("partner\n", encoding="utf-8")
+    _git(other, "add", "b.txt")
+    _git(other, "commit", "-qm", "partner b")
+    _git(other, "push", "-q", "origin", "HEAD:main")
+    (me / "a.txt").write_text("my uncommitted\n", encoding="utf-8")
+    out = session_start.pull(me)
+    assert "⚠️" not in out, out
+    assert (me / "a.txt").read_text(encoding="utf-8") == "my uncommitted\n" and (me / "b.txt").exists()
+
+
+def test_report_warns_when_not_on_main(clones: tuple[Path, Path]) -> None:
+    me, _ = clones
+    _git(me, "switch", "-q", "-c", "b/feature")
+    assert "на гілці «b/feature», а не на main" in session_start.report(me, do_pull=False)
+    _git(me, "switch", "-q", "main")
+    assert "а не на main" not in session_start.report(me, do_pull=False)
+
+
 def test_log_prompt_hook_is_silent(tmp_path: Path) -> None:
     """Хук через stdin, як його кличе Claude Code; stdout має бути порожнім."""
     r = subprocess.run([sys.executable, str(HOOKS / "log_prompt.py")], input=b"not json",

@@ -19,7 +19,7 @@
         {
           "id": "l01",
           "character_id": "los_siete",
-          "text_es": "¡Graba, graba! Esto va para el anuario.",
+          "text_es": "¡Chuy, graba, graba! Esto va para el anuario.",
           "delivery": "shout",
           "emotion": "euforia"
         },
@@ -43,18 +43,19 @@
         {
           "label": "TEASER_CUT_BEFORE",
           "n": 1,
-          "approx_s": 33,
+          "approx_s": 32,
           "moment": "промінь вихоплює мокре обличчя"
         },
         {
           "label": "SCREAMER",
-          "approx_s": 33,
+          "approx_s": 32,
           "moment": "мокре обличчя в промені ліхтаря + удар"
         }
       ],
       "clues": {
         "planted": [
-          "C07"
+          "C07",
+          "C14"
         ]
       }
     },

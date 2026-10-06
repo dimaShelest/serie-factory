@@ -107,7 +107,11 @@
       "PowerShell(git clean:*)",
       "PowerShell(Get-Content .env:*)",
       "PowerShell(cat .env:*)",
-      "PowerShell(type .env:*)"
+      "PowerShell(type .env:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git push origin --force-with-lease:*)",
+      "PowerShell(git push --force-with-lease:*)",
+      "PowerShell(git push origin --force-with-lease:*)"
     ]
   },
   "hooks": {
@@ -129,6 +133,18 @@
           {
             "type": "command",
             "command": "uv run --no-project --quiet .claude/hooks/log_prompt.py",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --no-project --quiet .claude/hooks/guard_git.py",
             "timeout": 20
           }
         ]

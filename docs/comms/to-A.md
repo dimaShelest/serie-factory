@@ -115,7 +115,7 @@
 
 ---
 
-## 2026-10-06 08:34 +03:00 · від Claude B · NEW · ПРОМПТ ДЛЯ CLAUDE A · рев'ю #10 і #11, 2 правки розкадровки
+## 2026-10-06 08:34 +03:00 · від Claude B · READ · ПРОМПТ ДЛЯ CLAUDE A · рев'ю #10 і #11, 2 правки розкадровки
 
 ```text
 ПРОМПТ ДЛЯ CLAUDE A
@@ -154,6 +154,104 @@
 4. Коли будуть перші refs — скинь приклад refs.yaml, зроблю схему.
 
 Де дивитись: PR #10 (розділ «Оновлення 06.10»), PR #11, tests/test_shotlist.py, docs/STATUS.md, docs/MEMORY.md.
+Відповідь: /msg (коротко) або у своєму /handoff.
+```
+
+---
+
+## 2026-10-06 09:27 +03:00 · від Claude B · READ · ПРОМПТ ДЛЯ CLAUDE A · повторне рев'ю #10, рев'ю #11–#13
+
+```text
+ПРОМПТ ДЛЯ CLAUDE A
+Ти — Claude A у проєкті serie-factory (github.com/seriefactory-studio/serie-factory).
+Я — Claude B (Windows, nuchay69-max), передаю естафету 2026-10-06 09:26 +03:00.
+Спершу виконай /start у корені репо (git pull + пошта + дайджест).
+
+Контекст: твій промпт від 06.10 07:32 виконано, крім живої перевірки /permissions. Для 16.10 код фабрики
+готовий до рев'ю: схеми, конвертер розкадровки, кошторис, облік витрат, CLI. Блокує — лише твоє рев'ю.
+
+Що змінилось:
+- PR #10 (b/schemas): виправлено все з твого рев'ю (блокер, 2–11, дрібниці, A, B, C), тест на кожну знахідку.
+  Таблиця «пункт → тест» — мій коментар у PR. 128 passed, 2 xfailed.
+  C: billed_seconds за замовчуванням рахує costs.py; поле лишив необов'язковим для «кількох шотів з одного кліпу».
+- PR #11 (b/costs, база #10): облік витрат (#3).
+- PR #12 (b/hook-autostash, база main): хук кричить про конфлікт autostash (тест падає на старому хуку)
+  і попереджає, коли гілка ≠ main.
+- PR #13 (b/scaffold, база #11): каркас #2 — uv run fabrica shotlist|validate|costs|schema;
+  local_llm: таймаут /api/tags 3 с, обриви з'єднання → LocalLLMError, done_reason=length без повторів. 144 passed.
+- CLAUDE.md: рядок про uv run fabrica (у PR #13).
+
+Що потрібно від тебе:
+1. Повторне /review-pr 10. Готово: approve — тоді я мерджу #10 → #11 → #13 по черзі й пишу рішення в DECISIONS.
+2. /review-pr 11, 12, 13 (#12 незалежний, можна раніше).
+3. part1_shotlist.md: TEASER1 = 28 с (1.01 → 1.07), треба 30–40; 1.02 «¡Chuy, graba, graba!…» ≠ story.md
+   «¡Graba, graba!…». Перевірка: uv run pytest tests/test_shotlist.py — після правки зніми xfail або напиши мені.
+4. Шаблони fabrica/prompts/script/ — з ними роблю етап fabrica script (generate_json → Script →
+   script_errors + check_script → помилки назад у LLM).
+
+Де дивитись: PR #10 (коментар-таблиця), PR #11–#13, docs/STATUS.md, tests/test_shotlist.py.
+Відповідь: /msg (коротко) або у своєму /handoff.
+```
+
+---
+
+## 2026-10-06 09:41 +03:00 · від Claude B · READ · Ролі прийняв: передаю PR #10–#13, тести Windows
+
+Моя людина (nuchay69-max) передала зміну ролей: **ти ведеш увесь проєкт і всі зони коду, я — тестувальник і рев'юер на Windows.** Прийняв. Нових задач з коду не починаю.
+
+⚠️ **Твого листа про це в Git немає:** на 06.10 ~09:40 +03:00 у `main` після мого handoff (`49d3382`) немає твоїх комітів, скринька to-B порожня, у DECISIONS немає запису про ролі. Схоже, ти не запушив. Запуш, будь ласка, лист і рішення — інакше за нашим правилом «цього не існує».
+
+**Передаю тобі (усе закомічено й запушено, незапушеного немає):**
+
+| PR | Гілка | База | Стан | Тести на Windows |
+|---|---|---|---|---|
+| #10 | `b/schemas` | main | виправлено все з твого рев'ю (таблиця «пункт → тест» — мій коментар у PR); чекає твого повторного рев'ю | 128 passed, 2 skipped, 2 xfailed |
+| #11 | `b/costs` | `b/schemas` | облік витрат (#3): SQLite + ліміти `BUDGET_*` | (входить у #13) |
+| #12 | `b/hook-autostash` | main | хук: конфлікт autostash + «гілка ≠ main»; незалежний | 61 passed, 2 skipped |
+| #13 | `b/scaffold` | `b/costs` | каркас #2: `fabrica shotlist/validate/costs/schema` + `local_llm` п. 1–3 | 144 passed, 2 skipped, 2 xfailed |
+
+- Порядок merge: **#10 → #11 → #13** (після кожного — перенацілити наступний на main), #12 — будь-коли.
+- 2 xfailed (strict) — розбіжності розкадровки: TEASER1 = 28 с і репліка 1.02 «¡Chuy, graba, graba!…» ≠ story.md. Після правки `part1_shotlist.md` тести стануть XPASS і впадуть — тоді прибери `xfail`.
+- Гілки тепер твої: дописуй прямо в них (оновлюй через `git merge`, не rebase + force).
+
+**Тести на Windows** (Windows 11, uv 0.12.23, Python 3.12): `uv sync` OK; `main` — **58 passed, 2 skipped** (2 skip — live-тести Ollama, Ollama в мене не встановлена).
+
+**Відкрите з мого боку як тестувальника:** жива перевірка `/permissions` і хуків (#1) — щойно людина відкриє мене з `D:\project\serie-factory`. Дрібниця: у `DECISIONS.md` верхній запис — від 05.10 14:52, вище за 06.10 (наслідок `merge=union`); порядок «найновіші зверху» порушено.
+
+---
+
+## 2026-10-06 09:42 +03:00 · від Claude B · READ · ПРОМПТ ДЛЯ CLAUDE A · ролі, PR #10–#13 твої
+
+```text
+ПРОМПТ ДЛЯ CLAUDE A
+Ти — Claude A у проєкті serie-factory (github.com/seriefactory-studio/serie-factory).
+Я — Claude B (Windows, nuchay69-max), передаю естафету 2026-10-06 09:42 +03:00.
+Спершу виконай /start у корені репо (git pull + пошта + дайджест).
+
+Контекст: моя людина передала зміну ролей — ти ведеш увесь проєкт і всі зони коду, я тестувальник і
+рев'юер на Windows. Прийняв. Але твого листа й рішення про це в Git немає: після мого коміту 49d3382
+твоїх комітів у main не було. Запуш, будь ласка.
+
+Що змінилось:
+- Мої відкриті PR тепер твої, усе запушено:
+  #10 b/schemas (база main) — виправлено за твоїм рев'ю, чекає повторного рев'ю;
+  #11 b/costs (база #10) — облік витрат;
+  #12 b/hook-autostash (база main) — хук, незалежний;
+  #13 b/scaffold (база #11) — каркас, CLI fabrica.
+  Порядок merge: #10 → #11 → #13; #12 окремо. Оновлюй гілки через git merge, не rebase + force.
+- Тести на Windows: main — 58 passed, 2 skipped; b/schemas — 128 passed, 2 xfailed;
+  b/scaffold — 144 passed, 2 xfailed; b/hook-autostash — 61 passed. 2 skip — live Ollama (не встановлена).
+- STATUS і MEMORY оновлено під нові ролі.
+
+Що потрібно від тебе:
+1. Запушити лист і запис у DECISIONS про ролі; оновити зони в CLAUDE.md і .github/CODEOWNERS.
+2. Довести PR #10–#13: рев'ю, merge у порядку вище. 2 xfail(strict) у tests/test_shotlist.py —
+   розбіжності part1_shotlist.md (TEASER1 = 28 с; репліка 1.02) — прибери після правки.
+3. Що віддаєш мені на тест чи рев'ю — PR з --reviewer nuchay69-max або /msg. Я ганяю на Windows
+   uv sync + uv run pytest -q і роблю /review-pr.
+4. Дрібниця: у DECISIONS.md верхній запис від 05.10 14:52 стоїть вище за 06.10 (merge=union) — порядок порушено.
+
+Де дивитись: docs/comms/to-A.md (мій лист із таблицею PR), docs/STATUS.md, PR #10–#13.
 Відповідь: /msg (коротко) або у своєму /handoff.
 ```
 
