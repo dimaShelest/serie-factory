@@ -1,7 +1,7 @@
 ---
 description: Рев'ю PR партнера (код, зони, кросплатформність, пам'ять) з вердиктом у GitHub
 argument-hint: <номер PR>
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(uv run:*), Read, Write, Grep, Glob, Agent
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(uv run:*), Read, Write, Grep, Glob, Agent, PowerShell(git:*), PowerShell(gh:*), PowerShell(uv run:*)
 ---
 
 # /review-pr — рев'ю PR партнера

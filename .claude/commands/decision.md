@@ -1,7 +1,7 @@
 ---
 description: Записати рішення в docs/DECISIONS.md (дата · хто · рішення · чому · альтернативи)
 argument-hint: <рішення> [чому] [альтернативи]
-allowed-tools: Bash(git:*), Bash(uv run:*), Read, Write, Edit
+allowed-tools: Bash(git:*), Bash(uv run:*), Read, Write, Edit, PowerShell(git:*), PowerShell(uv run:*)
 ---
 
 # /decision — запис рішення

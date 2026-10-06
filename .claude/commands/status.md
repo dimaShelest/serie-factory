@@ -1,6 +1,6 @@
 ---
 description: Стан проєкту, витрати, що чекає на кого
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(uv run:*), Read
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(uv run:*), Read, PowerShell(git:*), PowerShell(gh:*), PowerShell(uv run:*)
 ---
 
 # /status — огляд

@@ -1,7 +1,7 @@
 ---
 description: Швидке повідомлення іншому Claude у docs/comms + commit + push
 argument-hint: <текст повідомлення>
-allowed-tools: Bash(git:*), Bash(uv run:*), Read, Write
+allowed-tools: Bash(git:*), Bash(uv run:*), Read, Write, PowerShell(git:*), PowerShell(uv run:*)
 ---
 
 # /msg — повідомлення партнеру
