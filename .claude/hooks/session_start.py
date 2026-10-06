@@ -24,8 +24,19 @@ def pull(root: Path) -> str:
         r = collab.git("fetch", "--quiet", root=root, timeout=45)
         if r.returncode != 0:
             return "⚠️ git fetch не вдався (мережа/доступ?):\n" + r.stderr.strip()[-600:]
+        stashes = len(collab.git("stash", "list", root=root).stdout.splitlines())
         r = collab.git("rebase", "--autostash", "@{u}", root=root, timeout=45)
         if r.returncode == 0:
+            # rebase вдався, але повернути незакомічені правки могло не вийти: git лишає маркери
+            # конфлікту (UU) і stash, а код повернення — 0
+            unmerged = collab.git("diff", "--name-only", "--diff-filter=U", root=root).stdout.split()
+            kept = len(collab.git("stash", "list", root=root).stdout.splitlines()) > stashes
+            if unmerged or kept:
+                return ("⚠️ git: КОНФЛІКТ твоїх НЕЗАКОМІЧЕНИХ правок зі змінами партнера. "
+                        + (f"Маркери конфлікту у файлах: {', '.join(unmerged)}. " if unmerged else "")
+                        + ("Копія твоїх правок — у stash@{0}. " if kept else "")
+                        + "Скажи людині; розв'яжи маркери, перевір `git status`, потім `git stash drop`. "
+                          "Не починай роботу, доки дерево не чисте.")
             last = (r.stdout.strip().splitlines() or ["OK"])[-1]
             return f"git fetch + rebase @{{u}}: {last}"
         if (root / ".git" / "rebase-merge").exists() or (root / ".git" / "rebase-apply").exists():
@@ -41,6 +52,13 @@ def report(root: Path = collab.ROOT, do_pull: bool = True) -> str:
     out = ["=== serie-factory: старт сесії ==="]
     if do_pull:
         out.append(pull(root))
+    try:
+        branch = collab.git("branch", "--show-current", root=root).stdout.strip()
+        if branch and branch != "main":
+            out.append(f"⚠️ Ти на гілці «{branch}», а не на main. Код — тут; пам'ять (docs/) комітимо в main "
+                       "(див. /handoff, крок 8).")
+    except Exception:  # noqa: BLE001
+        pass
 
     me = collab.whoami(root)
     if me:
