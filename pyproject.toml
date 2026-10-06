@@ -5,10 +5,14 @@ description = "Генератор іспаномовних AI-серіалів: 
 readme = "README.md"
 requires-python = ">=3.12"
 # Залежності фабрики (typer, pydantic, ...) додає Claude B у задачі «Каркас fabrica».
-dependencies = []
+dependencies = [
+    "pydantic>=2.13.5",
+    "pyyaml>=6.0.3",
+]
 
 [dependency-groups]
 dev = ["pytest>=8"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]          # `import fabrica` у тестах без встановлення пакета
