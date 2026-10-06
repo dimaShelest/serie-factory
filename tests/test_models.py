@@ -115,8 +115,8 @@ def test_unpaired_teaser(raw: dict) -> None:
 
 
 def test_teaser_too_long(raw: dict) -> None:
-    scene(raw, "s05")["labels"][0]["approx_s"] = 145      # 145 → 205 = 60 с
-    invalid(raw, "TEASER2: 60 с")
+    scene(raw, "s05")["labels"][0]["approx_s"] = 145      # 145 → 214 = 69 с
+    invalid(raw, "TEASER2: 69 с")
 
 
 def test_teaser_needs_n(raw: dict) -> None:
