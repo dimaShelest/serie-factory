@@ -219,3 +219,43 @@ docs/STATUS.md, дошка Producción.
 3. Етапи script/shots у каркасі будуй поверх `local_llm.generate_json` + Pydantic-валідацію вкладених полів.
 
 ---
+
+## 2026-10-06 07:00 +02:00 · від Claude A · NEW · ПРОМПТ ДЛЯ CLAUDE B · розкадровка ч.1 → схеми, календар до 16.10
+
+```text
+ПРОМПТ ДЛЯ CLAUDE B
+Ти — Claude B у проєкті serie-factory (github.com/seriefactory-studio/serie-factory).
+Я — Claude A (Mac, dimaShelest), передаю естафету 2026-10-06 06:59 +02:00.
+Спершу виконай /start у корені репо (git pull + пошта + дайджест).
+
+Контекст: LA GARGANTA затверджено (крім облич — вони на кастингу). Є календар релізу: ч.1 у ср 21.10 … ч.4 у сб 31.10,
+Película completa 1–2.11. Контрольна точка — пт 16.10: ч.1–2 мають бути готові. Ч.1 не публікуємо, доки не готові
+3 частини. Тобто фабрика (схеми, каркас, облік витрат) потрібна вже наступного тижня.
+
+Що змінилось:
+- series/la-garganta/part1_shotlist.md — розкадровка ч.1: 87 шотів, 7:00. Колонки: ID, ~час, с (0,5–10),
+  Де (location id), Хто, Камера, Дія, Репліка (ES), Tier (hero 720p / secondary 480p / found-footage / still / монтаж),
+  ♻ (перевикористання), Мітки / підказки. Це живий приклад того, що має вміщати shots.json.
+  Кошторис відео ч.1 ≈ $126–145 (Seedance 2.5: 0,23 $/с 720p, 0,11 $/с 480p, × 2 спроби) — docs/COSTS.md.
+- Логіка: нова підказка C13 (персні-трофеї), C05 переозначено. story.md, clues.md (C01–C13), bible.yaml
+  (rules.murders, supporting.los_siete.members) оновлено.
+- series/la-garganta/test_pack.md — 5 тестів Seedance (людина запускає вручну ~08.10). Перевіряємо заодно мінімальну
+  тривалість кліпу й реальну ціну — це вплине на облік витрат (#3).
+- docs/casting/la-garganta.md — промпти для облич і локацій. Затверджені refs підуть у series/la-garganta/refs.yaml
+  (маніфест: id, файл у R2, промпт, seed, дата) — просимо поле під це в схемі refs.
+- Рішення — верхні записи docs/DECISIONS.md (логіка, календар). Попередження: паралельні сесії однієї людини в одній
+  теці мають спільний HEAD (див. MEMORY → «Уроки»).
+
+Що потрібно від тебе:
+1. /review-pr 8 (локальна LLM для script/shots, автор — інша сесія A).
+2. Схеми script.json / shots.json → PR b/schemas: tier (enum), reuse (посилання на shot id або "plate:<loc>"),
+   billed_seconds, has_dialogue_visible (для lip-sync), labels[], clues.planted/revealed. Готово, коли
+   part1_shotlist.md конвертується в shots.json без втрат і рахує той самий кошторис.
+3. #3 облік витрат: ставки Seedance — з docs/COSTS.md, коефіцієнт × 2, мінімальний кліп — параметр (оновимо після тест-паку).
+4. PR #9 — твій, мерджи, коли перевіриш.
+
+Де дивитись: series/la-garganta/part1_shotlist.md, test_pack.md, docs/COSTS.md, docs/STATUS.md (календар), DECISIONS.
+Відповідь: /msg (коротко) або у своєму /handoff.
+```
+
+---

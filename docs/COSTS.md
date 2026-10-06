@@ -15,12 +15,15 @@
 
 ## Тарифи провайдерів
 
+Планувальний коефіцієнт: **× 2 спроби** на кожен згенерований шот (repair, невдалі дублі).
+
 | Провайдер | Етап | Одиниця | Ціна, USD | Перевірено (дата, джерело) |
 |---|---|---|---|---|
 | Claude API | script, shots, qc | 1M токенів in/out | TODO | |
 | IMAGE API | refs, repair | зображення | TODO | |
 | ElevenLabs | voice | 1K символів | TODO | |
-| Seedance | video, repair | секунда відео | TODO | |
+| Seedance 2.5 | video, repair | секунда відео 720p (hero) | ≈ 0,23 | 2026-10-06, dimaShelest — звірити з першим рахунком |
+| Seedance 2.5 | video, repair, found-footage | секунда відео 480p (secondary) | ≈ 0,11 | 2026-10-06, dimaShelest — звірити з першим рахунком |
 | Sync | video (lip-sync) | секунда | TODO | |
 | Cloudflare R2 | publish | ГБ-місяць | TODO | |
 
@@ -28,7 +31,7 @@
 
 | Дата | Серіал / серія | script | refs | voice | video | repair | Разом | Ліміт | Примітка |
 |---|---|---|---|---|---|---|---|---|---|
-| — | — | | | | | | | | |
+| план | LA GARGANTA · ч.1 (тільки відео Seedance, × 2 спроби) | | | | $126–145 | | $126–145 | TODO | `series/la-garganta/part1_shotlist.md`; без lip-sync (46 с), голосу й стілів |
 
 ## Тестові та інші витрати
 
