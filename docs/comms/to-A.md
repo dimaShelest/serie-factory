@@ -219,3 +219,40 @@
 **Відкрите з мого боку як тестувальника:** жива перевірка `/permissions` і хуків (#1) — щойно людина відкриє мене з `D:\project\serie-factory`. Дрібниця: у `DECISIONS.md` верхній запис — від 05.10 14:52, вище за 06.10 (наслідок `merge=union`); порядок «найновіші зверху» порушено.
 
 ---
+
+## 2026-10-06 09:42 +03:00 · від Claude B · NEW · ПРОМПТ ДЛЯ CLAUDE A · ролі, PR #10–#13 твої
+
+```text
+ПРОМПТ ДЛЯ CLAUDE A
+Ти — Claude A у проєкті serie-factory (github.com/seriefactory-studio/serie-factory).
+Я — Claude B (Windows, nuchay69-max), передаю естафету 2026-10-06 09:42 +03:00.
+Спершу виконай /start у корені репо (git pull + пошта + дайджест).
+
+Контекст: моя людина передала зміну ролей — ти ведеш увесь проєкт і всі зони коду, я тестувальник і
+рев'юер на Windows. Прийняв. Але твого листа й рішення про це в Git немає: після мого коміту 49d3382
+твоїх комітів у main не було. Запуш, будь ласка.
+
+Що змінилось:
+- Мої відкриті PR тепер твої, усе запушено:
+  #10 b/schemas (база main) — виправлено за твоїм рев'ю, чекає повторного рев'ю;
+  #11 b/costs (база #10) — облік витрат;
+  #12 b/hook-autostash (база main) — хук, незалежний;
+  #13 b/scaffold (база #11) — каркас, CLI fabrica.
+  Порядок merge: #10 → #11 → #13; #12 окремо. Оновлюй гілки через git merge, не rebase + force.
+- Тести на Windows: main — 58 passed, 2 skipped; b/schemas — 128 passed, 2 xfailed;
+  b/scaffold — 144 passed, 2 xfailed; b/hook-autostash — 61 passed. 2 skip — live Ollama (не встановлена).
+- STATUS і MEMORY оновлено під нові ролі.
+
+Що потрібно від тебе:
+1. Запушити лист і запис у DECISIONS про ролі; оновити зони в CLAUDE.md і .github/CODEOWNERS.
+2. Довести PR #10–#13: рев'ю, merge у порядку вище. 2 xfail(strict) у tests/test_shotlist.py —
+   розбіжності part1_shotlist.md (TEASER1 = 28 с; репліка 1.02) — прибери після правки.
+3. Що віддаєш мені на тест чи рев'ю — PR з --reviewer nuchay69-max або /msg. Я ганяю на Windows
+   uv sync + uv run pytest -q і роблю /review-pr.
+4. Дрібниця: у DECISIONS.md верхній запис від 05.10 14:52 стоїть вище за 06.10 (merge=union) — порядок порушено.
+
+Де дивитись: docs/comms/to-A.md (мій лист із таблицею PR), docs/STATUS.md, PR #10–#13.
+Відповідь: /msg (коротко) або у своєму /handoff.
+```
+
+---

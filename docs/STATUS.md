@@ -1,6 +1,6 @@
 # STATUS
 
-_Оновлено: 2026-10-06 09:26 +03:00 · Claude B_
+_Оновлено: 2026-10-06 09:42 +03:00 · Claude B_
 
 Дошка: [Producción](https://github.com/orgs/seriefactory-studio/projects/1)
 
@@ -34,27 +34,26 @@ _Оновлено: 2026-10-06 09:26 +03:00 · Claude B_
   - ціни Seedance у `COSTS.md`.
 
 ## В роботі
-Ланцюжок PR B — мерджити по черзі **#10 → #11 → #13** (кожен на базі попереднього); #12 — окремо в main.
-- **PR #10** `b/schemas`: усі пункти рев'ю A виправлено, на кожен є тест (таблиця — коментар у PR). Плюс розкадровка
-  ч.1 → `shots.json` без втрат і кошторис $126.02 / $145.26. 128 passed, 2 xfailed. **Чекає повторного рев'ю A.**
-- **PR #11** `b/costs`: #3 облік витрат — SQLite-журнал, ліміти `BUDGET_*` (80 % / стоп / force).
-- **PR #12** `b/hook-autostash`: SessionStart кричить про конфлікт autostash (UU + stash) і попереджає, коли гілка ≠ main.
-- **PR #13** `b/scaffold`: #2 каркас — `uv run fabrica shotlist|validate|costs|schema`; `local_llm` за рев'ю #8 (п. 1–3).
-  Разом 144 passed. Етап `fabrica script` — після шаблонів `fabrica/prompts/script/` від A.
+**Ролі з 06.10 (від людини B; лист A в Git ще не з'явився):** Claude A веде весь проєкт і всі зони коду;
+Claude B — тестувальник і рев'юер на Windows. Відкриті PR B передано A (гілки тепер його):
+- **PR #10** `b/schemas` — виправлено за рев'ю A, чекає повторного рев'ю. Win: 128 passed, 2 xfailed.
+- **PR #11** `b/costs` (база #10) — облік витрат (#3).
+- **PR #12** `b/hook-autostash` (база main) — хук: конфлікт autostash, «гілка ≠ main». Win: 61 passed.
+- **PR #13** `b/scaffold` (база #11) — каркас #2, CLI `fabrica`. Win: 144 passed, 2 xfailed.
+  Порядок merge: #10 → #11 → #13; #12 — окремо.
 - Кастинг (A + людина).
 
 ## Заблоковано
 - (нічого)
 
 ## Чекає на Claude B
-- Після approve: merge #10 → #11 → #13 (перенацілюючи на main), #12; рішення про схеми — в DECISIONS.
-- Етап `fabrica script` поверх `local_llm.generate_json` — щойно будуть шаблони промптів від A.
-- Схема `refs.yaml` — щойно A покаже перші refs.
+- Тестування на Windows і рев'ю PR A (нових задач з коду B не бере).
 - Жива перевірка хуків і `/permissions` з кореня репо (`D:\project\serie-factory`) → закрити #1.
-- Ollama на Windows — після рішення людини B про місце на диску (моделі → `OLLAMA_MODELS` на D).
 
 ## Чекає на Claude A
-- Повторне рев'ю PR #10; рев'ю PR #11, #12, #13.
+- Запушити лист і рішення про зміну ролей (у Git їх ще немає).
+- PR #10–#13 тепер твої: повторне рев'ю / доведення й merge (#10 → #11 → #13, #12 окремо).
+- Етап `fabrica script`, схема `refs.yaml` — колишні задачі B.
 - Розкадровка ч.1: **TEASER1 = 28 с** (1.01 → 1.07), а треба 30–40; **1.02 «¡Chuy, graba, graba!…»** ≠ `story.md`
   «¡Graba, graba!…» — котра канонічна? (тести `xfail(strict)` у `tests/test_shotlist.py`, PR #10)
 - Перенести інструкцію JSON-генерації з `fabrica/local_llm.py` у `fabrica/prompts/` англійською (зауваження 4 до PR #8).
