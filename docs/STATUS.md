@@ -1,6 +1,6 @@
 # STATUS
 
-_Оновлено: 2026-10-06 08:34 +03:00 · Claude B_
+_Оновлено: 2026-10-06 09:26 +03:00 · Claude B_
 
 Дошка: [Producción](https://github.com/orgs/seriefactory-studio/projects/1)
 
@@ -34,29 +34,27 @@ _Оновлено: 2026-10-06 08:34 +03:00 · Claude B_
   - ціни Seedance у `COSTS.md`.
 
 ## В роботі
-- **PR #10** `b/schemas` (B): **changes requested** від A. Дизайн («Відхилення» 1–6) — approve. Блокер — round-trip
-  `shots.json` (`film_exclude`). Важливі — правила shots по бітах, межі тизерів, тихі втрати в `story.py`
-  (кирилична С, `|`, `_`, «3:17» у коментарі). Від змісту: `Shot.location_id`, `members` сімки в `bible.py`.
-  **Стан на кінець сесії B 06.10:** уже виправлено блокер (round-trip, тест), HOOK/CLIFF по бітах, `members` у
-  `bible.py`, поля розкадровки (`tier`, `reuse`, `billed_seconds`, `has_dialogue_visible`, `dialogue[]`), конвертер
-  `part1_shotlist.md` → `shots.json` (кошторис $126.02 / $145.26 = як у розкадровці). Решта пунктів рев'ю — наступна сесія B.
-- **PR #11** `b/costs` (B, база — #10): #3 облік витрат — SQLite-журнал, ліміти `BUDGET_*` (80 % / стоп / force).
-- #2 каркас fabrica — B, ще не почато · кастинг (A + людина).
+Ланцюжок PR B — мерджити по черзі **#10 → #11 → #13** (кожен на базі попереднього); #12 — окремо в main.
+- **PR #10** `b/schemas`: усі пункти рев'ю A виправлено, на кожен є тест (таблиця — коментар у PR). Плюс розкадровка
+  ч.1 → `shots.json` без втрат і кошторис $126.02 / $145.26. 128 passed, 2 xfailed. **Чекає повторного рев'ю A.**
+- **PR #11** `b/costs`: #3 облік витрат — SQLite-журнал, ліміти `BUDGET_*` (80 % / стоп / force).
+- **PR #12** `b/hook-autostash`: SessionStart кричить про конфлікт autostash (UU + stash) і попереджає, коли гілка ≠ main.
+- **PR #13** `b/scaffold`: #2 каркас — `uv run fabrica shotlist|validate|costs|schema`; `local_llm` за рев'ю #8 (п. 1–3).
+  Разом 144 passed. Етап `fabrica script` — після шаблонів `fabrica/prompts/script/` від A.
+- Кастинг (A + людина).
 
 ## Заблоковано
 - (нічого)
 
 ## Чекає на Claude B
-- PR #10: решта рев'ю A — SCREAMER на TEASER_START, межа 40,0, `check_shots` (пропущені сцени, мітки по сценах),
-  `story.py` (кінець ч.4, `|` і `_` у тексті, мітки в коментарях, «3:17» у дужках, кирилична «С»). Після approve — DECISIONS.
-- PR #8, зауваження 1–3 (таймаут `/api/tags`, обриви з'єднання, `done_reason=length`) → у #2.
-- Хук: autostash-конфлікт мовчить (див. MEMORY → «Що не працює»); поточна гілка ≠ main → попередження.
+- Після approve: merge #10 → #11 → #13 (перенацілюючи на main), #12; рішення про схеми — в DECISIONS.
+- Етап `fabrica script` поверх `local_llm.generate_json` — щойно будуть шаблони промптів від A.
+- Схема `refs.yaml` — щойно A покаже перші refs.
 - Жива перевірка хуків і `/permissions` з кореня репо (`D:\project\serie-factory`) → закрити #1.
-- Ollama на Windows — після рішення людини B про місце на диску (C переповнений; моделі → `OLLAMA_MODELS` на D).
-- #2 каркас fabrica. (#3 — у PR #11.)
+- Ollama на Windows — після рішення людини B про місце на диску (моделі → `OLLAMA_MODELS` на D).
 
 ## Чекає на Claude A
-- Повторне рев'ю PR #10 після виправлень; рев'ю PR #11.
+- Повторне рев'ю PR #10; рев'ю PR #11, #12, #13.
 - Розкадровка ч.1: **TEASER1 = 28 с** (1.01 → 1.07), а треба 30–40; **1.02 «¡Chuy, graba, graba!…»** ≠ `story.md`
   «¡Graba, graba!…» — котра канонічна? (тести `xfail(strict)` у `tests/test_shotlist.py`, PR #10)
 - Перенести інструкцію JSON-генерації з `fabrica/local_llm.py` у `fabrica/prompts/` англійською (зауваження 4 до PR #8).
