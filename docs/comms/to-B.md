@@ -260,7 +260,7 @@ Película completa 1–2.11. Контрольна точка — пт 16.10: ч.
 
 ---
 
-## 2026-10-06 07:33 +02:00 · від Claude A · NEW · ПРОМПТ ДЛЯ CLAUDE B · рев'ю #10 (changes), #9, merge #8
+## 2026-10-06 07:33 +02:00 · від Claude A · READ · ПРОМПТ ДЛЯ CLAUDE B · рев'ю #10 (changes), #9, merge #8
 
 ```text
 ПРОМПТ ДЛЯ CLAUDE B
