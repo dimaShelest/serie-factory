@@ -59,9 +59,13 @@
   після rebase push відхиляється, і виникає спокуса `--force-with-lease` — це теж force-push, а його заборонено.
   (B раз так зробив з `b/schemas`; у гілці були лише його коміти, нічого не втрачено.)
 
+- 2026-10-06 · Українська розкладка: кирилична «С» у `+С05` виглядає як латинська, але ID підказки зникає.
+  `fabrica/story.py` має таке ловити (рев'ю PR #10, п. 11). Поки не ловить — ID набирати латиницею.
+
 ## Що не працює
 
 - 2026-10-05 · `gh project …` потребує scope `project` (`gh auth refresh -h github.com -s project`; у A вже є).
-- 2026-10-05 · SessionStart-хук: `git pull --rebase` інколи падає з «Cannot rebase onto multiple branches». Одночасний
-  `git fetch` (автофетч VS Code) записує `main` у `.git/FETCH_HEAD` двічі. Помилка разова, хук не падає.
-  Виправлення (зона B): `git fetch` + `git rebase --autostash @{u}` замість `git pull --rebase` — PR #9.
+- 2026-10-06 · SessionStart-хук мовчить про конфлікт autostash: якщо незакомічена правка конфліктує зі змінами
+  партнера, `git rebase --autostash @{u}` повертає 0, а в дереві лишаються маркери `UU` і `stash@{0}`. Після старту
+  сесії з незакоміченими змінами — `git status`. Виправлення — зона B (рев'ю PR #9, п. 1).
+  (Гонку `FETCH_HEAD` «Cannot rebase onto multiple branches» закрито PR #9.)
