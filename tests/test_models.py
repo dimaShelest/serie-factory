@@ -264,3 +264,168 @@ def test_check_shots_against_script() -> None:
     errors = check_shots(Shots.model_validate(shots_doc(*items)), script)
     assert any("l05 не з сцени s01" in e for e in errors)
     assert any("невідома сцена s99" in e for e in errors)
+
+
+# ---------------------------------------------------------------- рев'ю A до PR #10: тест на кожну знахідку
+
+STORY_TEXT = STORY.read_text(encoding="utf-8")
+P1_B7 = next(line for line in STORY_TEXT.splitlines() if line.startswith("| 7 | 3:50"))
+
+
+def parse_variant(tmp_path: Path, old: str, new: str) -> dict:
+    assert old in STORY_TEXT, old
+    path = tmp_path / "story.md"
+    path.write_text(STORY_TEXT.replace(old, new, 1), encoding="utf-8")
+    return story.parse(path)
+
+
+def test_story_crlf_and_bom(tmp_path: Path) -> None:
+    path = tmp_path / "story.md"
+    path.write_bytes(("﻿" + STORY_TEXT).replace("\n", "\r\n").encode("utf-8"))
+    parsed = story.parse(path)
+    assert {n: len(b) for n, b in parsed.items()} == {n: len(b) for n, b in PARTS.items()}
+    assert parsed[1][6].quotes == PARTS[1][6].quotes
+
+
+def test_part4_stops_at_next_heading(tmp_path: Path) -> None:
+    """(6) Таблиця після ч.4 (фільм, календар) не стає бітами ч.4."""
+    path = tmp_path / "story.md"
+    path.write_text(STORY_TEXT + "\n## Календар\n\n| 10 | 9:00–9:30 | хибний біт | `CLIFF` | |\n", encoding="utf-8")
+    assert len(story.parse(path)[4]) == len(PARTS[4])
+
+
+def test_pipe_in_beat_text_is_error(tmp_path: Path) -> None:
+    """(7) `|` у тексті біта — помилка з рядком, а не тихо зниклий біт."""
+    with pytest.raises(story.StoryFormatError, match=r"story\.md:\d+ \(ч\.1\).*комірок"):
+        parse_variant(tmp_path, "Renata на виклику", "Renata | на виклику")
+
+
+def test_label_names_in_comments_ignored(tmp_path: Path) -> None:
+    """(8) «до CLIFF ще далеко» у тексті не робить мітку; лише `CLIFF` у бектиках."""
+    parsed = parse_variant(tmp_path, P1_B7, P1_B7.replace("| | +C02", "| до CLIFF ще далеко | +C02"))
+    assert parsed[1][6].labels == []
+
+
+def test_unknown_label_in_backticks_is_error(tmp_path: Path) -> None:
+    with pytest.raises(story.StoryFormatError, match="невідома мітка `HOT_2`"):
+        parse_variant(tmp_path, "| `CLIFF` | +C02 |", "| `CLIFF` · `HOT_2` | +C02 |")
+
+
+def test_label_time_ignores_3_17(tmp_path: Path) -> None:
+    """(9) «(~3:34, перед стрілками на 3:17)» → 214 с, а не 197."""
+    parsed = parse_variant(tmp_path, "(перед стрілками на 3:17, ~3:34)", "(~3:34, перед стрілками на 3:17)")
+    assert ("TEASER2_CUT_BEFORE", 214) in parsed[1][5].labels
+
+
+def test_two_approx_times_is_error(tmp_path: Path) -> None:
+    with pytest.raises(story.StoryFormatError, match="кілька часів"):
+        parse_variant(tmp_path, "(перед стрілками на 3:17, ~3:34)", "(~3:30, ~3:34)")
+
+
+def test_label_time_outside_beat_is_error(tmp_path: Path) -> None:
+    with pytest.raises(story.StoryFormatError, match="поза бітом"):
+        parse_variant(tmp_path, "(перед стрілками на 3:17, ~3:34)", "(~4:34)")
+
+
+def test_underscore_in_text_keeps_lines(tmp_path: Path) -> None:
+    """(10) `C_04` у тексті не ковтає наступну репліку; *«…»* теж читається; вкладені «» не ріжуться."""
+    parsed = parse_variant(tmp_path, "Mateo підбурює трьох:", "Mateo (код C_04) підбурює трьох:")
+    assert parsed[1][2].quotes == PARTS[1][2].quotes
+    parsed = parse_variant(tmp_path, "_«No tengo hambre.»_", "*«No tengo hambre.»*")
+    assert "No tengo hambre." in parsed[1][2].quotes
+    parsed = parse_variant(tmp_path, "_«No tengo hambre.»_", "_«No tengo «hambre».»_")
+    assert "No tengo «hambre»." in parsed[1][2].quotes
+
+
+def test_cyrillic_clue_is_error(tmp_path: Path) -> None:
+    """(11) +С05 з кириличною С — помилка, а не тихо зникла підказка."""
+    with pytest.raises(story.StoryFormatError, match="кирилична"):
+        parse_variant(tmp_path, P1_B7, P1_B7.replace("+C05", "+С05"))
+
+
+def test_unknown_clue_token_is_error(tmp_path: Path) -> None:
+    with pytest.raises(story.StoryFormatError, match="незрозумілий токен"):
+        parse_variant(tmp_path, P1_B7, P1_B7.replace("+C05", "+C5"))
+
+
+def test_recap_word_in_comment_is_not_segment(tmp_path: Path) -> None:
+    parsed = parse_variant(tmp_path, "| `HOOK_OPEN` · `TEASER1_START` (0:00) ·",
+                           "| `HOOK_OPEN` (до рекапу) · `TEASER1_START` (0:00) ·")
+    assert parsed[1][0].segment == "main"
+
+
+def test_em_dash_in_beat_time(tmp_path: Path) -> None:
+    parsed = parse_variant(tmp_path, "| 2 | 0:35–0:40 |", "| 2 | 0:35—0:40 |")
+    assert (parsed[1][1].start_s, parsed[1][1].end_s) == (35, 40)
+
+
+def test_script_and_shots_roundtrip() -> None:
+    """(1) Script і Shots читаються назад з власного JSON."""
+    script = Script.model_validate(PART1)
+    assert Script.model_validate_json(script.model_dump_json()) == script
+    shots = Shots.model_validate(shots_doc(*base_shots()))
+    assert Shots.model_validate_json(shots.model_dump_json()) == shots
+
+
+def test_screamer_on_teaser_start(raw: dict) -> None:
+    """(3) SCREAMER рівно на TEASER_START — теж усередині тизера."""
+    scene(raw, "s05")["labels"].append({"label": "SCREAMER", "approx_s": 175})
+    rule(raw, "TEASER2: містить SCREAMER")
+
+
+def test_untimed_screamer_beat_ending_at_cut(raw: dict) -> None:
+    """(3) Біт без часу скрімера, що закінчується рівно на CUT, — усередині тизера."""
+    scene(raw, "s05")["labels"] = [{"label": "TEASER_START", "n": 2, "approx_s": 140}, {"label": "SCREAMER"}]
+    scene(raw, "s06")["labels"][1]["approx_s"] = 200          # CUT рівно на кінці s05
+    rule(raw, "TEASER2: містить SCREAMER")
+
+
+@pytest.mark.parametrize("durations, ok", [
+    ([6.7, 7.0, 9.3, 5.8, 3.6, 2.2, 5.4], True),     # 40,0 з хвостом float
+    ([10, 10, 10], True),                           # рівно 30,0
+    ([10, 10, 9.9], False),
+    ([10, 10, 10, 10, 1], False),                   # 41
+])
+def test_teaser_float_boundaries(durations: list[float], ok: bool) -> None:
+    """(4) Межі 30,0 і 40,0 — включно, без хибних тривог через float."""
+    items = [shot(f"t{i}", "s01", d, *([{"label": "HOOK_OPEN"}, T1S] if i == 0 else []))
+             for i, d in enumerate(durations)]
+    items[-1]["sfx"] = [{"type": "riser", "at_s": 0}]
+    items += [shot("cut", "s01", 1.5, T1C, SCREAM, sfx=[{"type": "sting", "at_s": 0}]),
+              shot("mid", "s06", 5, {"label": "MIDPOINT"}), shot("end", "s08", 5, {"label": "CLIFF"})]
+    errors = shots_errors(Shots.model_validate(shots_doc(*items)))
+    teaser = [e for e in errors if e.startswith("TEASER1:")]
+    assert (teaser == []) == ok, teaser
+
+
+def test_teasers_in_time_order(raw: dict) -> None:
+    for sid, idx, n in (("s01", 1, 2), ("s01", 2, 2), ("s05", 0, 1), ("s06", 1, 1)):
+        scene(raw, sid)["labels"][idx]["n"] = n
+    rule(raw, "тизери мають іти в часі по порядку")
+
+
+def test_scene_gaps_and_target(raw: dict) -> None:
+    scene(raw, "s04")["approx_start_s"] = 105
+    scene(raw, "s09")["approx_end_s"] = 480
+    errors = script_errors(Script.model_validate(raw))
+    assert any("s03 → s04: дірка" in e for e in errors)
+    assert any("target_seconds" in e for e in errors)
+
+
+def test_check_shots_missing_scenes_and_moved_labels() -> None:
+    """(5) Сцени без шотів і мітка, перенесена в іншу сцену, — помилки."""
+    script = Script.model_validate(PART1)
+    errors = check_shots(Shots.model_validate(shots_doc(*base_shots())), script)
+    assert any("сцена s03 (main) не має жодного шота" in e for e in errors)
+    items = base_shots()
+    items[6]["scene_id"] = "s07"                              # MIDPOINT переїхав з s06 у s07
+    errors = check_shots(Shots.model_validate(shots_doc(*items)), script)
+    assert any("мітка MIDPOINT сцени s06 не перенесена" in e for e in errors)
+    assert any("мітка MIDPOINT у шотах сцени s07" in e for e in errors)
+
+
+def test_label_line_must_be_in_shot() -> None:
+    items = base_shots()
+    items[7]["labels"] = [{"label": "CLIFF", "line_id": "l11"}]
+    errors = check_shots(Shots.model_validate(shots_doc(*items)), Script.model_validate(PART1))
+    assert any("на репліці l11, якої в шоті немає" in e for e in errors)
