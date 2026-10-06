@@ -24,6 +24,7 @@ from fabrica import config
 from fabrica import costs as costs_mod
 from fabrica import shotlist as shotlist_mod
 from fabrica import story as story_mod
+from fabrica import voice as voice_mod
 from fabrica.ledger import BudgetExceeded, BudgetNotConfigured, Ledger
 from fabrica.models import Script, Shots, check_refs, check_shots, script_errors, shots_errors
 
@@ -65,8 +66,8 @@ def friendly(fn: Callable) -> Callable:
             typer.echo(f"✗ немає файлу: {e.filename or e}", err=True)
         except ValidationError as e:
             typer.echo(f"✗ дані не за схемою:\n{e}", err=True)
-        except (ValueError, KeyError) as e:            # ConfigError, StoryFormatError, невідомий slug …
-            typer.echo(f"✗ {e}", err=True)
+        except (ValueError, KeyError, voice_mod.VoiceError, voice_mod.ElevenLabsError) as e:
+            typer.echo(f"✗ {e}", err=True)           # ConfigError, StoryFormatError, голоси, ключі …
         raise typer.Exit(1)
     return wrapper
 
@@ -178,6 +179,37 @@ def costs(slug: str = Slug, part: int = Part, out: Path = Out,
         raise typer.Exit(1) from None
     finally:
         ledger.close()
+
+
+@app.command()
+@friendly
+def voice(slug: str = Slug, part: int = Part, out: Path = Out,
+          dry_run: bool = typer.Option(False, "--dry-run", help="без мережі й витрат: план, символи, кошторис"),
+          force: bool = typer.Option(False, "--force", help="дозволити понад ліміт бюджету (позначається в журналі)")) -> None:
+    """Етап voice: репліки shots.json → output/<slug>/part<N>/voice/*.mp3 + manifest.json (ElevenLabs)."""
+    shots_path = part_dir(out, slug, part) / "shots.json"
+    if not shots_path.exists():
+        typer.echo(f"✗ немає {shots_path} — спершу `fabrica shotlist {slug} {part}`", err=True)
+        raise typer.Exit(1)
+    p = voice_mod.run(slug, part, out, dry_run=dry_run, force=force, log=typer.echo)
+    if not dry_run:
+        total = sum(i.duration_s or 0 for i in p.items)
+        typer.echo(f"✓ {len(p.items)} реплік, {total:.1f} с аудіо → {part_dir(out, slug, part) / 'voice'}")
+
+
+@app.command()
+@friendly
+def voices(search: str = typer.Option("", "--search", help="фільтр за назвою або мітками (напр. mexican, female)")) -> None:
+    """Голоси в акаунті ElevenLabs — щоб людина обрала voice_id для bible.yaml (кастинг голосів)."""
+    rows = voice_mod.client_from_env().voices()
+    needle = search.lower()
+    for v in rows:
+        labels = v.get("labels") or {}
+        text = f"{v.get('name', '')} {' '.join(str(x) for x in labels.values())}".lower()
+        if needle and needle not in text:
+            continue
+        info = ", ".join(f"{k}: {val}" for k, val in labels.items() if val)
+        typer.echo(f"{v.get('voice_id')}  {v.get('name')}  ({info})")
 
 
 @app.command("schema")

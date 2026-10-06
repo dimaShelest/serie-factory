@@ -35,6 +35,22 @@ def load_rates(path: Path = COSTS_MD, provider: str = "Seedance") -> dict[str, f
     return rates
 
 
+def rate(provider: str, path: Path = COSTS_MD) -> float:
+    """Ставка провайдера з одним рядком у таблиці тарифів («| ElevenLabs | voice | 1K символів | ≈ 0,30 |»).
+    TODO або кілька рядків — помилка: ставку не вигадуємо і не беремо навмання."""
+    found = []
+    for row in path.read_text(encoding="utf-8-sig").splitlines():
+        cells = [c.strip() for c in row.strip().strip("|").split("|")]
+        if len(cells) >= 4 and cells[0].startswith(provider):
+            found.append(cells[3])
+    if len(found) != 1:
+        raise ValueError(f"У {path.name} має бути рівно один рядок «{provider}» у тарифах, а знайдено {len(found)}")
+    price = re.search(r"(\d+(?:[.,]\d+)?)", found[0])
+    if not price:
+        raise ValueError(f"Ставку {provider} у {path.name} не задано ({found[0]!r}) — впиши ціну за одиницю з рахунку")
+    return float(price.group(1).replace(",", "."))
+
+
 @dataclass
 class TierCost:
     shots: int = 0

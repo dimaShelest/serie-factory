@@ -252,9 +252,9 @@ supporting:
       Візуальна ДНК — пропозиція A, обличчя затверджуємо на кастингу.
     members:
       - {id: tomas, name: Tomás Ochoa, dna: "= Mateo (той самий ref обличчя), стрижка з проділом посередині, фланель поверх форми"}
-      - {id: lupita, name: Lupita Herrera, dna: "кучеряве волосся з чубчиком 90-х, великі круглі сережки, весела"}
+      - {id: lupita, name: Lupita Herrera, dna: "кучеряве волосся з чубчиком 90-х, великі круглі сережки, весела", voice: {description: "дзвінкий, сміхотливий, швидкий; 18 років, 1994", voice_id: null}}
       - {id: chuy, name: Jesús «Chuy» Robles, dna: "тримає VHS-камеру (у кадрі майже не видно — він оператор), окуляри в товстій оправі, вусики"}
-      - {id: monica, name: Mónica Treviño, dna: "пряме волосся з обідком, темна помада 90-х, висока"}
+      - {id: monica, name: Mónica Treviño, dna: "пряме волосся з обідком, темна помада 90-х, висока", voice: {description: "упевнений, трохи нижчий, насторожений; 18 років, 1994", voice_id: null}}
       - {id: beto, name: Beto Garza, dna: "коротко стрижений, широкі плечі, шрам на підборідді; мокре обличчя зі скрімера VHS і з дзеркала"}
       - {id: rosa_elena, name: Rosa Elena Fuentes, dna: "дві коси, хрестик на ланцюжку, тиха"}
       - {id: ivan, name: Iván Castañeda, dna: "довге волосся до плечей (грандж), джинсова куртка поверх форми"}
@@ -267,10 +267,12 @@ supporting:
     note: Жертви за кадром. Пропозиція A — Don Rufino (частина 1), Don Chencho (частина 2).
   - id: policia_companero
     aliases: [напарник]
+    voice: {description: "чоловічий, 40+, втомлений, буденний, говорить тихо", voice_id: null}
     name: напарник Renata
     note: лише голос і спина в кадрі
   - id: conductora_noticias
     aliases: [ведуча]
+    voice: {description: "професійна ведуча новин: чітка нейтральна мексиканська дикція, рівний темп", voice_id: null}
     name: ведуча новин
     note: лише голос з телевізора (частина 4, гачок)
 
