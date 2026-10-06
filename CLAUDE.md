@@ -72,7 +72,7 @@ Python замість bash — див. [.claude/rules/cross-platform.md](.claude
 uv sync                                         # залежності (Python 3.12 uv поставить сам)
 uv run pytest -q                                # тести
 uv run --no-project .claude/hooks/collab.py -h  # пам'ять: whoami, inbox, send, log, digest, overview
-uv run fabrica --help                           # CLI фабрики (з'явиться після каркаса — Issue B)
+uv run fabrica --help                           # CLI фабрики: shotlist, validate, costs, schema
 ```
 
 Хуки (`.claude/settings.json`): **SessionStart** — pull, хто я, STATUS, нові листи;

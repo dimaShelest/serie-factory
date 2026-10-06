@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import re
@@ -31,6 +32,7 @@ DEFAULT_MODEL = "huihui_ai/qwen3.5-abliterated:9b"
 
 NUM_CTX = 8192        # контекст: довгі сценарії не обрізаються (типово Ollama дає менше)
 KEEP_ALIVE = "30m"    # модель не вивантажується з пам'яті між запитами
+TAGS_TIMEOUT_S = 3     # перевірка «чи жива Ollama» — швидко, навіть якщо адреса недосяжна
 TIMEOUT_S = 600       # перший запит ще й вантажить модель у пам'ять
 JSON_RETRIES = 2      # повтори generate_json, якщо JSON битий
 
@@ -100,11 +102,11 @@ def settings() -> tuple[str, str]:
 # ---------------------------------------------------------------- HTTP
 
 
-def _request(url: str, path: str, body: dict | None = None, model: str = "") -> dict:
+def _request(url: str, path: str, body: dict | None = None, model: str = "", timeout: float = TIMEOUT_S) -> dict:
     data = json.dumps(body).encode("utf-8") if body is not None else None
     req = urllib.request.Request(url + path, data=data, headers={"Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT_S) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         detail = e.read().decode("utf-8", errors="replace")
@@ -123,7 +125,7 @@ def _request(url: str, path: str, body: dict | None = None, model: str = "") -> 
         reason = getattr(e, "reason", e)
         if isinstance(reason, TimeoutError):
             raise LocalLLMError(
-                f"Ollama ({url}) не відповіла за {TIMEOUT_S} с. Модель завелика для цієї машини "
+                f"Ollama ({url}) не відповіла за {timeout:g} с. Модель завелика для цієї машини "
                 "або max_tokens надто великий."
             ) from None
         raise OllamaNotRunningError(
@@ -131,12 +133,16 @@ def _request(url: str, path: str, body: dict | None = None, model: str = "") -> 
             "Запусти застосунок Ollama або в терміналі:  ollama serve\n"
             "Ollama на іншій машині — вкажи її адресу в OLLAMA_URL у .env."
         ) from None
+    except (ConnectionError, http.client.HTTPException) as e:
+        # обрив посеред довгої генерації: RemoteDisconnected, ConnectionResetError, IncompleteRead
+        raise LocalLLMError(f"З'єднання з Ollama ({url}) обірвалось під час відповіді: {e!r}. "
+                            "Перезапусти Ollama і повтори.") from None
 
 
 def available_models() -> list[str]:
     """Моделі, завантажені в Ollama. Ollama не запущена -> OllamaNotRunningError."""
     url, _ = settings()
-    return [m["name"] for m in _request(url, "/api/tags").get("models", [])]
+    return [m["name"] for m in _request(url, "/api/tags", timeout=TAGS_TIMEOUT_S).get("models", [])]
 
 
 # ---------------------------------------------------------------- генерація
@@ -222,5 +228,6 @@ def generate_json(
                 return data
             problem = f"бракує полів {missing}"
         if reply.done_reason == "length":
-            problem += f"; відповідь обрізано на max_tokens={max_tokens} — збільш max_tokens"
+            # повтор з тим самим max_tokens знову обріжеться — не витрачаємо хвилини
+            raise InvalidJSONError(f"Відповідь обрізано на max_tokens={max_tokens} ({problem}) — збільш max_tokens")
     raise InvalidJSONError(f"Модель {1 + JSON_RETRIES} рази повернула битий JSON: {problem}")

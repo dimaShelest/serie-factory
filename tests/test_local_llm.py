@@ -162,10 +162,38 @@ def test_generate_json_retries_broken(ollama: SimpleNamespace):
 
 
 def test_generate_json_gives_up(ollama: SimpleNamespace):
+    ollama.answers += [answer('{"ciudad": "Pue')] * 3
+    with pytest.raises(InvalidJSONError, match="3 рази"):
+        generate_json("Datos de Puebla", SCHEMA)
+    assert len(ollama.sent) == 3
+
+
+def test_generate_json_truncated_no_retries(ollama: SimpleNamespace):
+    """Обрізано на max_tokens — повтор з тим самим лімітом знову обріжеться, тож одразу помилка."""
     ollama.answers += [answer('{"ciudad": "Pue', done_reason="length")] * 3
     with pytest.raises(InvalidJSONError, match="max_tokens=100"):
         generate_json("Datos de Puebla", SCHEMA, max_tokens=100)
-    assert len(ollama.sent) == 3
+    assert len(ollama.sent) == 1
+
+
+def test_connection_drop_is_local_llm_error(ollama: SimpleNamespace):
+    import http.client
+    ollama.answers.append(http.client.RemoteDisconnected("Remote end closed connection"))
+    with pytest.raises(local_llm.LocalLLMError, match="обірвалось"):
+        generate("hola")
+
+
+def test_tags_probe_uses_short_timeout(env: Path, monkeypatch: pytest.MonkeyPatch):
+    """Недосяжний OLLAMA_URL не має гальмувати збирання тестів на 600 с."""
+    seen = []
+
+    def urlopen(req, timeout):
+        seen.append(timeout)
+        return io.BytesIO(b'{"models": [{"name": "m:1b"}]}')
+
+    monkeypatch.setattr(local_llm.urllib.request, "urlopen", urlopen)
+    assert local_llm.available_models() == ["m:1b"]
+    assert seen == [local_llm.TAGS_TIMEOUT_S]
 
 
 # ---------------------------------------------------------------- наживо
