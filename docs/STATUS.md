@@ -1,6 +1,6 @@
 # STATUS
 
-_Оновлено: 2026-10-06 · Claude A_
+_Оновлено: 2026-10-06 08:00 +03:00 · Claude B_
 
 Дошка: [Producción](https://github.com/orgs/seriefactory-studio/projects/1)
 
@@ -21,6 +21,7 @@ _Оновлено: 2026-10-06 · Claude A_
 
 ## Зроблено
 - Система спільної пам'яті A↔B працює на macOS і Windows. PR #7 (PowerShell-правила) змерджено. Тести в main — 39.
+  Issue #1 відкритий до живої перевірки `/permissions` у сесії B з кореня репо.
 - GitHub Project «Producción»; формат «4 частини + Película completa»; мітки бітів з `SCREAMER`; Мексика, герої 18–19.
 - **LA GARGANTA** затверджено (крім облич):
   - логіка: «підпис» сімох, персні-трофеї C13, рація, Beto у дзеркалі, склянка;
@@ -32,18 +33,23 @@ _Оновлено: 2026-10-06 · Claude A_
   - ціни Seedance у `COSTS.md`.
 
 ## В роботі
-- **PR #8** `a/local-llm` (A): script/shots через локальну qwen 3.5 9B в Ollama. Чекає рев'ю B.
-- **PR #9** `b/fetch-race` (B): SessionStart — `fetch` + `rebase @{u}` замість `git pull`.
-- #2 каркас fabrica (B) · #4–#5 схеми `script.json` / `shots.json` (B) · кастинг (A + людина).
+- **PR #8** `a/local-llm` (A): approve від B (46 passed, 2 skip на Windows), 5 незаблокувальних зауважень. Мерджить A.
+- **PR #9** `b/fetch-race` (B): SessionStart → `git fetch` + `git rebase --autostash @{u}`. Чекає рев'ю A.
+- **PR #10** `b/schemas` (B): Pydantic-схеми `script.json` / `shots.json`, правила міток, перевірка `story.md`
+  без втрат (ч.1 — фікстура). 73 passed. Писалось до `part1_shotlist.md` і C13 — B оновить. Чекає рев'ю A («Відхилення»).
+- #2 каркас fabrica · #3 облік витрат — B, ще не почато · кастинг (A + людина).
 
 ## Заблоковано
 - (нічого)
 
 ## Чекає на Claude B
-- Рев'ю PR #8; схеми → PR `b/schemas` (поля — листи в `docs/comms/to-B.md`); #2 каркас; #3 облік витрат.
-- Схема `shots.json` має вмістити колонки `part1_shotlist.md`: tier, ♻, мітки, підказки.
+- PR #10: додати колонки `part1_shotlist.md` (tier, ♻) у `shots.json`; перевірити схеми на оновленому `story.md` (C13).
+- Жива перевірка хуків і `/permissions` з кореня репо (`D:\project\serie-factory`) → закрити #1.
+- Ollama на Windows — після рішення людини B про місце на диску (C переповнений; моделі → `OLLAMA_MODELS` на D).
+- #2 каркас fabrica · #3 облік витрат.
 
 ## Чекає на Claude A
+- `/review-pr 10` (схеми) і `/review-pr 9` (FETCH_HEAD); merge PR #8.
 - Розкадровка ч.2; шаблони промптів `fabrica/prompts/script/` і `shots/` для LA GARGANTA.
 - Після кастингу — `series/la-garganta/refs.yaml` (маніфест затверджених refs).
 - Після тест-паку — оновити tier і кошторис `part1_shotlist.md`.

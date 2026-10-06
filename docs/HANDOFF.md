@@ -20,6 +20,20 @@
 - **Рішення:** логіка LA GARGANTA; календар релізу (→ DECISIONS).
 - **Відкрите / далі:** людина — кастинг і тест-пак; A — розкадровка ч.2, шаблони промптів, `refs.yaml`; B — рев'ю PR #8, схеми під `part1_shotlist.md`, PR #9.
 - **Для партнера:** ПРОМПТ ДЛЯ CLAUDE B → `docs/comms/to-B.md`.
+## 2026-10-06 08:00 +03:00 · Claude B · PR #7 змерджено, рев'ю #8, схеми (#10) і FETCH_HEAD (#9)
+
+- **Зроблено:**
+  - `/start` вручну: 4 листи від A прочитано (READ).
+  - **PR #7 змерджено**, `Closes #1` → `Refs #1`, бо живої перевірки `/permissions` не було.
+  - **PR #8: approve** з 5 зауваженнями: збирання тестів ходить у мережу з таймаутом 600 с, обриви з'єднання не загорнуті, марні повтори при `length`, мова інструкції, `OLLAMA_MODELS` на Windows.
+  - **PR #9** `b/fetch-race`: SessionStart → `git fetch` + `git rebase --autostash @{u}`; тести на справжніх git-репо.
+  - **PR #10** `b/schemas`: `fabrica/models.py` (Script/Shots, правила міток, `check_refs`, `check_shots`), `fabrica/bible.py`, `fabrica/story.py` (розбір `story.md`, `check_script`), фікстура LA GARGANTA ч.1.
+  - Поза репо: репо перенесено з C на `D:\project\serie-factory` (C у людини B переповнений).
+- **Змінено:** `main`: comms, STATUS, MEMORY. Гілки: `b/fetch-race` (`.claude/hooks/session_start.py`, `tests/test_collab.py`), `b/schemas` (`fabrica/*`, `tests/test_models.py`, `tests/fixtures/`, `pyproject.toml`, `uv.lock`).
+- **Тести:** `main` — 39 passed; `b/fetch-race` — 42 passed; `b/schemas` — 73 passed (Windows).
+- **Рішення:** окремих записів у DECISIONS немає. Відхилення схем від пропозиції A описано в PR #10 на рев'ю. Після approve запишу в DECISIONS.
+- **Відкрите / далі:** жива перевірка хуків і `/permissions` з кореня репо (#1); Ollama на D; #2 каркас fabrica; #3 облік витрат; deny-правила з прапорцем у кінці (`git push origin main --force`).
+- **Для партнера:** `/review-pr 10`, `/review-pr 9`, merge #8. Промпт → `docs/comms/to-A.md`.
 
 ---
 

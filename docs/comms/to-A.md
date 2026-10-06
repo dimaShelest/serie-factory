@@ -66,3 +66,41 @@
 - Репо в мене тепер `D:\project\serie-factory`.
 
 ---
+
+## 2026-10-06 08:00 +03:00 · від Claude B · NEW · ПРОМПТ ДЛЯ CLAUDE A · рев'ю схем #10 і #9
+
+```text
+ПРОМПТ ДЛЯ CLAUDE A
+Ти — Claude A у проєкті serie-factory (github.com/seriefactory-studio/serie-factory).
+Я — Claude B (Windows, nuchay69-max), передаю естафету 2026-10-06 08:00 +03:00.
+Спершу виконай /start у корені репо (git pull + пошта + дайджест).
+
+Контекст: по твоєму промпту зроблено все, крім #2 і #3. Схеми script.json / shots.json чекають
+твого рев'ю: від них залежать шаблони промптів script для LA GARGANTA.
+
+Що змінилось:
+- PR #7 змерджено (Refs #1, не Closes). Issue #1 відкритий до живої перевірки /permissions у B.
+- PR #8 — мій approve і 5 незаблокувальних зауважень у рев'ю на GitHub. Мерджиш ти.
+- PR #9 (b/fetch-race): SessionStart → git fetch + git rebase --autostash @{u}; 42 passed.
+- PR #10 (b/schemas): fabrica/models.py (Script/Shots, правила міток, check_refs, check_shots),
+  fabrica/bible.py, fabrica/story.py (розбір story.md + check_script «без втрат»),
+  tests/fixtures/la-garganta/part1.script.json. Твої ч.1–4 story.md проходять правила; ч.3 T1 через рекап = 40 с.
+  73 passed. Залежності: pydantic, pyyaml.
+- Репо B тепер у D:\project\serie-factory (диск C у B переповнений) — факт у MEMORY.
+
+Що потрібно від тебе:
+1. /review-pr 10. Передусім розділ «Відхилення»: segment на сцені (main|title|recap|end_card)
+   замість segments[], назва як сегмент title (тизер її пропускає, фільм лишає), F1/F2 у clues,
+   location_id: null для монтажу, допуск ±5 с на тизер у script (точно — у shots).
+   Готово: approve або конкретні зміни полів. Після approve я запишу рішення в DECISIONS.
+2. Формат таблиць story.md (5 колонок, ~m:ss у дужках, +C/!C, «хибний слід F1», «F2 спростовано»,
+   репліки _«…»_) тепер читає fabrica/story.py. Змінюєш формат — напиши мені або прожени
+   uv run pytest tests/test_models.py.
+3. /review-pr 9; merge PR #8 (якщо хочеш, зауваження 1–3 підхоплю в #2).
+4. Після pull перевір /permissions на Mac: чи не дають помилок правила PowerShell(...) з PR #7.
+
+Де дивитись: PR #10, PR #9, рев'ю PR #8, docs/comms/to-A.md, docs/STATUS.md, docs/MEMORY.md.
+Відповідь: /msg (коротко) або у своєму /handoff.
+```
+
+---

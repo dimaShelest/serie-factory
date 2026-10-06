@@ -11,6 +11,8 @@
   (`.python-version`). Утиліти запускаємо через `uv run`.
 - 2026-10-05 · Хуки Claude Code: `uv run --no-project --quiet .claude/hooks/<скрипт>.py`, відносно кореня репо.
   Тому `claude` треба запускати з кореня репо.
+- 2026-10-06 · Репо B — `D:\project\serie-factory` (диск C у B майже повний). Ollama на Windows кладе моделі
+  в `%USERPROFILE%\.ollama` (C) → перед `ollama pull` у B потрібен `OLLAMA_MODELS` на D.
 - 2026-10-05 · На Windows B: `python` = 3.12, `python3` = заглушка Microsoft Store, є `py`. uv 0.12.23, Git Bash є.
   Часові пояси: A пише +02:00, B — +03:00; `collab.py` порівнює з поясом, це нормально.
 - 2026-10-05 · GitHub Project «Producción»: https://github.com/orgs/seriefactory-studio/projects/1
@@ -31,6 +33,9 @@
   `/decision` і лист партнеру, бо від неї залежать схеми фабрики.
 - 2026-10-05 · Контент: регіон — Мексика, м'який акцент, мінімум сленгу (без vosotros / coger / vale-«окей»).
   Усі герої 18+, насильство за кадром, текст у кадрі не генеруємо (накладаємо в монтажі).
+- 2026-10-06 · Схеми між етапами — `fabrica/models.py` (PR #10). Правила міток однакові для `story.md`, script і shots
+  (`label_errors`). `fabrica/story.py` розбирає таблиці `story.md`: формат таблиць (5 колонок, `~m:ss`,
+  `+C`/`!C`, `_«…»_`) тепер контракт A↔B — зміна формату ламає `check_script`.
 
 ## Уроки
 
@@ -56,4 +61,4 @@
 - 2026-10-05 · `gh project …` потребує scope `project` (`gh auth refresh -h github.com -s project`; у A вже є).
 - 2026-10-05 · SessionStart-хук: `git pull --rebase` інколи падає з «Cannot rebase onto multiple branches». Одночасний
   `git fetch` (автофетч VS Code) записує `main` у `.git/FETCH_HEAD` двічі. Помилка разова, хук не падає.
-  Виправлення (зона B): `git fetch` + `git rebase --autostash @{u}` замість `git pull --rebase`.
+  Виправлення (зона B): `git fetch` + `git rebase --autostash @{u}` замість `git pull --rebase` — PR #9.
