@@ -29,7 +29,8 @@ TEASER_SKIP = frozenset({"title", "recap", "end_card"})  # тизер перес
 
 LabelName = Literal["HOOK_OPEN", "MIDPOINT", "SCREAMER", "TEASER_START", "TEASER_CUT_BEFORE", "CLIFF"]
 TEASER_SECONDS = (30.0, 40.0)
-SCRIPT_TOLERANCE_S = 5.0     # у script час орієнтовний (~0:33), точно тизер міряємо в shots
+SCRIPT_TOLERANCE_S = 5.0
+TARGET_TOLERANCE_S = 30.0    # кінець останньої сцени ≈ target_seconds     # у script час орієнтовний (~0:33), точно тизер міряємо в shots
 SCREAMER_SECONDS = (0.5, 2.0)
 SHOT_MIN_SECONDS = 1.0       # звичайний шот; коротші — лише SCREAMER
 SCREAMER_BUILDUP_S = (3.0, 10.0)  # тиша або наростання за 3–10 с до скрімера
@@ -145,7 +146,15 @@ def script_errors(script: Script) -> list[str]:
     marks = [Mark(lb.key, i, lb.approx_s, lb.approx_s) if lb.approx_s is not None
              else Mark(lb.key, i, s.approx_start_s, s.approx_end_s)
              for i, s in enumerate(script.scenes) for lb in s.labels]
-    return label_errors(units, marks, tolerance=SCRIPT_TOLERANCE_S)
+    errors = label_errors(units, marks, tolerance=SCRIPT_TOLERANCE_S)
+    for a, b in zip(script.scenes, script.scenes[1:]):
+        if b.approx_start_s != a.approx_end_s:
+            gap = "дірка" if b.approx_start_s > a.approx_end_s else "перекриття"
+            errors.append(f"{a.id} → {b.id}: {gap} у часі ({a.approx_end_s:g} → {b.approx_start_s:g} с)")
+    end = script.scenes[-1].approx_end_s
+    if abs(end - script.target_seconds) > TARGET_TOLERANCE_S:
+        errors.append(f"частина закінчується на {end:g} с, а target_seconds = {script.target_seconds}")
+    return errors
 
 
 # ---------------------------------------------------------------- shots.json
@@ -242,7 +251,7 @@ class Shots(_Strict):
         out, t = [], 0.0
         for sh in self.shots:
             out.append(t)
-            t += sh.duration_s
+            t = round(t + sh.duration_s, 6)   # 6.7 + 7.0 + … без хвостів float
         return out
 
     @model_validator(mode="after")
@@ -305,7 +314,7 @@ class Mark:
 def teaser_seconds(units: list[Unit], start: float, cut: float) -> float:
     """Тривалість тизера від start до cut без сегментів, які тизер перестрибує (рекап, картки)."""
     skipped = sum(max(0.0, min(u.end, cut) - max(u.start, start)) for u in units if u.segment in TEASER_SKIP)
-    return cut - start - skipped
+    return round(cut - start - skipped, 3)
 
 
 def label_errors(units: list[Unit], marks: list[Mark], tolerance: float) -> list[str]:
@@ -335,6 +344,10 @@ def label_errors(units: list[Unit], marks: list[Mark], tolerance: float) -> list
             teasers.setdefault(int(n), {}).setdefault(kind, []).append(m)
     if sorted(teasers) != list(range(1, len(teasers) + 1)):
         errors.append(f"тизери мають іти по порядку з 1, а є {sorted(teasers)}")
+    first = [min(m.lo for m in kinds.get("START", []) if m.lo is not None)
+             for _, kinds in sorted(teasers.items()) if any(m.lo is not None for m in kinds.get("START", []))]
+    if first != sorted(first):
+        errors.append("тизери мають іти в часі по порядку: TEASER1 раніше за TEASER2 …")
     lo_s, hi_s = TEASER_SECONDS
     for n, kinds in sorted(teasers.items()):
         starts, cuts = kinds.get("START", []), kinds.get("CUT_BEFORE", [])
@@ -354,7 +367,10 @@ def label_errors(units: list[Unit], marks: list[Mark], tolerance: float) -> list
             errors.append(f"TEASER{n}: {sec:g} с, а має бути {lo_s:g}–{hi_s:g}"
                           + (f" (±{tolerance:g} — час у script орієнтовний)" if tolerance else ""))
         for m in marks:
-            if m.key == "SCREAMER" and m.lo is not None and s.lo < m.lo and m.hi < c.lo:
+            if m.key != "SCREAMER" or m.lo is None:
+                continue
+            inside = s.lo <= m.lo and (m.hi < c.lo if m.lo == m.hi else m.hi <= c.lo)
+            if inside:
                 errors.append(f"TEASER{n}: містить SCREAMER — тизер має обриватися ДО скрімера")
     return errors
 
@@ -403,13 +419,21 @@ def check_shots(shots: Shots, script: Script) -> list[str]:
         own = {ln.id for ln in scene.lines}
         errors += [f"{sh.id}: репліка {d.line_id} не з сцени {scene.id}"
                    for d in sh.dialogue if d.line_id and d.line_id not in own]
+    seen = {sh.scene_id for sh in shots.shots}
+    errors += [f"сцена {s.id} ({s.segment}) не має жодного шота" for s in script.scenes if s.id not in seen]
+    for sh in shots.shots:
+        said = {d.line_id for d in sh.dialogue}
+        errors += [f"{sh.id}: мітка {lb.key} на репліці {lb.line_id}, якої в шоті немає"
+                   for lb in sh.labels if lb.line_id and lb.line_id not in said]
     covered = {d.line_id for sh in shots.shots for d in sh.dialogue}
     errors += [f"репліка {ln.id} ({s.id}) «{ln.text_es}» не потрапила в жоден шот"
                for s in script.scenes for ln in s.lines if ln.id not in covered]
-    want = Counter(lb.key for s in script.scenes for lb in s.labels)
-    got = Counter(lb.key for sh in shots.shots for lb in sh.labels)
-    if want != got:
-        errors.append(f"мітки shots ≠ script: бракує {dict(want - got)}, зайві {dict(got - want)}")
+    want = Counter((s.id, lb.key) for s in script.scenes for lb in s.labels)
+    got = Counter((sh.scene_id, lb.key) for sh in shots.shots for lb in sh.labels)
+    for (sid, key), k in sorted((want - got).items()):
+        errors.append(f"мітка {key} сцени {sid} не перенесена в шоти" + (f" (×{k})" if k > 1 else ""))
+    for (sid, key), k in sorted((got - want).items()):
+        errors.append(f"мітка {key} у шотах сцени {sid}, а в script її там немає" + (f" (×{k})" if k > 1 else ""))
     return errors
 
 
