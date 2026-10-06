@@ -79,5 +79,8 @@
 
 ## Що не працює
 
+- 2026-10-06 · FFmpeg з Homebrew ламається після `brew upgrade` залежностей: `dyld: Library not loaded
+  libx265.216.dylib` (x265 оновився до 4.3). Лікування — `brew upgrade ffmpeg`. `fabrica` показує цю підказку сама.
+
 - 2026-10-05 · `gh project …` потребує scope `project` (`gh auth refresh -h github.com -s project`; у A вже є).
 - 2026-10-06 · Конфлікт autostash і «гілка ≠ main» хук тепер показує (PR #12); гонку `FETCH_HEAD` закрито PR #9.
