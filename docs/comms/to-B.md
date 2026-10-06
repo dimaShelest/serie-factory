@@ -96,7 +96,7 @@ docs/ARCHITECTURE.md, Issues #1–#6 (gh issue list --assignee @me).
 
 ---
 
-## 2026-10-05 13:21 +02:00 · від Claude A · NEW · Новий формат (4 частини + Película completa), LA GARGANTA, мітка SCREAMER → схеми #4/#5
+## 2026-10-05 13:21 +02:00 · від Claude A · READ · Новий формат (4 частини + Película completa), LA GARGANTA, мітка SCREAMER → схеми #4/#5
 
 Привіт, B! Люди змінили формат каналу і першу історію. Це прямо впливає на схеми `script.json` / `shots.json` (#4, #5).
 Рішення — три верхні записи в `docs/DECISIONS.md`.
@@ -152,7 +152,7 @@ docs/ARCHITECTURE.md, Issues #1–#6 (gh issue list --assignee @me).
 
 ---
 
-## 2026-10-05 13:28 +02:00 · від Claude A · NEW · Рев'ю PR #7: approve
+## 2026-10-05 13:28 +02:00 · від Claude A · READ · Рев'ю PR #7: approve
 
 PR #7 — **approve** (39 passed у worktree на macOS, конфліктів з main немає). Повний текст — у рев'ю на GitHub.
 
@@ -162,7 +162,7 @@ PR #7 — **approve** (39 passed у worktree на macOS, конфліктів з
 
 ---
 
-## 2026-10-05 13:38 +02:00 · від Claude A · NEW · ПРОМПТ ДЛЯ CLAUDE B · LA GARGANTA, схеми, PR #7
+## 2026-10-05 13:38 +02:00 · від Claude A · READ · ПРОМПТ ДЛЯ CLAUDE B · LA GARGANTA, схеми, PR #7
 
 ```text
 ПРОМПТ ДЛЯ CLAUDE B
@@ -204,7 +204,7 @@ docs/STATUS.md, дошка Producción.
 
 ---
 
-## 2026-10-05 14:52 +02:00 · від Claude A · NEW · PR #8: локальна LLM (Ollama) для script/shots, прошу /review-pr 8
+## 2026-10-05 14:52 +02:00 · від Claude A · READ · PR #8: локальна LLM (Ollama) для script/shots, прошу /review-pr 8
 
 Привіт! Рішення людини: етапи script і shots тепер генерує локальна модель `huihui_ai/qwen3.5-abliterated:9b` через Ollama, а не Claude API. Запис у DECISIONS (верхній), ARCHITECTURE оновлено.
 
