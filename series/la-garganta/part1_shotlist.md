@@ -60,7 +60,7 @@
 | 3.03 | 0:50 | 4 | mina | Vale | середньо-крупний | Vale робить крок уперед, піднімає ліхтар | «Yo voy.» | hero |  |  |
 | 3.04 | 0:54 | 5 | mina | Vale, Mateo | телефон Diego | Diego знімає Vale й Mateo; Mateo розмитий | «Esto va directo a mis historias.» (Diego, за кадром) | found-footage |  | +C03 |
 | 3.05 | 0:59 | 4 | mina | Sofía | середній | Sofía вагається, дивиться в темряву входу |  | secondary |  |  |
-| 3.06 | 1:03 | 5 | mina | Diego, Mateo | два в кадрі, середній | Diego простягає пачку чипсів, Mateo не бере | «No tengo hambre.» | hero |  | +C04 |
+| 3.06 | 1:03 | 5 | mina | Diego, Mateo | два в кадрі, середній | Diego простягає пачку чипсів, Mateo не бере | «No tengo hambre.» (Mateo) | hero |  | +C04 |
 | 3.07 | 1:08 | 6 | mina | четверо | загальний, зі спини | Тунель: чотири ліхтарі, Mateo впевнено веде |  | secondary | → ч.3 (шлях у шахту) |  |
 | 3.08 | 1:14 | 5 | mina | четверо | телефон Diego, трясеться | Тунель на телефон, Diego коментує | «Si nos morimos, por lo menos queda grabado.» | found-footage |  |  |
 | 3.09 | 1:19 | 4 | mina | Mateo | середній | Розвилка; Mateo обирає без вагань | «Por aquí.» | hero |  |  |
@@ -155,7 +155,7 @@
 | 8.14 | 6:33 | 4 | casa_vale | Vale | середній | Vale повільно обертається — нікого |  | hero |  |  |
 | 8.15 | 6:37 | 3 | casa_vale | Vale, Beto | через дзеркало | Обертається назад: хлопець просто за її плечем |  | hero |  |  |
 | 8.16 | 6:40 | 2 | casa_vale | — | — | Світло гасне |  | hero |  | `CLIFF` |
-| 8.17 | 6:42 | 3 | — | — | — | Чорний екран, голос Vale | «¿Quién está ahí?» | монтаж |  |  |
+| 8.17 | 6:42 | 3 | — | — | — | Чорний екран, голос Vale | «¿Quién está ahí?» (Vale) | монтаж |  |  |
 | 8.18 | 6:45 | 5 | — | — | — | Чорний, дихання |  | монтаж |  |  |
 
 ### Біт 9 · end card (6:50–7:00)

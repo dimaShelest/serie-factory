@@ -29,11 +29,14 @@ ElevenLabs (голос) · IMAGE API (референси) · Sync (lip-sync) · 
 
 ### Наскрізне: облік витрат
 
-- Кожен платний виклик іде через одну обгортку: перед викликом — **оцінка й перевірка ліміту**,
-  після — запис факту в SQLite (`costs`: час, серіал, серія, етап, провайдер, одиниці, USD, хеш входу).
-- Ліміти з `.env`: `BUDGET_PER_EPISODE_USD`, `BUDGET_DAILY_USD`, `BUDGET_MONTHLY_USD`.
-  Від 80 % — попередження, від 100 % — **жорстка зупинка** (продовжити можна лише явним прапорцем).
-- `fabrica costs` — звіт; `docs/COSTS.md` — людський підсумок, оновлюється на `/handoff`.
+- Кожен платний виклик — через одну обгортку `Ledger.charge()` (`fabrica/ledger.py`): **атомарний резерв** оцінки
+  з перевіркою лімітів (паралельні процеси не перевищать ліміт) → виклик → **підтвердження** фактом і `request_id`
+  провайдера. Падіння посеред виклику лишає резерв витратою («незвірений», `Ledger.unsettled()`).
+- Ліміти — `BUDGET_PER_EPISODE_USD`, `BUDGET_DAILY_USD`, `BUDGET_MONTHLY_USD` (`.env`). **Не задано → платні виклики
+  заборонені**; без ліміту — лише явно `none`. Від 80 % — попередження, рівно 100 % — ще можна, понад — **зупинка**
+  (продовжити — лише явний force, позначається в журналі). Межі дня й місяця — UTC.
+- Журнал `output/fabrica.sqlite` — один на машину (SQLite, WAL, гроші в мікродоларах). Платні виклики — лише з Mac A.
+- `uv run fabrica costs <slug> <N>` — кошторис і ліміти; `docs/COSTS.md` — людський підсумок, оновлюється на `/handoff`.
 
 ## Дані
 
@@ -42,8 +45,9 @@ series/<slug>/               # Git, зона A: біблія, сюжет біт�
   bible.yaml  story.md  clues.md
 fabrica/prompts/<етап>/      # Git, зона A: шаблони промптів генерації
 fabrica/                     # Git, зона B: код етапів, CLI, моделі
-output/<slug>/P1/<етап>/     # НЕ в Git (P1–P4 — частини, film/ — фільм): згенероване (json, wav, mp4); майстри → R2
-output/fabrica.sqlite        # НЕ в Git: стан етапів і витрати
+output/<slug>/part<N>/        # НЕ в Git: script.json, shots.json + теки етапів voice/ video/ qc/ assemble/ cut/
+output/<slug>/film/          # НЕ в Git: Película completa; майстри → R2
+output/fabrica.sqlite        # НЕ в Git: журнал витрат (один на машину)
 ```
 
 Між етапами передаються JSON-файли за Pydantic-схемами (`fabrica/models.py`), щоб будь-який етап

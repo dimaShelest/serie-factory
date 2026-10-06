@@ -1,7 +1,7 @@
 # serie-factory
 
-Генератор іспаномовних AI-серіалів: серії 3–8 хв для YouTube (16:9) і тизери 30–40 с для TikTok/Shorts (9:16)
-з обривом на хуку.
+Генератор іспаномовних AI-серіалів: історія = 4 частини по 6–8 хв для YouTube (16:9) + Película completa 25–30 хв,
+тизери 30–40 с для TikTok/Shorts (9:16) з обривом на хуку. Перша історія — LA GARGANTA (`series/la-garganta/`).
 
 ## 1. Як ми працюємо вдвох
 
@@ -12,10 +12,18 @@
 |---|---|---|
 | Людина (GitHub) | dimaShelest | nuchay69-max |
 | Машина | Mac, macOS, zsh | Windows без WSL, PowerShell |
-| Фокус | продакшн і контент | код і автоматизація |
-| Зона власності | `series/`, `fabrica/prompts/` (промпти генерації), `docs/PLAYBOOK.md` | `fabrica/`, `dashboard/`, `.claude/` |
+| Роль | **головний будівельник**: веде весь проєкт і всі зони (`series/`, `fabrica/`, `dashboard/`, `.claude/`) | **тестувальник і рев'юер на Windows** |
+| Код | пише все | лише Windows-специфічні виправлення |
+| Платні API | тільки з Mac A (журнал витрат локальний) | без ключів |
 
-Спільне (редагують обидва): решта `docs/`, `tests/`, кореневі файли. Власників перевіряє `.github/CODEOWNERS`.
+**Claude A працює автономно** по критичному шляху (`docs/STATUS.md`), не чекаючи промпту на кожен крок.
+Технічні рішення ухвалює сам і пише в DECISIONS. Людину питає лише про зміст історії, гроші/ліміти й ручні дії людей.
+Після кожного логічного кроку — короткий звіт людині: **1) Зроблено** (коміти/PR); **2) Далі роблю**;
+**3) Що потрібно від людей** (просто, по кроках); **4) На перевірку для B** (що перевірити на Windows / прочитати).
+Потім одразу наступний крок, якщо не потрібне рішення людей.
+
+**Claude B** отримує задачі раз на кілька циклів (`/msg` або ПРОМПТ у `/handoff`): прогнати тести на Windows/PowerShell,
+переглянути PR, прочитати зміни. Власник усього в CODEOWNERS — dimaShelest; nuchay69-max — рев'юер (`--reviewer`).
 
 ### Хто я
 Прочитай `CLAUDE.local.md` (не в Git): там «Я — Claude A» або «Я — Claude B». SessionStart-хук теж
@@ -50,17 +58,20 @@
 Формати записів — [.claude/rules/memory-formats.md](.claude/rules/memory-formats.md). Час і заголовки записів
 ставить `collab.py`: у тебе немає годинника, тож дату не вигадуй.
 
-### Чужа зона
-Зміна в зоні партнера → гілка + PR + рев'ю іншого Claude (`/review-pr`). PR мерджить автор після approve.
-Дрібниця в чужій зоні (одрук) → можна відразу, але з `/msg` партнеру.
+### Рев'ю
+Код — через гілку `a/<тема>` + PR з `--reviewer nuchay69-max`; великий PR — додатково агент `pr-reviewer`.
+Мерджить A, коли тести зелені на Mac; зауваження B з Windows — окремим PR.
 
 ## 2. Git
 
 - `main` завжди робочий. Перед комітом і пушем — `git pull --rebase --autostash`.
-- Гілки: `a/<тема>` (Claude A), `b/<тема>` (Claude B). Фічі й усе в чужій зоні — через гілку й PR.
+- Гілки: `a/<тема>` (код A), `b/<тема>` (Windows-фікси B). Гілку в спільній теці НЕ перемикай: паралельна сесія —
+  лише `git worktree add <тека> <гілка>` (у спільній теці інша сесія може стояти на іншій гілці).
 - Пам'ять (`docs/`) — завжди прямо в `main`, навіть якщо код у гілці (див. `/handoff`, крок 8).
 - Коміти: `[A] …` / `[B] …`, по-українськи, суть у першому рядку.
-- НІКОЛИ: `push --force`, `reset --hard`, коміт `.env`, медіа чи `output/`.
+- НІКОЛИ: `push --force` (і `--force-with-lease`), `reset --hard`, коміт `.env`, медіа чи `output/`. Force блокує
+  PreToolUse-хук `guard_git.py`. Гілку, що відстала, оновлюй `git merge origin/main`, не rebase.
+- Стекові PR: спершу `gh pr edit <дочірній> --base main`, потім merge батьківського з `--delete-branch`.
 - Конфлікт у журналах (HANDOFF, DECISIONS, comms, prompts) git зливає сам (`merge=union`). Перевір порядок.
 
 ## 3. Стек і команди
@@ -75,8 +86,10 @@ uv run --no-project .claude/hooks/collab.py -h  # пам'ять: whoami, inbox, 
 uv run fabrica --help                           # CLI фабрики: shotlist, validate, costs, schema
 ```
 
-Хуки (`.claude/settings.json`): **SessionStart** — pull, хто я, STATUS, нові листи;
-**UserPromptSubmit** — журнал промптів із маскуванням секретів. Запускай `claude` з кореня репо.
+Хуки (`.claude/settings.json`): **SessionStart** — fetch + rebase, хто я, STATUS, нові листи, попередження
+«не на main» і про конфлікт autostash; **UserPromptSubmit** — журнал промптів із маскуванням секретів;
+**PreToolUse** — `guard_git.py` (force-push, reset --hard, clean -f). Запускай `claude` з кореня репо.
+Платні виклики — лише через `Ledger.charge()` (`fabrica/ledger.py`): ліміти `BUDGET_*` не задано → виклик заборонено.
 
 ## 4. Секрети й медіа
 
