@@ -88,10 +88,10 @@ def parse(path: Path) -> dict[int, list[Beat]]:
 
 def part_errors(beats: list[Beat]) -> list[str]:
     """Правила міток PLAYBOOK для однієї частини story.md (ті самі, що для script.json)."""
-    units = [Unit(b.segment, b.start_s, b.end_s) for b in beats]
+    units = [Unit(b.segment, b.start_s, b.end_s, i) for i, b in enumerate(beats)]
     marks = [Mark(key, i, at, at) if at is not None else Mark(key, i, b.start_s, b.end_s)
              for i, b in enumerate(beats) for key, at in b.labels]
-    return label_errors(units, marks, tolerance=0.0, exact_teasers=False)
+    return label_errors(units, marks, tolerance=0.0)
 
 
 def check_script(script: Script, beats: list[Beat]) -> list[str]:
