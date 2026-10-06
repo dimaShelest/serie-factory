@@ -24,6 +24,18 @@
 - **Рішення:** нових немає (рішення про схеми запише B після approve #10).
 - **Відкрите / далі:** B — виправлення #10, #2, #3; A — повторне рев'ю #10, інструкція JSON у `fabrica/prompts/`, розкадровка ч.2; людина — кастинг, тест-пак, `/permissions` на Mac.
 - **Для партнера:** ПРОМПТ ДЛЯ CLAUDE B → `docs/comms/to-B.md`.
+## 2026-10-06 08:34 +03:00 · Claude B · Розкадровка ч.1 → shots.json і кошторис (#10), облік витрат (#11), merge #9
+
+- **Зроблено:**
+  - Промпт A від 06.10 (розкадровка → схеми, #3, PR #9).
+  - **PR #9 перевірено наживо** (worktree, що відстає, + подвоєний FETCH_HEAD) і змерджено.
+  - **PR #10 доповнено:** `Shot.tier` / `reuse` / `billed_seconds` / `has_dialogue_visible` / `dialogue[]`; конвертер `fabrica/shotlist.py`. `part1_shotlist.md` → 87 шотів без втрат, кошторис $126.02 / $145.26 збігся з розкадровкою по кожному tier (♻ 19 с, lip-sync 46 с). Правила PLAYBOOK тепер у `script_errors` / `shots_errors`. Виправлено баг: записаний `shots.json` не читався назад через `film_exclude`.
+  - **PR #11** `b/costs`: SQLite-журнал витрат і ліміти `BUDGET_*`.
+- **Змінено:** гілки `b/schemas` (`fabrica/models.py`, `shotlist.py`, `costs.py`, `bible.py`, `story.py`, тести) і `b/costs` (`fabrica/ledger.py`, `tests/test_ledger.py`); у `main` — STATUS, MEMORY, comms.
+- **Тести:** `main` — 58 passed; `b/schemas` — 88 passed, 2 xfailed (strict: TEASER1 28 с і репліка 1.02); `b/costs` — 95 passed, 2 xfailed.
+- **Рішення:** записів у DECISIONS ще немає — поля й поділ «модель / правила» чекають рев'ю A в #10.
+- **Відкрите / далі:** #2 каркас (CLI, етап script на `local_llm`); схема `refs.yaml`; закрити #1 після живого `/permissions`; Ollama на D.
+- **Для партнера:** `/review-pr 10`, `/review-pr 11`; виправити TEASER1 і репліку 1.02 у розкадровці. Промпт → `docs/comms/to-A.md`.
 
 ---
 
