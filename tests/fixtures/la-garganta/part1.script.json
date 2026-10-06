@@ -1,0 +1,283 @@
+{
+  "schema_version": 1,
+  "story": "la-garganta",
+  "part": 1,
+  "title_es": "El Reto",
+  "target_seconds": 420,
+  "scenes": [
+    {
+      "id": "s01",
+      "approx_start_s": 0,
+      "approx_end_s": 35,
+      "location_id": "mina",
+      "characters": [
+        "los_siete"
+      ],
+      "footage": "vhs",
+      "action": "VHS 1994. Семеро випускників prepa у шахті: сміх, ліхтарі, луна. Десь шипить шахтна рація. Гул гори, світло блимає, темрява. Промінь ліхтаря вихоплює мокре, вкрите пилом обличчя Beto — удар. Обличчя Tomás у кадрі нечітке (спиною, розфокус), інакше твіст розкриється.",
+      "lines": [
+        {
+          "id": "l01",
+          "character_id": "los_siete",
+          "text_es": "¡Graba, graba! Esto va para el anuario.",
+          "delivery": "shout",
+          "emotion": "euforia"
+        },
+        {
+          "id": "l02",
+          "character_id": "los_siete",
+          "text_es": "¿Oyeron eso?",
+          "delivery": "whisper",
+          "emotion": "miedo"
+        }
+      ],
+      "labels": [
+        {
+          "label": "HOOK_OPEN"
+        },
+        {
+          "label": "TEASER_START",
+          "n": 1,
+          "approx_s": 0
+        },
+        {
+          "label": "TEASER_CUT_BEFORE",
+          "n": 1,
+          "approx_s": 33,
+          "moment": "промінь вихоплює мокре обличчя"
+        },
+        {
+          "label": "SCREAMER",
+          "approx_s": 33,
+          "moment": "мокре обличчя в промені ліхтаря + удар"
+        }
+      ],
+      "clues": {
+        "planted": [
+          "C07"
+        ]
+      }
+    },
+    {
+      "id": "s02",
+      "segment": "title",
+      "approx_start_s": 35,
+      "approx_end_s": 40,
+      "action": "Назва серіалу (накладаємо в монтажі).",
+      "overlay_text": "LA GARGANTA"
+    },
+    {
+      "id": "s03",
+      "approx_start_s": 40,
+      "approx_end_s": 100,
+      "location_id": "mina",
+      "characters": [
+        "mateo",
+        "vale",
+        "diego",
+        "sofia"
+      ],
+      "footage": "camera",
+      "action": "Наш час, ніч, вхід у шахту. Mateo підбурює трьох. Vale приймає спір, Diego знімає, Sofía вагається. Diego пропонує чипси — Mateo відмовляється. Усередині: ліхтарі, вузький тунель, Mateo впевнено веде. Поштовх, гул, темрява.",
+      "lines": [
+        {
+          "id": "l03",
+          "character_id": "mateo",
+          "text_es": "¿Qué? ¿Les da miedo un hoyo en la montaña?",
+          "emotion": "provocación"
+        },
+        {
+          "id": "l04",
+          "character_id": "mateo",
+          "text_es": "No tengo hambre.",
+          "emotion": "calma"
+        }
+      ],
+      "clues": {
+        "planted": [
+          "C04"
+        ]
+      }
+    },
+    {
+      "id": "s04",
+      "approx_start_s": 100,
+      "approx_end_s": 140,
+      "location_id": "mina",
+      "characters": [
+        "vale",
+        "diego",
+        "sofia",
+        "mateo"
+      ],
+      "wow": true,
+      "vfx": "Сотні камінців висять у повітрі навколо четвірки й падають, щойно Vale скрикує.",
+      "action": "Світанок. Четверо прокидаються біля входу в шахту, у всіх кров з носа.",
+      "lines": [
+        {
+          "id": "l05",
+          "character_id": "sofia",
+          "text_es": "¿Cuánto tiempo estuvimos ahí adentro?",
+          "emotion": "desconcierto"
+        }
+      ]
+    },
+    {
+      "id": "s05",
+      "approx_start_s": 140,
+      "approx_end_s": 200,
+      "location_id": null,
+      "characters": [
+        "vale",
+        "diego",
+        "sofia",
+        "mateo"
+      ],
+      "footage": "phone",
+      "wow": true,
+      "vfx": "Телефон летить через кімнату (середній план), вода зі склянки збирається в кулю, ложки повзуть столом.",
+      "action": "Монтаж відкриття сили в різних кімнатах. Diego знімає все на телефон; на його відео Mateo розмитий.",
+      "lines": [
+        {
+          "id": "l06",
+          "character_id": "diego",
+          "text_es": "Mateo, quédate quieto, siempre sales borroso.",
+          "emotion": "broma"
+        }
+      ],
+      "labels": [
+        {
+          "label": "TEASER_START",
+          "n": 2,
+          "approx_s": 175
+        }
+      ],
+      "clues": {
+        "planted": [
+          "C03"
+        ]
+      }
+    },
+    {
+      "id": "s06",
+      "approx_start_s": 200,
+      "approx_end_s": 230,
+      "location_id": "plaza_reloj",
+      "characters": [
+        "diego",
+        "vale",
+        "sofia",
+        "mateo"
+      ],
+      "wow": true,
+      "vfx": "Diego піднімає машину над площею; у мить, коли стрілки зупиняються на 3:17, машина падає.",
+      "action": "Ніч, площа. Diego піднімає машину, ейфорія. Тієї ж секунди стрілки на вежі здригаються й зупиняються на 3:17. Машина падає.",
+      "lines": [
+        {
+          "id": "l07",
+          "character_id": "diego",
+          "text_es": "¡¿Lo están grabando?!",
+          "delivery": "shout",
+          "emotion": "euforia"
+        }
+      ],
+      "labels": [
+        {
+          "label": "MIDPOINT",
+          "moment": "стрілки зупиняються на 3:17"
+        },
+        {
+          "label": "TEASER_CUT_BEFORE",
+          "n": 2,
+          "approx_s": 214,
+          "moment": "перед стрілками на 3:17"
+        }
+      ],
+      "clues": {
+        "planted": [
+          "C01"
+        ]
+      }
+    },
+    {
+      "id": "s07",
+      "approx_start_s": 230,
+      "approx_end_s": 320,
+      "location_id": "casa_minero",
+      "characters": [
+        "renata",
+        "policia_companero"
+      ],
+      "action": "Renata на виклику в домі старого шахтаря Don Rufino. Тіла в кадрі немає. Усі меблі прилипли до стелі («підпис» сімох на місці вбивства), на підлозі мокрі сліди від дверей до ліжка. Мимохідь у кадрі — старе фото нічної зміни: шахтарі в касках, обличчя в тіні, на руках однакові масивні срібні персні з чорним каменем. Renata присідає біля тіла (поза кадром). Renata торкається медальйона.",
+      "lines": [
+        {
+          "id": "l08",
+          "character_id": "renata",
+          "text_es": "Le quitaron el anillo. Mira la marca.",
+          "emotion": "sospecha"
+        },
+        {
+          "id": "l09",
+          "character_id": "policia_companero",
+          "text_es": "Dicen que el reloj se paró otra vez. Igual que en el noventa y cuatro.",
+          "emotion": "inquietud"
+        },
+        {
+          "id": "l10",
+          "character_id": "renata",
+          "text_es": "No toquen nada.",
+          "emotion": "contención"
+        }
+      ],
+      "clues": {
+        "planted": [
+          "C02",
+          "C05",
+          "C13",
+          "C01",
+          "C11"
+        ]
+      }
+    },
+    {
+      "id": "s08",
+      "approx_start_s": 320,
+      "approx_end_s": 410,
+      "location_id": "casa_vale",
+      "characters": [
+        "vale",
+        "chico_espejo"
+      ],
+      "action": "Vale вдома перед дзеркалом, знову кров з носа. За її спиною в дзеркалі — мокрий хлопець у формі prepa 90-х — Beto Garza (НЕ Mateo). Світло гасне. Чорний екран.",
+      "lines": [
+        {
+          "id": "l11",
+          "character_id": "vale",
+          "text_es": "¿Quién está ahí?",
+          "delivery": "whisper",
+          "emotion": "miedo"
+        }
+      ],
+      "labels": [
+        {
+          "label": "CLIFF",
+          "line_id": "l11",
+          "moment": "світло гасне, чорний екран"
+        }
+      ],
+      "clues": {
+        "planted": [
+          "C02"
+        ]
+      }
+    },
+    {
+      "id": "s09",
+      "segment": "end_card",
+      "approx_start_s": 410,
+      "approx_end_s": 420,
+      "action": "Заставка «Continuará…» (накладаємо в монтажі).",
+      "overlay_text": "Continuará…"
+    }
+  ]
+}
