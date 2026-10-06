@@ -5,6 +5,40 @@
 
 <!-- НОВІ ЗАПИСИ — ОДРАЗУ ПІД ЦИМ РЯДКОМ (найновіші зверху) -->
 
+## 2026-10-06 07:33 +02:00 · Claude A · Рев'ю PR #9 і #10, merge PR #8, контракт story.md
+
+- **Зроблено:**
+  - `/start`: 3 листи B прочитано.
+  - **PR #9 — approve** (33 passed на macOS). Знайдено: конфлікт autostash хук не повідомляє (маркери `UU` + `stash@{0}`, а пише «успіх»). B змерджив PR #9 одразу після approve — п. 1 рев'ю лишається йому.
+  - **PR #8 змерджено** (squash, `a29530c`), гілку `a/local-llm` видалено. Зауваження B 1–3 → його #2; п. 4 (інструкція JSON англійською) → моя зона, `fabrica/prompts/`.
+  - **PR #10 — request-changes:**
+    - дизайн («Відхилення» 1–6) — approve;
+    - блокер — round-trip `shots.json` (`film_exclude` + `extra=forbid`);
+    - важливо — правила shots по бітах, межі тизерів (SCREAMER на START, float 40,0), `check_shots` пропускає сцени, тихі втрати в `story.py` (`|` у тексті, `_`, мітки в коментарях, «3:17» у дужках, кирилична С);
+    - з боку змісту — `Shot.location_id` (біт 5 ч.1 — дві локації), `supporting[].members` у `bible.py`.
+    
+    Код перевіряв агент `pr-reviewer`, 3 знахідки я відтворив сам.
+  - **PLAYBOOK:** контракт формату `story.md` ↔ `fabrica/story.py`.
+- **Змінено:** `docs/PLAYBOOK.md`, STATUS, MEMORY, comms; GitHub — рев'ю #9, #10, merge #8.
+- **Тести:** main — 60 passed; PR #10 + main — 76 passed.
+- **Рішення:** нових немає (рішення про схеми запише B після approve #10).
+- **Відкрите / далі:** B — виправлення #10, #2, #3; A — повторне рев'ю #10, інструкція JSON у `fabrica/prompts/`, розкадровка ч.2; людина — кастинг, тест-пак, `/permissions` на Mac.
+- **Для партнера:** ПРОМПТ ДЛЯ CLAUDE B → `docs/comms/to-B.md`.
+## 2026-10-06 08:34 +03:00 · Claude B · Розкадровка ч.1 → shots.json і кошторис (#10), облік витрат (#11), merge #9
+
+- **Зроблено:**
+  - Промпт A від 06.10 (розкадровка → схеми, #3, PR #9).
+  - **PR #9 перевірено наживо** (worktree, що відстає, + подвоєний FETCH_HEAD) і змерджено.
+  - **PR #10 доповнено:** `Shot.tier` / `reuse` / `billed_seconds` / `has_dialogue_visible` / `dialogue[]`; конвертер `fabrica/shotlist.py`. `part1_shotlist.md` → 87 шотів без втрат, кошторис $126.02 / $145.26 збігся з розкадровкою по кожному tier (♻ 19 с, lip-sync 46 с). Правила PLAYBOOK тепер у `script_errors` / `shots_errors`. Виправлено баг: записаний `shots.json` не читався назад через `film_exclude`.
+  - **PR #11** `b/costs`: SQLite-журнал витрат і ліміти `BUDGET_*`.
+- **Змінено:** гілки `b/schemas` (`fabrica/models.py`, `shotlist.py`, `costs.py`, `bible.py`, `story.py`, тести) і `b/costs` (`fabrica/ledger.py`, `tests/test_ledger.py`); у `main` — STATUS, MEMORY, comms.
+- **Тести:** `main` — 58 passed; `b/schemas` — 88 passed, 2 xfailed (strict: TEASER1 28 с і репліка 1.02); `b/costs` — 95 passed, 2 xfailed.
+- **Рішення:** записів у DECISIONS ще немає — поля й поділ «модель / правила» чекають рев'ю A в #10.
+- **Відкрите / далі:** #2 каркас (CLI, етап script на `local_llm`); схема `refs.yaml`; закрити #1 після живого `/permissions`; Ollama на D.
+- **Для партнера:** `/review-pr 10`, `/review-pr 11`; виправити TEASER1 і репліку 1.02 у розкадровці. Промпт → `docs/comms/to-A.md`.
+
+---
+
 ## 2026-10-06 07:00 +02:00 · Claude A · LA GARGANTA: логіка, календар, кастинг, розкадровка ч.1, тест-пак
 
 - **Зроблено:**
