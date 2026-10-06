@@ -1,68 +1,63 @@
 # STATUS
 
-_Оновлено: 2026-10-06 09:42 +03:00 · Claude B_
+_Оновлено: 2026-10-06 · Claude A (новий режим: A будує все, B тестує на Windows)_
 
 Дошка: [Producción](https://github.com/orgs/seriefactory-studio/projects/1)
 
-## Календар LA GARGANTA
+## Критичний шлях до контрольної точки пт 16.10
 
-| Дата | Що | Хто | Умова / статус |
-|---|---|---|---|
-| вт–ср 06–07.10 | Кастинг облич, плити локацій, реквізит-стіли | dimaShelest + A | промпти — `docs/casting/la-garganta.md` |
-| чт 08.10 | Тест-пак Seedance (5 вау-кадрів, ≈ $20) | dimaShelest + A | `series/la-garganta/test_pack.md` |
-| 08–15.10 | Генерація й монтаж ч.1 → ч.2 | A + фабрика B | розкадровка ч.1 — `part1_shotlist.md`; ч.2 — TODO |
-| **пт 16.10** | **Контрольна точка** | обоє | ч.1–2 не готові → зсуваємо весь календар |
-| 17–20.10 | Ч.3 | A + фабрика B | ч.1 не публікуємо, доки не готові 3 частини |
-| **ср 21.10** | **Ч.1 «El Reto»** | publish | |
-| **сб 24.10** | **Ч.2 «Lo Que Pesa»** | publish | |
-| **ср 28.10** | **Ч.3 «Los Siete»** | publish | ч.4 має бути готова до 28.10 |
-| **сб 31.10** | **Ч.4 «La Garganta»** (Día de Muertos) | publish | |
-| **нд–пн 1–2.11** | **Película completa** | publish | збираємо з готових частин |
+Усе, чого немає в цій таблиці, — після 16.10.
 
-## Зроблено
-- Система спільної пам'яті A↔B працює на macOS і Windows. Змерджено PR #7 (PowerShell-правила), #8 (локальна LLM,
-  Ollama), #9 (SessionStart: fetch + rebase @{u}). Тести в main — 60.
-  Issue #1 відкритий до живої перевірки `/permissions` у сесії B з кореня репо.
-- GitHub Project «Producción»; формат «4 частини + Película completa»; мітки бітів з `SCREAMER`; Мексика, герої 18–19.
-- **LA GARGANTA** затверджено (крім облич):
-  - логіка: «підпис» сімох, персні-трофеї C13, рація, Beto у дзеркалі, склянка;
-  - 13 підказок C01–C13, календар релізу.
-- **Виробництво:**
-  - кастинг-промпти (6 героїв, сімка 1994, 9 локацій, реквізит);
-  - розкадровка ч.1 (87 шотів, 7:00; відео ≈ $126–145);
-  - тест-пак Seedance;
-  - ціни Seedance у `COSTS.md`.
+| # | Крок | Коли | Хто | Стан | Блокує → |
+|---|---|---|---|---|---|
+| 1 | Схеми script/shots + облік витрат (#10, #11 → #13) | вт 06.10 | A | ✅ змерджено | 2 |
+| 2 | Каркас fabrica (#13): CLI shotlist / validate / costs / schema | вт 06.10 | A | ✅ змерджено (решта #2 — з етапами 5–6) | 5, 6 |
+| 3 | **Кастинг облич і плит** у Gemini / Nano Banana → `refs.yaml` | вт–ср 06–07.10 | **люди** + A | ⏳ чекає людей | 4, 6 |
+| 4 | **Тест-пак Seedance** (5 вау-кадрів, ≈ $20) | чт 08.10 | **люди** (оплата) + A | ⏳ чекає оплати й п.3 | 6 (tier, мін. кліп, ціни) |
+| 5 | Етап **voice** (ElevenLabs): голоси персонажів, wav на репліку, тривалості | ср–пт 07–09.10 | A | ▶ наступний | 6 (lip-sync), 8 |
+| 6 | Етап **video** (Seedance 2.5): черга, кеш, ліміти, сухий режим, аніматик 480p | пт–пн 09–12.10 | A | — | 7 |
+| 7 | **QC** (тривалість, артефакти, ДНК облич) + repair | пн–вт 12–13.10 | A | — | 8 |
+| 8 | **assemble ч.1** (FFmpeg: склейка, субтитри ES, −14 LUFS) | вт–ср 13–14.10 | A | — | 9 |
+| 9 | **Ч.2**: розкадровка → voice → video → QC → assemble | ср–пт 14–16.10 | A | — | контрольна точка |
 
-## В роботі
-**Ролі з 06.10 (від людини B; лист A в Git ще не з'явився):** Claude A веде весь проєкт і всі зони коду;
-Claude B — тестувальник і рев'юер на Windows. Відкриті PR B передано A (гілки тепер його):
-- **PR #10** `b/schemas` — виправлено за рев'ю A, чекає повторного рев'ю. Win: 128 passed, 2 xfailed.
-- **PR #11** `b/costs` (база #10) — облік витрат (#3).
-- **PR #12** `b/hook-autostash` (база main) — хук: конфлікт autostash, «гілка ≠ main». Win: 61 passed.
-- **PR #13** `b/scaffold` (база #11) — каркас #2, CLI `fabrica`. Win: 144 passed, 2 xfailed.
-  Порядок merge: #10 → #11 → #13; #12 — окремо.
-- Кастинг (A + людина).
+Перед першим платним викликом (п.4–6) потрібні **ліміти `BUDGET_*` і ключі API в `.env` на Mac**. Без лімітів фабрика
+платні виклики не робить.
 
-## Заблоковано
-- (нічого)
+## Календар релізу
 
-## Чекає на Claude B
-- Тестування на Windows і рев'ю PR A (нових задач з коду B не бере).
-- Жива перевірка хуків і `/permissions` з кореня репо (`D:\project\serie-factory`) → закрити #1.
+| Дата | Що | Умова |
+|---|---|---|
+| **пт 16.10** | Контрольна точка | ч.1–2 готові, інакше зсуваємо весь календар |
+| **ср 21.10** | Ч.1 «El Reto» | лише якщо готові 3 частини |
+| **сб 24.10** | Ч.2 «Lo Que Pesa» | |
+| **ср 28.10** | Ч.3 «Los Siete» | ч.4 готова до 28.10 |
+| **сб 31.10** | Ч.4 «La Garganta» (Día de Muertos) | |
+| **нд–пн 1–2.11** | Película completa | з готових частин |
 
-## Чекає на Claude A
-- Запушити лист і рішення про зміну ролей (у Git їх ще немає).
-- PR #10–#13 тепер твої: повторне рев'ю / доведення й merge (#10 → #11 → #13, #12 окремо).
-- Етап `fabrica script`, схема `refs.yaml` — колишні задачі B.
-- Розкадровка ч.1: **TEASER1 = 28 с** (1.01 → 1.07), а треба 30–40; **1.02 «¡Chuy, graba, graba!…»** ≠ `story.md`
-  «¡Graba, graba!…» — котра канонічна? (тести `xfail(strict)` у `tests/test_shotlist.py`, PR #10)
-- Перенести інструкцію JSON-генерації з `fabrica/local_llm.py` у `fabrica/prompts/` англійською (зауваження 4 до PR #8).
-- Розкадровка ч.2; шаблони промптів `fabrica/prompts/script/` і `shots/` для LA GARGANTA.
-- Після кастингу — `series/la-garganta/refs.yaml` (маніфест затверджених refs).
-- Після тест-паку — оновити tier і кошторис `part1_shotlist.md`.
+## Зроблено (06.10)
+- Новий режим ролей: CLAUDE.md, DECISIONS, MEMORY, CODEOWNERS (`* @dimaShelest`).
+- Змерджено #10 (схеми), #12 (хук: конфлікт autostash і попередження «не на main»), #13 (каркас CLI + облік витрат
+  з #11 після виправлень рев'ю). Відкритих PR немає. Тести — 215.
+- Захист: `guard_git.py` (PreToolUse) блокує force-push / `--force-with-lease` / `reset --hard` / `clean -f`.
+- LA GARGANTA: «¡Chuy, graba!» + C14; T1 = 32 с; групи `los_cuatro` / `los_siete`; приклад `refs.yaml`;
+  мовці реплік 3.06 і 8.17 у розкадровці.
+- Звіт 001 за листи A↔B №5–14 (`docs/comms/reports/001.md`).
+
+## Після 16.10
+- PR з автозвітами кожні 10 листів (`collab report-*`); Ollama на D: у B; dashboard; KPI; решта Issue #2
+  (pydantic-settings, заглушки етапів, runs/stage_runs) — якщо не знадобиться раніше.
+- `collab log` — вставляти за часом, а не зверху (merge=union переплутує порядок DECISIONS).
+- `fabrica/local_llm.py` — перевести на спільний `fabrica/config.py`.
 
 ## Чекає на людей
-- dimaShelest: кастинг облич і локацій у Gemini/Nano Banana (`docs/casting/la-garganta.md`), потім тест-пак Seedance.
-- dimaShelest: на Mac відкрити `/permissions` і переконатися, що правила `PowerShell(...)` після PR #7 не дають помилок.
-- Обоє: числа KPI в `PROJECT_BRIEF.md`; ліміти бюджету (`.env` → `BUDGET_*`): орієнтир ≈ $150–200 на частину лише за відео.
-- Кожен: ключі API у своєму `.env`.
+1. **Ліміти бюджету** в `.env` на Mac: `BUDGET_PER_EPISODE_USD`, `BUDGET_DAILY_USD`, `BUDGET_MONTHLY_USD`
+   (пропозиція A: 200 / 250 / 900; відео однієї частини ≈ $127–146).
+2. **Кастинг** (06–07.10): за `docs/casting/la-garganta.md`, першим — Mateo.
+3. **Оплата Seedance** і ключ `SEEDANCE_*` → тест-пак 08.10. **Ключ ElevenLabs** → етап voice.
+4. dimaShelest: на Mac відкрити `/permissions` — чи немає помилок від правил `PowerShell(...)`.
+
+## На перевірку для B (Windows)
+- `uv sync` → `uv run pytest -q` на свіжому `main` (очікувано 215 passed, 2 live-тести Ollama — skip).
+- `uv run fabrica --help | more` і `uv run fabrica shotlist la-garganta 1` у PowerShell: без кракозябр і помилок кодування.
+- У сесії Claude з кореня `D:\project\serie-factory`: `git push origin main --force-with-lease` має заблокувати
+  `guard_git.py`; `/permissions` → закрити #1.
