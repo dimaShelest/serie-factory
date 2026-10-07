@@ -1,0 +1,36 @@
+# Мінімальний англійський шар + групи для тестів fabrica/shotspec.py (не залежить від правок series/).
+groups:
+  los_cuatro: [vale, diego, sofia, mateo]
+  los_siete: [tomas, lupita, chuy, monica, beto, rosa_elena, ivan]
+en:
+  characters: {vale: {}, diego: {}, sofia: {}, mateo: {}, renata: {}}
+  members: {tomas: {}, lupita: {}, chuy: {}, monica: {}, beto: {}, rosa_elena: {}, ivan: {}}
+  states:
+    nosebleed: {image: "a thin dark-red line of blood from one nostril", video: "the thin line of blood stays"}
+    wet: {image: "soaked hair and clothes", video: "hair and clothes stay soaked and dripping"}
+  locations:
+    mina:
+      base: "a dark mine entrance in a rocky mountainside"
+      time: night
+      variants:
+        dawn: {desc: "first sunrise light on the rocks", time: dawn}
+        tunnel: {desc: "a narrow mine tunnel with timber supports", replace: true}
+    casa_vale:
+      base: "a modest house"
+      time: night
+      variants:
+        living: {desc: "a modest living room", replace: true, time: night}
+        living_day: {desc: "a modest living room by day", replace: true, time: day}
+    casa_minero:
+      base: "an old adobe house"
+      time: night
+      variants:
+        ceiling: "all furniture stuck upside-down to the ceiling"
+    archivo:
+      base: "a dusty municipal archive"
+      time: day
+    cafe:
+      base: "a small café"
+      time: day
+      variants:
+        glass: {desc: "thousands of glass shards hang in mid-air"}

@@ -1,0 +1,22 @@
+# Старий оверлей v1 (шот → composition / action / camera / light / variant / people / framing).
+"1.07":
+  variant: tunnel
+  people: [{id: beto, state: wet}]
+  framing: Extreme close-up
+  composition: In the flashlight beam a soaked pale young man's face is right in front of the lens.
+  action: The face is suddenly there in the beam, completely still; the camcorder jolts back.
+  camera: handheld VHS camcorder, a sharp jolt backwards
+"4.03":
+  variant: dawn
+  people: [los_cuatro]
+  composition: The four young adults lie and sit on the rocky ground in front of the mine entrance.
+  action: The pebbles slowly drift and rotate in place.
+  camera: slow steady push-in
+"8.06":
+  variant: living
+  light: daylight through the window
+  people: [vale]
+  framing: Over the shoulder
+  composition: Over Vale's shoulder the small TV shows night footage of a house.
+  action: She watches the news in the dark.
+  camera: over-the-shoulder, static

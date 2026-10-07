@@ -1,0 +1,59 @@
+# Оверлей v2 для тестів: успадкування сцени, групи, репліки, first_last, перевизначення face.
+version: 2
+scenes:
+  "4":
+    time: dawn
+    variant: dawn
+    light: "warm low sunrise light through thin mist"
+    state: {vale: [nosebleed], diego: [nosebleed], sofia: nosebleed}
+    continuity: ["hundreds of small grey pebbles hang motionless in the air at different heights"]
+    sound: {ambience: ["soft mountain wind"]}
+  s08:
+    light: "the cold flicker of a small TV"
+shots:
+  "1.04":
+    people: []
+    frame: "Seven graduates stand frozen in the narrow tunnel, flashlights raised."
+    action: "Dust pours from the ceiling; every head turns upward."
+    variant: tunnel
+    lines: {1: {delivery: shout}}
+  "1.07":
+    beat: scare
+    variant: tunnel
+    people: [{id: beto, state: wet}]
+    frame: "In the flashlight beam a soaked pale face fills the frame."
+    action: "The camcorder jolts back sharply."
+    camera: {size: extreme close-up, move: handheld, shake: strong}
+  "4.03":
+    beat: establish
+    people: [{id: vale, view: back, screen: left}, mateo, los_cuatro]
+    frame: "The four lie and sit on the rocky ground in front of the mine entrance."
+    action: "The pebbles slowly drift and rotate in place; the four stay still, only breathing."
+    end_state: "The pebbles still hang in the air."
+    camera: {move: push_in, speed: very slow, target: "the four on the ground", endpoint: "the four filling the frame"}
+    sound: {sfx: ["a low rumble from the mountain"]}
+    continuity: ["the mine entrance stays dark"]
+  "4.04":
+    frame: "Sofía sits up on the rocks, glasses crooked."
+    action: "She wipes her nose with her sleeve and looks around."
+    lines: {1: {delivery: quiet_fear}}
+  "4.06":
+    mode: first_last
+    variant: null
+    frame: "Mateo sits apart on a rock, calm."
+    end_frame: "Mateo stands, his back to the camera, facing the mountain."
+    action: "He slowly stands up and turns toward the mountain."
+    face: none
+  "8.06":
+    variant: living
+    light: "daylight through the window"
+    people: [{id: vale, view: back}]
+    frame: "Over Vale's shoulder, a small TV shows a house with flashing police lights."
+    action: "The TV light flickers on the wall."
+  "8.12":
+    variant: living
+    frame: "Vale frozen, eyes on the mirror."
+    action: "She stops breathing."
+    lines: {1: {on_screen: false}}
+  "3.13":
+    notes: ["лише звук"]

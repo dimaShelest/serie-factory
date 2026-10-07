@@ -1,0 +1,179 @@
+# Лінт промптів — дані для fabrica/lint.py (docs/research/2026-10-07-generators.md §2.7, §6.11, §7.2).
+#
+# Список: label (підпис у повідомленні), kinds (image / video / voice), hint (рядок або {image: …, video: …}),
+#   terms — рядок | [рядки] | {term: рядок або [рядки], hint?, kinds?} | {re: регулярний вираз, show?, hint?, kinds?}
+#   (show — як показати збіг re; без нього — сам збіг),
+#   allow — фрази, які цей список не чіпає («label-less» — це якраз порада, а не магніт тексту).
+# Список із moves замість terms — «один рух камери в реченні <sentence>: …» (за замовчуванням Camera).
+# Збіг — ціле слово / фраза без урахування регістру («fast» ≠ «breakfast», «no» ≠ «nose»); пробіл і дефіс
+# у фразі взаємозамінні («pitch black» = «pitch-black»). Форми слова (boy / boys) пиши явно.
+# Порядок списків = порядок повідомлень; у списку — за першою появою в тексті.
+version: 1
+
+# Сталі фрази, які компілятор вставляє сам (DESIGN §7, prompt_en.video_constants / style / image_rules).
+# Маскуються перед УСІМА перевірками (і запереченнями, і «logo» в «No logo, no watermark.»).
+# Крапку в кінці можна не писати. Репліки в лапках ("…", “…”, {…}) маскуються завжди: іспанське «No» — не заперечення.
+whitelist:
+  phrases:
+    - "Single continuous shot, no cuts."
+    - "No subtitles, no on-screen text."
+    - "No subtitles."
+    - "No BGM; only ambience and action sounds."
+    - "No BGM; generate only environmental sounds and action sounds."
+    - "No BGM."
+    - "No audio."
+    - "No logo, no watermark."
+    - "no music"
+    - "the frame does not move"                        # «Static locked-off camera on a tripod; the frame does not move.»
+    - "dark areas stay clean without colour noise"     # style.low_light.video
+    - "dark areas stay clean without color noise"
+    - "no stabilization, no gimbal"                    # style.video_footage (vhs / phone)
+    - "no stabilization"
+    - "no gimbal"
+    - "no cinematic lighting"
+    - "there is no narration"                          # шот без реплік (§2.6)
+    - "no lettering, signs or logos"                   # image_rules
+    - "no panels, borders or captions"
+  patterns:
+    - 'continuous (?:shot|take), no cuts'
+    - 'eyes, not (?:her |his |their )?heads?'         # «dread = eyes, not head, turn toward the sound» (§6.7)
+    # подвійний замок режиму hold (§2.2 A): «she stays seated; she does not stand, turn, or leave frame»
+    - '(?:does|do) not stand, turn,? or leave(?: the)? frame'
+
+lists:
+  age_words:
+    label: вік
+    kinds: [image, video]
+    hint:
+      image: "явний дорослий вік: «adult man, 19» / «adult woman, 19»"
+      video: "без віку: роль + гардероб («the woman in the white blouse»)"
+    terms:
+      - [child, children, kid, kids, teen, teens, teenage, teenager, teenagers, preteen, adolescent, adolescents]
+      - [boy, boys, girl, girls, minor, minors, underage, youngster, youngsters]
+      - [schoolgirl, schoolgirls, schoolboy, schoolboys, student, students]
+      - term: school uniform
+        hint:
+          image: "«1994 graduation-day clothes: white blouse, dark slacks» або повсякденний одяг 1994"
+          video: "гардероб без школи: «the woman in the white blouse»"
+      - term: prepa student
+        hint:
+          image: "«an adult woman, 19, in 1994 graduation-day clothes»"
+          video: "роль + гардероб: «the woman in the white blouse»"
+      - term: [young, younger, youth, youths]
+        kinds: [video]
+
+  banned_video:
+    label: заборонено у відео
+    kinds: [video]
+    hint: "прибери"
+    terms:
+      - term: [photorealistic, photo realistic, hyperrealistic, hyper realistic,
+               real person, real people, photographic portrait]
+        hint: "прибери: обличчя тримає стартовий кадр / референс, а не слово"
+      - term: [8K, 4K, masterpiece, ultra-detailed, hyper-detailed]
+        hint: "прибери: якість задає resolution у payload, не текст"
+      - term: [grainy, VHS]
+        hint: "дефекти камери словами (style.video_footage); зерно — у пості"
+      - term: pitch black
+        hint: "«very dark but readable», тіні з деталями"
+      - term: [glow, glows, glowing, glowed, glimmer, glimmers, glimmering, glint, glints, glinting]
+        hint: "назви джерело світла, напрям і спад («the flashlight beam is the only light»)"
+      - term: fast
+        hint: "«fast» дає тремтіння: опиши фізику й ступінь («in one sudden motion», «sharply»)"
+
+  soft_video:
+    label: м'яко, не блок
+    kinds: [video]
+    hint: "краще «aerial flythrough»"
+    terms: [drone, drones, FPV]
+
+  homographs:
+    label: омонім
+    kinds: [video]
+    hint: "однозначне слово"
+    terms:
+      - term: tearing
+        hint: "«ripping» (тканина) або «tears well up» (сльози)"
+      - term: [shoot, shoots, shooting]
+        hint: "«film» / «record»; постріл не показуємо — звук у монтажі"
+      - term: [draw, draws]
+        hint: "«sketch» / «pull out» / «pull closed»"
+      - term: [break, breaks]
+        hint: "«shatter» / «crack» / «pause»"
+      - term: [pound, pounds]
+        hint: "«hammer» / «thud» / «beat hard»"
+      - term: [snap, snaps]
+        hint: "«crack» / «click» / «jerk»"
+
+  violence_raw:
+    label: насильство
+    kinds: [image, video]
+    hint: "наслідок і фізика замість дії («overturned chair, a dark smear trailing toward the shaft»)"
+    terms:
+      - [kill, kills, killed, killing, murder, murders, murdered, stab, stabs, stabbed, stabbing]
+      - [gore, gory, attack, attacks, attacked, attacking, shoot, shoots, shooting]
+      - [torture, tortured, mutilate, mutilated, mutilation, blood pool, pool of blood, wound, wounds, wounded]
+
+  param_leak:
+    label: параметр у тексті
+    kinds: [video]
+    hint: "прибери: це поле payload (aspect_ratio / resolution / duration / generate_audio)"
+    terms:
+      - ["16:9", "9:16", "4:3", "3:4", "21:9", "9:21", "720p", "480p", "1080p", "24fps", fps]
+      - [seconds long, second clip, second video, with audio]
+      - re: '--[a-z][\w-]*'
+        hint: "прапорці (--ar, --duration …) у промпті не працюють — лише поля payload"
+
+  negations:
+    label: заперечення
+    kinds: [video]
+    hint: "опиши позитивно («the doorway stays empty and black»); заперечення — лише фрази з whitelist"
+    terms: [not, "no", never, without, "don't", "doesn't", "didn't", "isn't", "aren't", "won't", "can't", cannot]
+
+  emotion_words:
+    label: емоція словом
+    kinds: [video]
+    hint: "опиши тіло"
+    terms:
+      - term: [afraid, scared, terrified, frightened, horrified]
+        hint: "опиши тіло: «her breath catches, shoulders rise, she steps back half a pace»"
+      - term: [nervous, anxious, worried]
+        hint: "опиши тіло: «fingers tapping, rapid breathing, evasive eyes»"
+      - term: panicked
+        hint: "опиши тіло: «breath shallow and quick, hands shaking around the flashlight»"
+      - term: sad
+        hint: "опиши тіло: «eyes lower, lips press together, shoulders sink»"
+      - term: angry
+        hint: "опиши тіло: «jaw clenches, nostrils flare»"
+      - term: happy
+        hint: "опиши тіло: «eyes crinkle, a small smile spreads»"
+
+  text_magnets:
+    label: текст у кадрі
+    kinds: [image, video]
+    hint: "без написів: «label-less» / «blank», текст — у пості"
+    allow: [label-less, logo-free, brand new]
+    terms:
+      - [newspaper headline, newspaper headlines, sign, signs, signage, label, labels, logo, logos, brand, brands]
+      - [poster text, caption, captions, subtitle, subtitles, news ticker, chyron, chyrons]
+      - [soda bottle, soda bottles, chips bag, chips bags]
+
+  multi_camera:
+    label: кілька рухів камери
+    kinds: [video]
+    hint: "один основний рух на шот (+ хіба «slightly handheld»); решту — окремим шотом"
+    sentence: Camera
+    moves:                       # форми одного руху; довші фрази збігаються першими («dolly zoom» ≠ dolly + zoom)
+      dolly zoom: [dolly zoom]
+      whip pan: [whip pan, whip pans, whip panning, whip]
+      push in: [push in, pushes in, pushing in, dolly in, dollies in, dollying in]
+      pull out: [pull out, pulls out, pulling out, pull back, pulls back, pulling back,
+                 dolly out, dollies out, dolly back]
+      pan: [pan, pans, panning, panned]
+      tilt: [tilt, tilts, tilting, tilted]
+      # track = follow (один рух); «following …» — ціль іншого руху («slow pan following the beam»), не рух
+      track: [track, tracks, tracking, tracked, follow, follows, follow shot]
+      orbit: [orbit, orbits, orbiting, arc, arcs, arcing]
+      crane: [crane, cranes, craning, craned]
+      dolly: [dolly, dollies, dollying]
+      zoom: [zoom, zooms, zooming, zoomed]

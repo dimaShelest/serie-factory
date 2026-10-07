@@ -1,8 +1,25 @@
 # Англійський шар біблії LA GARGANTA — те, що потрапляє в промпти (image / video / voice).
 # Зона A. id ті самі, що в bible.yaml; кількість ознак ДНК — та сама, що в bible.yaml (перевіряє tests/test_prompts.py).
 # Змінюєш тут → перегенеруй пакет (`uv run fabrica prompts la-garganta <набір>`): версія промпту зміниться.
+#
+# v2 (DESIGN §6, docs/research/2026-10-07-generators.md §2, §4, §7.2). Старі ключі (style.photo / video / footage,
+# rules, negative, uniform_1994, wet_ghost) ще читає поточний компілятор — не видаляти до переходу на v2.
+#   style.image / image_footage — Nano Banana (фото-стиль, кадр VHS / телефона); style.video_v2 / video_footage —
+#   Seedance (без «photorealistic», дефекти камери словами); style.low_light — чиста темрява (image / video).
+#   image_rules — сталі позитивні правила кадру; video_constants — сталі речення в кінці відео-промпту (whitelist лінту).
+#   states — стани людини (кров з носа, мокрий, пил …): image — опис у кадрі, video — рядок «стан лишається».
+#   characters / members: tag — хто це у відео (роль + 2 найпомітніші ознаки, без віку й імен, унікальний);
+#   adult — явна доросла фраза для зображень; voice_design — опис голосу у форматі ElevenLabs (дорослий вік).
+#   Вік у фразі adult — 19 для всіх молодих (запас від межі 18, §7.2); канонічний вік — у bible.yaml.
+#   members: look — обличчя, волосся, прикраси й фірмова річ (без виразу й без «школи»); mood — вираз для портрета
+#   1994; wardrobe_1994 — решта одягу (білий + темно-синій, без шкільної форми); wet — мокрий привид (дорослий,
+#   сумний, без гору; світло дає сцена, не портрет).
+#   locations: time (night | day | dawn | dusk) і framing плити; variants — {desc, replace, ref, framing, time,
+#   light, mood}: replace false = той самий кадр місця (база + стан, ref — плита), replace true = окремий кадр
+#   (опис самодостатній; ref — батьківська плита для узгодженості або null).
 
 style:
+  # ---- старі (компілятор v1)
   photo: >-
     Photorealistic cinematic still, shot on 35mm film, natural skin texture with visible pores, soft directional key
     light, muted desaturated palette with deep teal shadows and warm practical highlights, shallow depth of field,
@@ -12,15 +29,42 @@ style:
     highlights, natural motion, Mexican gothic horror atmosphere.
   portrait: >-
     Head-and-shoulders portrait, front-facing, eyes to camera, neutral dark grey studio background, soft even light.
-  sheet_background: Plain light-grey studio background, soft even light
+  sheet_background: plain light-grey seamless studio backdrop, soft even key light from camera left with gentle fill
   era_1994: >-
     Candid 35mm film snapshot from 1994, visible film grain, warm faded colors, slight on-camera flash look.
   footage:
     vhs: 1994 VHS camcorder footage, handheld, low resolution, slight video noise, no on-screen text or date stamp.
-    phone: Low-light smartphone video, handheld, grainy, slight digital noise, realistic phone footage.
-  original: Original character, not resembling any real person or celebrity.
+    phone: >-
+      Smartphone video, handheld, slight digital noise, realistic phone footage, a clean frame with no on-screen
+      interface, no recording icon and no timestamp.
+  original: An original fictional character, not resembling any real person.
+  # ---- v2
+  image: >-
+    Photorealistic 35mm film still from a slow-burn Mexican horror feature film: natural unretouched skin with visible
+    pores, true-to-life textures and materials, muted desaturated palette with deep teal shadows and warm practical
+    highlights, gentle shallow depth of field, clean low-noise image.
+  image_footage:
+    vhs: >-
+      A single frame from a 1994 home-video camcorder recording: handheld framing slightly off-level, wide lens, soft
+      focus, soft washed-out early-1990s colors; a clean image with no date stamp and no overlays.
+    phone: >-
+      A single frame from a smartphone video: handheld framing, phone-camera wide lens, natural available light; a
+      clean image with no interface, no recording icon and no timestamp.
+  video_v2: >-
+    Live-action horror film look, natural motion, natural skin texture, muted desaturated palette with deep teal
+    shadows and warm practical highlights.
+  video_footage:
+    vhs: >-
+      Handheld home-video camcorder look: moderate shake, imperfect framing, autofocus hunting, small exposure shifts;
+      no stabilization, no gimbal.
+    phone: "Handheld smartphone video: light natural shake, autofocus hunting; no stabilization."
+  low_light:
+    image: >-
+      Dim but readable exposure: the faces are caught by the motivated light and the shadows still hold detail; clean
+      low-noise image.
+    video: Clean low-noise image; dark areas stay clean without colour noise.
 
-# Правила під Seedance / Nano Banana — додаються в кожен промпт кадру.
+# Правила під Seedance / Nano Banana — додаються в кожен промпт кадру (v1).
 rules:
   - no text, letters, numbers, signs or logos anywhere in the frame
   - hands are never in close-up and stay natural with five fingers
@@ -28,14 +72,58 @@ rules:
   - no gore, no wounds, no blood except a thin trickle from the nose
   - every person is an adult (18+)
 
+# v1: жоден API негатив не приймає (Seedance, Nano Banana) — v2 негатив не шле. «child, minor» прибрано (§7.2: такі
+# токени лише чіпляють фільтр); «flicker» і «camera shake» прибрано — їх просять самі шоти (лампа, поштовх).
 negative:
   common: [text, letters, numbers, subtitles, watermark, logo, signage, extra fingers, deformed hands, hand close-up,
-           gore, wounds, blood pool, child, minor, cartoon, anime, 3d render, plastic skin, oversaturated colors]
-  video: [morphing, flicker, jitter, face distortion, sudden scene change, camera shake (unless handheld)]
+           gore, wounds, blood pool, cartoon, anime, 3d render, plastic skin, oversaturated colors]
+  video: [morphing, temporal instability, jitter, face distortion, sudden scene change]
+
+# v2: позитивні правила кадру для Nano Banana (негативного поля немає). Формулювання з «no …» — у whitelist лінту.
+image_rules:
+  - a clean frame with unmarked walls and surfaces, no lettering, signs or logos anywhere
+  - every object is plain and unbranded, with blank surfaces
+  - people's hands relaxed at medium distance, natural, five fingers
+  - every person is an adult
+  - only the people described appear in the frame
+  - a single full-bleed photograph, no panels, borders or captions
+
+# v2: сталі речення в кінці кожного відео-промпту (компілятор додає; лінт їх пропускає).
+video_constants:
+  - No subtitles, no on-screen text.
+
+# v2: стани людини для scene / shot `state`. image — у стартовий кадр; video — рядок у LOCK, що стан лишається.
+states:
+  nosebleed:
+    image: a thin dark-red line of blood running from the left nostril down to the upper lip
+    video: the thin line of blood under the nose stays
+  nosebleed_wiped:
+    image: a faint smear of wiped dark-red blood above the upper lip
+    video: the faint smear of blood above the lip stays
+  wet:
+    image: >-
+      soaked from head to toe: hair plastered and dripping, clothes dark and heavy with water, skin pale with a
+      grey-blue tint, fine grey mine dust on the face, normal human eyes, a quiet sorrowful expression with the mouth
+      closed
+    video: hair and clothes stay soaked and dripping
+  dusty:
+    image: a fine layer of pale grey rock dust on the hair, face and clothes
+    video: the grey dust on hair and clothes stays
+  exhausted:
+    image: a pale, drained face with dark shadows under the eyes and heavy eyelids
+    video: the face stays pale and drained, the shoulders low
+  sweaty:
+    image: small beads of sweat on the temples and forehead
+    video: the beads of sweat on the temples stay
+  wet_shoulder:
+    image: a dark wet patch on the right shoulder of the shirt
+    video: the dark wet patch on the right shoulder stays
 
 characters:
   vale:
     who: a 19-year-old Mexican young woman (adult)
+    adult: an adult Mexican woman, 19, with the grown features of a woman in her early twenties
+    tag: the woman in the oversized black denim jacket with a high black ponytail
     dna:
       - black straight hair pulled into a high messy ponytail with loose strands
       - warm olive-brown skin, thick straight dark eyebrows
@@ -48,9 +136,16 @@ characters:
       - "raw terror, eyes wide, frozen"
       - "quiet determination, chin up"
     voice: low, husky young female voice; fast and sharp when angry; Mexican Spanish accent
+    voice_design: >-
+      Native Spanish (Mexico City), central Mexican accent with no Castilian features. Female, early 20s. Perfect
+      quality. Persona: guarded, defiant leader of her friends. Emotion: tense, sharp, restrained. Low, slightly husky
+      voice with a dry edge; short quiet phrases that turn fast and clipped when she is angry; close-mic, dry room, no
+      background noise or reverb.
     preview_es: "No me digas que me calme. Ya sé lo que vi en esa mina, y no estoy loca. Si nadie más va a buscar la verdad, la voy a buscar yo."
   diego:
     who: a 19-year-old Mexican young man (adult)
+    adult: an adult Mexican man, 19, with the grown features of a man in his early twenties
+    tag: the man in the bright yellow windbreaker and backwards red cap
     dna:
       - a red baseball cap worn backwards
       - curly chestnut-brown hair poking out from under the cap
@@ -63,24 +158,39 @@ characters:
       - "screaming in pure terror"
       - "awe, mouth open, looking up"
     voice: bright, fast young male voice with a smile in it, cracks into a shout; Mexican Spanish accent
+    voice_design: >-
+      Native Spanish (Mexico City), central Mexican accent with no Castilian features. Male, early 20s. Perfect
+      quality. Persona: playful joker who films everything. Emotion: excited, nervous, quick. Bright, slightly raspy
+      voice with a smile in it, fast conversational pace, cracks upward into a shout when scared; close-mic, no
+      background noise or reverb.
     preview_es: "¡No manches! ¿Estás grabando esto? Esto va directo a mis historias… bueno, ya, ya me calmo, pero neta, mira eso."
   sofia:
     who: an 18-year-old Mexican young woman (adult)
+    adult: an adult Mexican woman, 19, with the grown features of a woman in her early twenties
+    tag: the woman with round metal glasses and a burgundy cardigan
     dna:
       - round thin metal-frame glasses
       - long dark hair in a single braid over her right shoulder
       - a burgundy knitted cardigan
       - a canvas tote bag strap across her chest
-    wardrobe: burgundy knitted cardigan over a white collared blouse, long skirt or jeans
+    # «long skirt or jeans» давало різний одяг у різних кадрах — обрано одне.
+    wardrobe: burgundy knitted cardigan over a white collared blouse, a long dark skirt, flat ankle boots
     expression: focused, analytical, slightly skeptical, light brown skin
     emotions:
       - "deep concentration, eyes lowered as if reading"
       - "shock, eyes wide, lips parted"
       - "quiet sorrow, eyes wet"
     voice: clear, even, measured young female voice that speeds up with excitement; Mexican Spanish accent
+    voice_design: >-
+      Native Spanish (Mexico City), central Mexican accent with no Castilian features. Female, early 20s. Perfect
+      quality. Persona: careful, analytical bookworm. Emotion: focused, calm, curious. Clear, even, mid-pitched voice
+      with crisp diction and a measured pace that speeds up slightly when she discovers something; close-mic, no
+      background noise or reverb.
     preview_es: "Esto no es una coincidencia. Siete nombres, una sola noche, y la misma hora en todos los relojes del pueblo. Alguien sabe qué pasó."
   mateo:
     who: an 18-year-old Mexican young man (adult)
+    adult: an adult Mexican man, 19, with the grown features of a man in his early twenties
+    tag: the pale man in the open blue-grey plaid flannel shirt
     dna:
       - short dark hair parted in the middle in a 1990s style, always slightly damp
       - very pale skin with a faint grey undertone, dark circles under his eyes
@@ -92,24 +202,41 @@ characters:
       - "deep sadness"
       - "a faint, unsettling half-smile"
     voice: quiet, even, slightly husky young male voice, pauses before answering; Mexican Spanish accent
+    voice_design: >-
+      Native Spanish (Mexico City), central Mexican accent with no Castilian features. Male, early 20s. Perfect
+      quality. Persona: quiet, old-fashioned newcomer. Emotion: calm, distant, melancholic. Soft, low, slightly husky
+      voice; slow, even pacing with a short pause before each answer; close-mic, no background noise or reverb.
     preview_es: "Yo me sé el camino. No tengan miedo, la montaña no muerde… casi nunca. Vamos, antes de que se haga más tarde."
   renata:
     who: a 44-year-old Mexican woman, small-town police officer
+    adult: an adult Mexican woman, 44
+    tag: the policewoman in the navy-blue uniform shirt with a tight low bun
+    tag_off_duty: the woman with a tight low bun and a grey streak, in a dark jacket
     dna:
       - dark hair in a tight low bun with a single grey streak at her left temple
       - a navy-blue municipal police uniform shirt
       - a deep vertical frown line between her brows, tired but sharp eyes
       - a small old silver oval locket on a thin chain at her neck
-    wardrobe: navy-blue municipal police uniform; off duty a dark jacket, the same locket
+    # Частина 1–2 — на службі. Поза службою — wardrobe_off_duty (явно в шоті); на грудях нічого читабельного.
+    wardrobe: >-
+      a plain navy-blue municipal police uniform shirt with a blank chest and unmarked shoulder patches, dark trousers,
+      the same locket
+    wardrobe_off_duty: a dark jacket over a plain dark top, dark trousers, the same silver locket
     expression: stern, controlled, tan skin
     emotions:
       - "cold professional authority"
       - "grief breaking through, eyes wet, lips trembling"
       - "hard resolve"
     voice: low, dry, restrained female voice in her forties; Mexican Spanish accent
+    voice_design: >-
+      Native Spanish (Mexico City), central Mexican accent with no Castilian features. Female, mid 40s. Perfect
+      quality. Persona: tired small-town police officer. Emotion: controlled, dry, stern. Low, dry, restrained voice
+      with a slight roughness; steady, unhurried pace and short sentences; close-mic, no background noise or reverb.
     preview_es: "No toquen nada. Llevo treinta y dos años esperando una respuesta, y esta vez nadie me va a decir que fue un accidente."
   saldivar:
     who: a 62-year-old Mexican man, beloved small-town mayor
+    adult: an adult Mexican man, 62
+    tag: the man in the cream guayabera and light straw cowboy hat
     dna:
       - thick grey hair combed back and a full grey mustache
       - a light straw texana cowboy hat
@@ -122,92 +249,323 @@ characters:
       - "cold quiet menace, smile gone"
       - "sudden fear, color drained from his face"
     voice: warm, velvety, fatherly male voice in his sixties with steel underneath; Mexican Spanish accent
+    voice_design: >-
+      Native Spanish (Mexico City), central Mexican accent with no Castilian features. Male, early 60s. Perfect
+      quality. Persona: beloved small-town mayor. Emotion: warm, fatherly, controlled. Deep, warm, velvety voice with a
+      calm, persuasive pace and a hard, cold edge under the warmth; close-mic, no background noise or reverb.
     preview_es: "Renata, mija, deja descansar a los muertos. Este pueblo ya sufrió bastante, y yo nomás quiero que vuelva a tener trabajo."
 
 # Сімка 1994 (supporting.los_siete.members). Обличчя Tomás = Mateo.
+# v1 будує «{who}: {look}; school uniform: {uniform_1994}»; v2 — adult + look + wardrobe_1994 (+ mood | wet).
 members:
-  tomas: {who: an 18-year-old Mexican prepa graduate in 1994 (adult), look: "same face as the Mateo reference, alive and healthy: natural warm skin tone, middle-parted hair, blue-grey plaid flannel shirt over the school uniform, smiling at a friend off camera"}
-  lupita: {who: an 18-year-old Mexican prepa graduate in 1994 (adult), look: "curly dark hair with 90s bangs, large round hoop earrings, laughing, lively"}
-  chuy: {who: an 18-year-old Mexican prepa graduate in 1994 (adult), look: "thick-framed glasses, thin teenage mustache, holding a generic 1990s VHS camcorder on his shoulder (no brand logos)"}
-  monica: {who: an 18-year-old Mexican prepa graduate in 1994 (adult), look: "tall, straight hair held back with a headband, dark 90s lipstick, confident"}
-  beto: {who: an 18-year-old Mexican prepa graduate in 1994 (adult), look: "buzz-cut hair, broad shoulders, a small scar on his chin, grinning"}
-  rosa_elena: {who: an 18-year-old Mexican prepa graduate in 1994 (adult), look: "two dark braids, a small gold cross on a chain, shy gentle smile"}
-  ivan: {who: an 18-year-old Mexican prepa graduate in 1994 (adult), look: "shoulder-length grunge hair, denim jacket over the school uniform, relaxed"}
+  tomas:
+    who: an 18-year-old Mexican prepa graduate in 1994 (adult)
+    adult: an adult Mexican man, 19, with the grown features of a man in his early twenties
+    tag: the man in the open blue-grey plaid flannel shirt over a white shirt
+    look: >-
+      the same face as the Mateo reference, alive and healthy: natural warm skin tone, short dark hair parted in the
+      middle, a blue-grey plaid flannel shirt worn open
+    mood: smiling at a friend off camera
+    wardrobe_1994: a white button-up shirt under the open flannel, dark trousers, worn white sneakers
+    wet: >-
+      the same adult man drowned in the flooded mine: middle-parted hair plastered flat and dripping, the flannel and
+      white shirt soaked dark and clinging, skin pale with a grey-blue tint, fine grey mine dust on his face, normal
+      human eyes, a quiet sorrowful expression with the mouth closed
+  lupita:
+    who: an 18-year-old Mexican prepa graduate in 1994 (adult)
+    adult: an adult Mexican woman, 19, with the grown features of a woman in her early twenties
+    tag: the woman with curly bangs and large round hoop earrings
+    look: curly dark hair with full early-1990s bangs, large round gold hoop earrings, a round cheerful face
+    mood: laughing, lively
+    wardrobe_1994: a white blouse, a navy V-neck sweater, high-waisted dark jeans, white sneakers
+    wet: >-
+      the same adult woman drowned in the flooded mine: her curls and bangs soaked flat and dripping, the white blouse
+      and navy sweater dark and heavy with water, skin pale with a grey-blue tint, fine grey mine dust on her face,
+      normal human eyes, a quiet sorrowful expression with the mouth closed
+    voice_design: >-
+      Native Spanish (Mexico City), central Mexican accent with no Castilian features. Female, early 20s. Perfect
+      quality. Persona: lively joker of her group of friends. Emotion: playful, giddy, loud. Bright, ringing voice
+      full of laughter, quick pace, rises easily into a cheerful shout; close-mic, no background noise or reverb.
+    preview_es: "¡Chuy, graba, graba! Esto va para el anuario. Ándale, no seas miedoso, nadie nos va a cachar aquí adentro… ¿verdad que no?"
+  chuy:
+    who: an 18-year-old Mexican prepa graduate in 1994 (adult)
+    adult: an adult Mexican man, 19, with the grown features of a man in his early twenties
+    tag: the man in thick-framed glasses with a camcorder on his shoulder
+    look: >-
+      thick-framed glasses, a thin wispy mustache, short neat hair, a plain 1990s shoulder camcorder with blank
+      unmarked surfaces
+    mood: a relaxed half-smile
+    wardrobe_1994: a white button-up shirt with rolled sleeves, a navy sweater vest, dark trousers
+    wet: >-
+      the same adult man drowned in the flooded mine: hair soaked and dripping, water running down his thick-framed
+      glasses, the white shirt and navy vest dark and heavy with water, skin pale with a grey-blue tint, fine grey mine
+      dust on his face, normal human eyes, a quiet sorrowful expression with the mouth closed
+  monica:
+    who: an 18-year-old Mexican prepa graduate in 1994 (adult)
+    adult: an adult Mexican woman, 19, with the grown features of a woman in her early twenties
+    tag: the woman with a wide black headband and dark lipstick
+    look: >-
+      straight dark shoulder-length hair held back with a wide black headband, dark early-1990s lipstick, a tall slim
+      build
+    mood: confident, chin up
+    wardrobe_1994: a white blouse with a wide collar, a fitted navy cardigan, dark slacks, black loafers
+    wet: >-
+      the same adult woman drowned in the flooded mine: straight hair soaked and dripping under the black headband,
+      the white blouse and navy cardigan dark and heavy with water, skin pale with a grey-blue tint, fine grey mine
+      dust on her face, normal human eyes, a quiet sorrowful expression with the mouth closed
+    voice_design: >-
+      Native Spanish (Mexico City), central Mexican accent with no Castilian features. Female, early 20s. Perfect
+      quality. Persona: confident, wary one of the group. Emotion: alert, uneasy, firm. Slightly low, steady voice
+      that drops to a tense near-whisper when she hears something; close-mic, no background noise or reverb.
+    preview_es: "¿Oyeron eso? Cállense tantito. Les dije que no era buena idea meternos aquí de noche. Algo se movió allá atrás, se los juro."
+  beto:
+    who: an 18-year-old Mexican prepa graduate in 1994 (adult)
+    adult: an adult Mexican man, 19, with the grown features of a man in his early twenties
+    tag: the broad-shouldered man with a buzz cut
+    look: a buzz cut, broad shoulders, a small pale scar on his chin
+    mood: grinning
+    wardrobe_1994: a white button-up shirt with the sleeves pushed up, a navy V-neck sweater, dark trousers
+    wet: >-
+      the same adult man drowned in the flooded mine: his buzz cut and face wet, the white shirt and navy sweater
+      soaked dark and dripping, skin pale with a grey-blue tint, fine grey mine dust on his face, normal human eyes, a
+      quiet sorrowful expression with the mouth closed
+  rosa_elena:
+    who: an 18-year-old Mexican prepa graduate in 1994 (adult)
+    adult: an adult Mexican woman, 19, with the grown features of a woman in her early twenties
+    tag: the woman with two long dark braids and a small gold cross
+    look: two long dark braids, a small gold cross on a thin chain, a soft round face
+    mood: a shy gentle smile
+    wardrobe_1994: a white blouse buttoned to the collar, a long navy cardigan, dark slacks, flat black shoes
+    wet: >-
+      the same adult woman drowned in the flooded mine: both braids soaked and dripping, the white blouse and long
+      navy cardigan dark and heavy with water, skin pale with a grey-blue tint, fine grey mine dust on her face, normal
+      human eyes, a quiet sorrowful expression with the mouth closed
+  ivan:
+    who: an 18-year-old Mexican prepa graduate in 1994 (adult)
+    adult: an adult Mexican man, 19, with the grown features of a man in his early twenties
+    tag: the man with shoulder-length hair in a faded denim jacket
+    look: shoulder-length messy grunge hair, light stubble, a faded denim jacket
+    mood: relaxed, half-lidded eyes
+    wardrobe_1994: a white button-up shirt untucked under the denim jacket, dark jeans, worn boots
+    wet: >-
+      the same adult man drowned in the flooded mine: shoulder-length hair soaked into dark strands and dripping, the
+      denim jacket and white shirt soaked dark and heavy, skin pale with a grey-blue tint, fine grey mine dust on his
+      face, normal human eyes, a quiet sorrowful expression with the mouth closed
 
-uniform_1994: white button-up shirt, navy V-neck sweater or vest, dark trousers or pleated navy skirt, early-1990s hairstyle
+# v1: одяг сімки (компілятор v1 додає до кожного). Спідниці для чоловіків прибрано; v2 — members.*.wardrobe_1994.
+uniform_1994: white button-up shirt or blouse, navy V-neck sweater, dark trousers or slacks, early-1990s hairstyle
+# v1: мокрий вигляд без фону й світла (світло дає сцена) і без слів «gore / wounds» (лінт); v2 — members.*.wet.
 wet_ghost: >-
-  soaked, hair dripping, skin pale with a grey-blue tint, fine mine dust on the face, eyes normal (not monstrous),
-  quiet and sad expression, very dark background lit by a single cold flashlight beam. No gore, no wounds, no blood.
+  soaked: hair and clothes dripping with water, skin pale with a grey-blue tint, fine grey mine dust on the face,
+  normal human eyes, a quiet sorrowful expression with the mouth closed.
+
+# Другорядні з bible.yaml supporting (без refs): напарник Renata — лише спина й голос; ведуча — лише голос.
+# Компілятор v1 їх не читає; v2 — за потреби (одна фіксована зовнішність напарника в 7.08 / 7.11 / 7.12, ч.2 6.07–6.08).
+supporting:
+  policia_companero:
+    adult: an adult Mexican man, 48
+    tag: the heavy-set policeman with short greying hair
+    look: heavy-set, broad back and thick neck, short greying hair
+    wardrobe: >-
+      a plain navy-blue municipal police uniform shirt with a blank back and unmarked shoulder patches, dark trousers
+    voice_design: >-
+      Native Spanish (Mexico City), central Mexican accent with no Castilian features. Male, late 40s. Perfect quality.
+      Persona: tired small-town policeman. Emotion: weary, flat, matter-of-fact. Quiet, low, slightly mumbled everyday
+      voice with an unhurried pace; close-mic, no background noise or reverb.
+    preview_es: "Dicen que el reloj se paró otra vez. Igual que en el noventa y cuatro. Yo nomás digo lo que anda diciendo la gente, Renata."
+  conductora_noticias:
+    voice_design: >-
+      Native Spanish (Mexico City), neutral central Mexican broadcast diction with no Castilian features. Female, late
+      30s. Perfect quality. Persona: professional TV news anchor. Emotion: composed, neutral, serious. Crisp, clear voice
+      with even broadcast pacing and precise articulation; close-mic, no background noise or reverb.
+    preview_es: "Buenas noches. En San Isidro de la Sierra, las autoridades encontraron sin vida a don Rufino Castillo, antiguo minero de La Garganta. La policía municipal no ha dado más detalles."
 
 locations:
-  # Стан (variant): рядок або {desc, light, mood, replace}. replace: true — інше приміщення чи ракурс (база не
-  # додається); без replace — стан того самого місця (база + стан).
+  # Стан (variant): рядок або {desc, light, mood, replace, ref, framing, time}. replace: true — інше приміщення чи
+  # ракурс (база не додається, опис самодостатній); без replace — стан того самого місця (база + стан).
+  # Положення стрілок 3:17 (без цифр): хвилинна — на другій малій поділці нижче мітки «три»; годинна — трохи нижче
+  # мітки «три», над хвилинною; майже збігаються.
   mina:
     base: >-
       the entrance (bocamina) of an abandoned silver mine cut into a steep rocky mountainside above a small Mexican
       colonial mining town; old wooden support beams, rusted rail tracks leading into darkness, a rusty open gate
     light: night, cold moonlight, distant warm town lights far below
     mood: oppressive darkness, the mountain hums, water drips
+    time: night
+    framing: wide establishing shot
     variants:
       dawn:
         desc: the same entrance at dawn, low mist, small pebbles scattered on the ground
         light: dawn, pale golden sunrise light through low mist
         mood: eerie stillness after a night nobody remembers
+        ref: mina.plate
+        framing: wide establishing shot
+        time: dawn
+      # Під землею денного світла немає: night = «завжди темно», хоч би котра була година.
       tunnel:
         replace: true
         desc: a narrow abandoned silver-mine tunnel with wet rough rock walls, old timber supports and rusted rail tracks
         light: total darkness except handheld flashlight beams cutting through floating dust
         mood: claustrophobic, the mountain hums, water drips
+        ref: null
+        framing: medium wide shot down the tunnel
+        time: night
       flooded:
         replace: true
         desc: the lower flooded tunnel of the mine with knee-deep still black water, a dripping rock ceiling and old timber supports
         light: darkness, flashlight beams reflecting on the black water
         mood: cold, still, something waits under the water
+        ref: mina.tunnel
+        framing: medium wide shot down the tunnel
+        time: night
       collapse:
         replace: true
         desc: a mine tunnel blocked by a wall of fallen boulders
         light: darkness, flashlight beams through hanging dust
         mood: trapped, the mountain settles
+        ref: mina.tunnel
+        framing: medium wide shot down the tunnel
+        time: night
+      # 7.17 (нічне містечко під горою), ч.2 4.08 і ч.1 8.07 (гора у вікні) — вид здалеку, не вхід.
+      town_view:
+        replace: true
+        desc: >-
+          the small colonial mining town at night seen from a distance: low rooftops with scattered warm windows and
+          yellow streetlights, the parish church and the stone clock tower among them, and above the town the black
+          silhouette of the steep mountain against a deep blue night sky
+        light: night, deep blue sky, scattered warm town lights
+        mood: a sleeping town under the mountain
+        ref: null
+        framing: extreme wide shot
+        time: night
   plaza_reloj:
+    # Авто прибрано з бази (воно і стоїть, і висить, і падає) — тепер це стани sedan / sedan_crashed.
     base: >-
       a small Mexican colonial mining-town plaza: cobblestones, colorful facades with dark windows, a parish church,
-      a stone clock tower with a large white analog clock face with simple bar markers and no numerals, an old 1980s
-      sedan parked (no brand logos)
+      a stone clock tower with a large white analog clock face with simple bar markers and no numerals
     light: night, warm yellow streetlights
     mood: a sleepy town holding its breath
+    time: night
+    framing: wide establishing shot
     variants:
       street:
         replace: true
         desc: a narrow cobblestone street with colorful colonial facades leading to the town plaza
         light: night, warm yellow streetlights
-      clock_317: >-
-        close view of the clock face; the hour hand and the minute hand both point almost exactly at the 3 o'clock
-        position, nearly overlapping (time 3:17)
+        ref: null
+        framing: wide shot down the street
+        time: night
+      sedan:
+        desc: >-
+          an old boxy 1980s four-door sedan with faded maroon paint and plain unbadged bodywork parked on the
+          cobblestones near the clock tower, the only car in the plaza
+        ref: plaza_reloj.plate
+        framing: wide establishing shot
+        time: night
+      sedan_crashed:
+        desc: >-
+          the same old boxy 1980s maroon sedan lying crookedly on the cobblestones near the clock tower after a
+          two-metre fall: the roof dented, the windows shattered, small pieces of glass scattered around it, a thin haze
+          of dust in the air, the only car in the plaza
+        ref: plaza_reloj.plate
+        framing: wide establishing shot
+        time: night
+      # 6.04 (MIDPOINT), 7.16, ч.2 4.04: окремий крупний план; плита площі — лише щоб циферблат був той самий.
+      clock_317:
+        replace: true
+        desc: >-
+          a close view of the large white analog clock face on the old stone clock tower of the plaza: simple black bar
+          markers and a ring of small minute ticks, no numerals, weathered stone around the dial; the long black minute
+          hand points at the second small tick below the three o'clock bar marker and the short black hour hand points
+          just below the three o'clock marker, slightly above the minute hand, so the two hands nearly overlap
+        light: night, the white clock face softly backlit from inside, warm yellow streetlight from below on the stone
+        mood: time has stopped
+        ref: plaza_reloj.plate
+        framing: close-up of the clock face, slight low angle
+        time: night
+      # 6.06: другий годинник — у вітрині, теж став на 3:17.
+      clock_shop:
+        replace: true
+        desc: >-
+          a dark shop window on a small colonial plaza at night: behind the glass, a small round analog wall clock with
+          a plain white face, simple black bar markers and no numerals hangs on a dark wooden back wall; the long minute
+          hand points at the second small tick below the three o'clock bar marker and the short hour hand points just
+          below the three o'clock marker, slightly above the minute hand, so the two hands nearly overlap; faint
+          reflections of yellow streetlights on the glass
+        light: night, yellow streetlight falling on the glass, the shop dark inside
+        mood: time has stopped here too
+        ref: null
+        framing: close-up through the shop window
+        time: night
   casa_minero:
     base: >-
       a humble old miner's one-room house: whitewashed adobe walls, a single metal bed, wooden table and chairs, an oil
       lamp, a crucifix, a framed old group photograph on the wall
     light: night, cold flashlight light, red-blue police lights flickering through the small window
     mood: wrongness, silence
+    time: night
+    framing: wide shot of the room from the doorway
     variants:
       exterior:
         replace: true
         desc: >-
-          the outside of an old miner's whitewashed adobe house on a dirt street, a police pickup with flashing lights
-          parked in front (no markings, no text), no crowd
+          the outside of an old miner's whitewashed adobe house on a dirt street, a plain white police pickup truck
+          with a red-and-blue light bar and unmarked doors parked in front, no crowd
         light: night, flashing red and blue police lights
+        ref: null
+        framing: wide exterior shot from across the street
+        time: night
       patrol_car:
         replace: true
-        desc: the inside of a parked municipal patrol car on a dirt street, dark dashboard, the mountain visible through the windshield
-        light: night, faint dashboard glow and distant police lights
-      ceiling: >-
-        all the furniture — bed, table, chairs, lamp — is stuck upside-down to the ceiling, defying gravity; wet bare
-        footprints on the dusty floor lead from the door to where the bed used to stand; water drips from the bed on
-        the ceiling
+        desc: >-
+          the dark cab of a parked plain white municipal police pickup truck on a dirt street: a worn dashboard with an
+          old two-way radio, the windshield showing the dark street and the black silhouette of the mountain above the
+          town
+        light: night, faint dashboard light and distant red and blue police lights
+        ref: null
+        framing: medium shot from the passenger seat
+        time: night
+      # Окремий опис (не база + стан): інакше меблі і на підлозі, і на стелі. Плита бази — для тих самих стін.
+      ceiling:
+        replace: true
+        desc: >-
+          a humble old miner's one-room house with whitewashed adobe walls, a small window, a crucifix and a framed old
+          group photograph on the wall; all of its furniture — a single metal bed, a wooden table, two chairs and an
+          oil lamp — is stuck upside-down to the low ceiling, defying gravity, while the dusty floor below is
+          completely bare; wet bare footprints lead across the floor from the door to the empty spot under the bed;
+          drops of water hang from the bed frame on the ceiling
+        ref: casa_minero.plate
+        framing: wide shot of the room from the doorway, the ceiling and the bare floor both in frame
+        time: night
+      # 7.02, 7.04, 7.13, 7.14 — до розкриття 7.03: стеля поза кадром, підлога вже порожня (меблі нагорі).
+      room_before:
+        replace: true
+        desc: >-
+          a humble old miner's one-room house seen at eye level with its ceiling out of frame: whitewashed adobe walls,
+          a small window, a crucifix and a framed old group photograph on the wall, a completely bare dusty floor, wet
+          bare footprints leading across the floor from the door to an empty rectangle of cleaner floor where the bed
+          used to stand
+        ref: casa_minero.ceiling
+        framing: medium wide shot at eye level, the ceiling out of frame
+        time: night
+      # ч.2 6.04: годинник на стіні іншого дому шахтаря теж став на 3:17.
+      clock_wall:
+        replace: true
+        desc: >-
+          a close view of a plain round analog wall clock with a white face, simple black bar markers and no numerals,
+          hanging on a whitewashed adobe wall; the long minute hand points at the second small tick below the three
+          o'clock bar marker and the short hour hand points just below the three o'clock marker, slightly above the
+          minute hand, so the two hands nearly overlap
+        light: night, a cold flashlight beam on the clock, red and blue police light on the wall
+        ref: null
+        framing: close-up of the clock
+        time: night
   casa_vale:
     base: a small cramped bathroom in a modest Mexican house, an old mirror with worn silvering above a white sink, tiled wall
     light: night, a single bare bulb
     mood: loneliness, a threat behind your back
+    time: night
+    framing: medium wide shot from the doorway, the mirror seen at an angle
     variants:
       living:
         replace: true
@@ -215,38 +573,88 @@ locations:
           a modest living room in a Mexican house: an old sofa, a wooden table, a small TV on a stand, a window
           showing the dark mountain
         light: night, a single warm lamp
+        ref: null
+        framing: wide shot of the room
+        time: night
       kitchen:
         replace: true
         desc: a small kitchen in a modest Mexican house, a glass of water on the table
         light: night, dim light from the hallway
+        ref: null
+        framing: medium wide shot of the kitchen
+        time: night
+      # 5.01–5.08 (день): та сама вітальня й кухня вдень — нічна плита як ref, щоб планування збігалося.
+      living_day:
+        replace: true
+        desc: >-
+          a modest living room in a Mexican house by day: an old sofa, a wooden table, a small TV on a stand with a
+          dark screen, a window showing the sunlit mountain
+        light: day, soft daylight through the window, the lamp switched off
+        mood: giddy disbelief in an ordinary room
+        ref: casa_vale.living
+        framing: wide shot of the room
+        time: day
+      kitchen_day:
+        replace: true
+        desc: >-
+          a small kitchen in a modest Mexican house by day: a wooden table with a glass of water on it, a small window
+          letting in daylight
+        light: day, soft daylight through the small window
+        mood: giddy disbelief in an ordinary room
+        ref: casa_vale.kitchen
+        framing: medium wide shot of the kitchen
+        time: day
   archivo:
     base: >-
       a municipal archive and newspaper library in an old colonial building: tall wooden shelves of bound newspaper
       volumes, a long wooden reading table
     light: day, dust floating in beams of daylight from high windows
     mood: silence, discovery
+    time: day
+    framing: wide shot down the aisle between the shelves
   cafe:
-    base: a small café on a colonial town plaza, large windows facing the plaza, wooden tables, a counter with an espresso machine (no logos)
+    base: a small café on a colonial town plaza, large windows facing the plaza, wooden tables, a counter with a plain chrome espresso machine
     light: warm daylight
     mood: ordinary day about to break
+    time: day
+    framing: wide shot of the café interior
     variants:
-      glass: every window has just exploded inward and thousands of glass shards hang motionless in mid-air, sparkling
+      glass:
+        desc: every window has just exploded inward and thousands of glass shards hang motionless in mid-air, sparkling
+        ref: cafe.plate
+        framing: wide shot of the café interior
+        time: day
+      # ч.2 5.10–5.11: після «дощу» — рами порожні, скло на підлозі.
+      glass_fallen:
+        desc: >-
+          every window frame is empty, thousands of small glass shards lie scattered across the floor and the tables,
+          catching the daylight
+        ref: cafe.plate
+        framing: wide shot of the café interior
+        time: day
   cuarto_diego:
     base: the bedroom of a 19-year-old, posters with no readable text, an unmade bed, a laptop on a desk, a low plaster ceiling with a ceiling lamp
     light: night, cold blue light from the laptop screen
     mood: alone with something on the screen
+    time: night
+    framing: wide shot of the room
   presidencia:
     base: >-
       a mayor's office in an old colonial municipal building: dark wooden desk, tall shuttered windows, warm desk lamp,
       old framed photographs on the wall including one large framed group photo of mine workers
     light: day, warm lamps
     mood: power and polish
+    time: day
+    framing: wide shot of the office
     variants:
       police:
         replace: true
         desc: a small-town police station office, an old desk with paper files, a two-way radio, a corkboard with photos and no readable text
         light: cold fluorescent light
         mood: tired routine
+        ref: null
+        framing: wide shot of the office
+        time: night
   panteon:
     base: >-
       a Mexican village cemetery during Día de Muertos: hundreds of candles, graves covered with bright orange
@@ -254,3 +662,5 @@ locations:
       covered in marigolds
     light: night, warm candlelight against deep blue night
     mood: luminous grief
+    time: night
+    framing: wide establishing shot

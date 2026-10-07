@@ -1,0 +1,39 @@
+# Тест-пак з новими ключами: frame, camera-словник, end_state, sound, people з view / screen, mode, tier.
+version: 2
+tests:
+  - id: T1
+    title: Левітація каміння (нові ключі)
+    frame:
+      location: mina
+      variant: dawn
+      time: dawn
+      people: [{id: vale, view: back, screen: left}, {id: los_cuatro}]
+      frame: Four adults lie on the rocky ground; hundreds of small grey pebbles hang in the air around them.
+      camera: {size: wide, angle: eye level, lens_mm: 35}
+      continuity: ["the pebbles keep their exact shape and size"]
+    videos:
+      - id: video
+        tier: hero
+        duration_s: 5.5
+        action: The pebbles slowly drift and rotate in place; the four stay still, only breathing.
+        end_state: The pebbles still hang in the air.
+        camera: {move: push_in, speed: very slow, endpoint: "the four filling the frame"}
+        sound: {ambience: ["soft mountain wind"], sfx: ["a low rumble"]}
+    success: ["камінці не змінюють форму"]
+  - id: T6
+    title: Вітальня вдень (first_last)
+    frame:
+      location: casa_vale
+      variant: living_day
+      people: [{id: vale, view: profile, screen: right, state: [nosebleed]}]
+      frame: Vale stands by the window in profile.
+    videos:
+      - mode: first_last
+        resolution: 480p
+        duration_s: 4
+        action: She turns away from the window and walks out of frame.
+        end_frame: The empty living room by day.
+        camera: static wide shot, locked-off
+  - id: T7
+    title: Лише кадр
+    frame: {location: archivo, frame: A dusty archive shelf, face: none}

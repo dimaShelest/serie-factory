@@ -1,0 +1,408 @@
+"""Каталог маршрутів генерації (prompts/providers.yaml): які поля приймає API, правила, ціна, ручна поверхня.
+
+Маршрут = «<провайдер>:<модель>» (replicate:bytedance/seedance-2.5, cloudflare:…, elevenlabs:eleven_v4 …).
+Компілятори промптів складають payload — рівно те тіло, яке отримає API (файли — рядки «ref:<id>»), —
+і перевіряють його тут: validate() повертає "API: …" повідомлення, порожній список — payload чистий.
+price() — вартість одного виклику, video_rates() — посекундні ставки для кошторису (fabrica/costs.py).
+"""
+
+from __future__ import annotations
+
+import copy
+import re
+from dataclasses import dataclass
+from pathlib import Path
+
+import yaml
+
+from fabrica import config
+
+CATALOG = config.ROOT / "prompts" / "providers.yaml"
+PREFIX = "API: "
+PROVIDERS = ("replicate", "cloudflare", "elevenlabs")
+KINDS = ("image", "video", "voice", "voice_design", "lipsync")
+TYPES = ("string", "uri", "uri_list", "string_list", "int", "number", "bool", "enum", "const", "object")
+SPEC_KEYS = {"type", "values", "value", "min", "max", "also", "max_items", "min_chars", "max_chars", "pattern",
+             "default", "required", "in", "fields", "avoid", "policy", "why", "note"}
+ROUTE_KEYS = {"provider", "model", "kind", "verified", "prompt_field", "prompt_max_chars", "fields", "rules", "price",
+              "manual"}
+PRICE_UNITS = ("second", "image", "1k_chars")
+REFS = ("reference_images", "reference_videos", "reference_audios")
+URI_SCHEMES = ("http", "https", "ref", "data")
+
+
+class ProviderError(ValueError):
+    """Каталог маршрутів зламаний або маршруту немає — повідомлення пояснює, що виправити."""
+
+
+@dataclass(frozen=True)
+class Route:
+    key: str
+    provider: str
+    model: str
+    kind: str
+    fields: dict             # ім'я → spec (див. шапку providers.yaml)
+    rules: tuple[str, ...]
+    prompt_field: str | None
+    prompt_max_chars: int | None
+    price: dict | None
+    manual: dict             # surface, url, how (+ endpoint)
+    verified: str
+
+    @property
+    def defaults(self) -> dict:
+        """Що API візьме саме, якщо поле не надіслано."""
+        return copy.deepcopy({k: s["default"] for k, s in self.fields.items() if "default" in s})
+
+
+# ---------------------------------------------------------------- перевірка значень
+
+
+def _set(v) -> bool:
+    return v not in (None, "", [], {})
+
+
+def _uri_error(v) -> str | None:
+    if not isinstance(v, str) or not v.strip():
+        return "потрібен рядок: «ref:<id>», http(s)://… або локальний шлях"
+    m = re.match(r"([A-Za-z][A-Za-z0-9+.-]+):", v)      # одна літера — диск Windows (C:\…), це шлях
+    if not m:
+        return None
+    scheme = m.group(1).lower()
+    if scheme not in URI_SCHEMES:
+        return f"схема «{scheme}:» не підтримується — «ref:<id>», http(s)://…, data:… або локальний шлях"
+    if scheme == "ref" and not v[4:].strip():
+        return "«ref:» без id референсу"
+    if scheme in ("http", "https") and not re.match(r"https?://[^\s/]+", v, re.I):
+        return "неповний URL"
+    return None
+
+
+def _num(v) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _check(name: str, spec: dict, v, out: list[str], hints: dict | None = None) -> None:
+    """Значення v (не None) проти spec; помилки — в out без префікса."""
+    t, n = spec["type"], len(out)
+    if "avoid" in spec:
+        out.append(f"«{name}» не надсилаємо: {spec['avoid']}")
+        return
+    if t in ("string", "uri") and not isinstance(v, str):
+        out.append(f"«{name}» має бути рядком, а не {type(v).__name__}")
+    elif t == "string":
+        if "min_chars" in spec and len(v) < spec["min_chars"]:
+            out.append(f"«{name}»: {len(v)} символів, мінімум {spec['min_chars']}")
+        if "max_chars" in spec and len(v) > spec["max_chars"]:
+            out.append(f"«{name}»: {len(v)} символів, максимум {spec['max_chars']}")
+        if "pattern" in spec and not re.fullmatch(spec["pattern"], v):
+            out.append(f"«{name}»=«{v}» не відповідає шаблону {spec['pattern']}")
+    elif t == "uri":
+        if err := _uri_error(v):
+            out.append(f"«{name}»: {err}")
+    elif t in ("uri_list", "string_list"):
+        if not isinstance(v, list):
+            out.append(f"«{name}» має бути списком, а не {type(v).__name__}")
+            return
+        if "max_items" in spec and len(v) > spec["max_items"]:
+            out.append(f"«{name}»: {len(v)} елементів, максимум {spec['max_items']}")
+        for i, x in enumerate(v):
+            if err := _uri_error(x) if t == "uri_list" else (None if isinstance(x, str) else "потрібен рядок"):
+                out.append(f"«{name}»[{i}]: {err}")
+    elif t in ("int", "number"):
+        if not _num(v) or (t == "int" and not isinstance(v, int)):
+            out.append(f"«{name}» має бути {'цілим числом' if t == 'int' else 'числом'}, а не {v!r}")
+        elif v not in spec.get("also", ()) and not spec.get("min", v) <= v <= spec.get("max", v):
+            also = f" (або {', '.join(map(str, spec['also']))})" if spec.get("also") else ""
+            out.append(f"«{name}»={v} поза межами {spec.get('min', '…')}…{spec.get('max', '…')}{also}")
+    elif t == "bool" and not isinstance(v, bool):
+        out.append(f"«{name}» має бути true/false, а не {v!r}")
+    elif t == "enum" and (isinstance(v, bool) or v not in spec["values"]):
+        out.append(f"«{name}»=«{v}» — допустимо: {', '.join(map(str, spec['values']))}")
+    elif t == "const" and (v != spec["value"] or type(v) is not type(spec["value"])):
+        out.append(f"«{name}» має бути «{spec['value']}», а не «{v}»")
+    elif t == "object":
+        if not isinstance(v, dict):
+            out.append(f"«{name}» має бути об'єктом, а не {type(v).__name__}")
+            return
+        _check_fields(spec["fields"], v, out, hints, prefix=f"{name}.")
+    if "policy" in spec and len(out) == n and v != spec["policy"]:
+        out.append(f"«{name}»={v!r} — тримаємо {spec['policy']!r}: {spec.get('why', 'рішення каталогу')}")
+
+
+def _check_fields(fields: dict, payload: dict, out: list[str], hints: dict | None = None, prefix: str = "",
+                  where: str = "") -> None:
+    for k in payload:
+        if k not in fields:
+            hint = (hints or {}).get(k)
+            out.append(f"невідоме поле «{prefix}{k}»{where}" + (f" — {hint}" if hint else " — прибери його"))
+    for k, spec in fields.items():
+        if spec.get("required") and payload.get(k) in (None, ""):
+            out.append(f"бракує обов'язкового поля «{prefix}{k}»")
+    for k, v in payload.items():
+        if k in fields and v is not None:
+            _check(prefix + k, fields[k], v, out, hints)
+
+
+# ---------------------------------------------------------------- іменовані правила
+
+
+def _value(r: Route, p: dict, name: str):
+    return p[name] if p.get(name) is not None else r.fields.get(name, {}).get("default")
+
+
+def _frame_xor_reference(r: Route, p: dict) -> str | None:
+    frame = [k for k in ("image", "last_frame_image") if _set(p.get(k))]
+    refs = [k for k in REFS if _set(p.get(k))]
+    if frame and refs:
+        return (f"{' + '.join(frame)} не поєднується з {', '.join(refs)}: або кадровий режим (image / "
+                "last_frame_image), або референсний (reference_*)")
+
+
+def _last_frame_needs_image(r: Route, p: dict) -> str | None:
+    if _set(p.get("last_frame_image")) and not _set(p.get("image")):
+        return "last_frame_image без image: кінцевий кадр працює лише разом зі стартовим"
+
+
+def _audio_needs_visual_ref(r: Route, p: dict) -> str | None:
+    if _set(p.get("reference_audios")) and not (_set(p.get("reference_images")) or _set(p.get("reference_videos"))):
+        return "reference_audios потребує хоча б одного reference_images або reference_videos (інакше E006)"
+
+
+def _adaptive_with_frame(r: Route, p: dict) -> str | None:
+    if _set(p.get("image")) and (ar := _value(r, p, "aspect_ratio")) != "adaptive":
+        return f"зі стартовим кадром (image) aspect_ratio має бути «adaptive», а не «{ar}»"
+
+
+def _match_input_needs_image(r: Route, p: dict) -> str | None:
+    if _value(r, p, "aspect_ratio") == "match_input_image" and not _set(p.get("image_input")):
+        return "aspect_ratio «match_input_image» без image_input — задай співвідношення явно (напр. «16:9»)"
+
+
+RULES = {   # правило → (поля, без яких воно не має сенсу; перевірка)
+    "frame_xor_reference": (("image",), _frame_xor_reference),
+    "last_frame_needs_image": (("image", "last_frame_image"), _last_frame_needs_image),
+    "audio_needs_visual_ref": (("reference_audios",), _audio_needs_visual_ref),
+    "adaptive_with_frame": (("image", "aspect_ratio"), _adaptive_with_frame),
+    "match_input_needs_image": (("image_input", "aspect_ratio"), _match_input_needs_image),
+}
+
+
+# ---------------------------------------------------------------- каталог
+
+
+def _spec_errors(name: str, spec, errs: list[str]) -> None:
+    n = len(errs)
+    if not isinstance(spec, dict):
+        errs.append(f"поле «{name}»: потрібен словник {{type: …}}")
+        return
+    if extra := set(spec) - SPEC_KEYS:
+        errs.append(f"поле «{name}»: невідомі ключі {sorted(extra)} (можна: {', '.join(sorted(SPEC_KEYS))})")
+    t = spec.get("type")
+    if t not in TYPES:
+        errs.append(f"поле «{name}»: type «{t}» — має бути одним із {', '.join(TYPES)}")
+        return
+    if t == "enum":
+        vals = spec.get("values")
+        if not isinstance(vals, list) or not vals or any(isinstance(x, bool) or not isinstance(x, (str, int))
+                                                         for x in vals):
+            errs.append(f"поле «{name}»: enum потребує непорожнього списку values-рядків (on/off, «16:9» — в лапках)")
+    if t == "const" and "value" not in spec:
+        errs.append(f"поле «{name}»: const потребує value")
+    if t == "object":
+        if not isinstance(spec.get("fields"), dict) or not spec["fields"]:
+            errs.append(f"поле «{name}»: object потребує fields")
+        else:
+            for k, s in spec["fields"].items():
+                _spec_errors(f"{name}.{k}", s, errs)
+    for k in ("min", "max"):
+        if k in spec and not _num(spec[k]):
+            errs.append(f"поле «{name}»: {k} має бути числом")
+    for k in ("max_items", "min_chars", "max_chars"):
+        if k in spec and (not isinstance(spec[k], int) or isinstance(spec[k], bool) or spec[k] < 0):
+            errs.append(f"поле «{name}»: {k} має бути цілим ≥ 0")
+    if "also" in spec and not isinstance(spec["also"], list):
+        errs.append(f"поле «{name}»: also має бути списком")
+    if spec.get("in", "body") not in ("body", "query", "path"):
+        errs.append(f"поле «{name}»: in — body, query або path")
+    if "pattern" in spec:
+        try:
+            re.compile(spec["pattern"])
+        except (re.error, TypeError) as e:
+            errs.append(f"поле «{name}»: pattern не regex ({e})")
+    if "default" in spec and spec["default"] is not None and len(errs) == n:     # default сам має бути валідним
+        bad: list[str] = []
+        _check(name, {k: v for k, v in spec.items() if k not in ("avoid", "policy")}, spec["default"], bad)
+        errs += [f"default: {m}" for m in bad]
+
+
+def _route_errors(key: str, raw, errs: list[str]) -> None:
+    if not isinstance(raw, dict):
+        errs.append("потрібен словник із provider, model, kind, fields …")
+        return
+    if extra := set(raw) - ROUTE_KEYS:
+        errs.append(f"невідомі ключі {sorted(extra)} (можна: {', '.join(sorted(ROUTE_KEYS))})")
+    provider, _, model = key.partition(":")
+    if raw.get("provider") != provider or raw.get("model") != model or not model:
+        errs.append(f"ключ має бути «<provider>:<model>» = «{raw.get('provider')}:{raw.get('model')}»")
+    if provider not in PROVIDERS:
+        errs.append(f"provider «{provider}» — має бути одним із {', '.join(PROVIDERS)}")
+    if raw.get("kind") not in KINDS:
+        errs.append(f"kind «{raw.get('kind')}» — має бути одним із {', '.join(KINDS)}")
+    if not isinstance(raw.get("verified"), str) or not raw["verified"].strip():
+        errs.append("verified: звідки і коли взято схему (або «UNVERIFIED: …»)")
+    fields = raw.get("fields")
+    if not isinstance(fields, dict) or not fields:
+        errs.append("fields: словник полів payload")
+        return
+    for name, spec in fields.items():
+        _spec_errors(name, spec, errs)
+    pf, pmax = raw.get("prompt_field"), raw.get("prompt_max_chars")
+    if pf is not None and pf not in fields:
+        errs.append(f"prompt_field «{pf}» немає серед fields")
+    if pmax is not None and (not isinstance(pmax, int) or isinstance(pmax, bool) or pmax < 1 or pf is None):
+        errs.append("prompt_max_chars — ціле ≥ 1 і лише разом із prompt_field")
+    if pf in fields and pmax is not None and "max_chars" in (fields[pf] or {}):
+        errs.append(f"«{pf}»: межу задай один раз — prompt_max_chars або max_chars у полі")
+    rules = raw.get("rules") or []
+    if not isinstance(rules, list):
+        errs.append("rules має бути списком")
+        rules = []
+    for rule in rules:
+        if rule not in RULES:
+            errs.append(f"правило «{rule}» невідоме (є: {', '.join(RULES)})")
+        elif missing := [f for f in RULES[rule][0] if f not in fields]:
+            errs.append(f"правило «{rule}» потребує полів {missing}")
+    _price_errors(raw.get("price"), fields, errs)
+    manual = raw.get("manual")
+    if not isinstance(manual, dict) or any(not isinstance(manual.get(k), str) or not manual[k].strip()
+                                           for k in ("surface", "url", "how")):
+        errs.append("manual: потрібні рядки surface, url, how (інструкція людині українською)")
+
+
+def _price_errors(p, fields: dict, errs: list[str]) -> None:
+    if p is None:
+        return
+    if not isinstance(p, dict) or p.get("unit") not in PRICE_UNITS:
+        errs.append(f"price: словник з unit ∈ {', '.join(PRICE_UNITS)} (або null, якщо ціна невідома)")
+        return
+    if extra := set(p) - {"unit", "by", "values", "rate", "video_input", "note"}:
+        errs.append(f"price: невідомі ключі {sorted(extra)}")
+    if "by" in p:
+        if p["by"] not in fields:
+            errs.append(f"price.by «{p['by']}» немає серед fields")
+        for k in ("values", "video_input"):
+            if k in p and (not isinstance(p[k], dict) or not p[k] or not all(_num(x) for x in p[k].values())):
+                errs.append(f"price.{k}: словник «значення поля → ставка USD»")
+        if "values" not in p:
+            errs.append("price: з by потрібні values")
+    elif "rate" not in p or not (p["rate"] is None or _num(p["rate"])):
+        errs.append("price: потрібні by + values або rate (число чи null)")
+
+
+_CACHE: dict[Path, tuple[int, dict[str, Route], dict[str, str]]] = {}
+
+
+def load(path: Path | None = None) -> dict[str, Route]:
+    """Маршрути з YAML; перевіряє форму каталогу. Кеш — за шляхом і часом зміни файлу."""
+    return _catalog(path)[0]
+
+
+def _catalog(path: Path | None) -> tuple[dict[str, Route], dict[str, str]]:
+    path = Path(path or CATALOG)
+    try:
+        mtime = path.stat().st_mtime_ns
+    except FileNotFoundError:
+        raise ProviderError(f"немає каталогу маршрутів {path}") from None
+    if (hit := _CACHE.get(path)) and hit[0] == mtime:
+        return hit[1], hit[2]
+    try:
+        data = yaml.safe_load(path.read_bytes().decode("utf-8-sig")) or {}
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as e:
+        raise ProviderError(f"{path.name}: YAML не читається — {e}") from None
+    if not isinstance(data, dict) or not isinstance(data.get("routes"), dict) or not data["routes"]:
+        raise ProviderError(f"{path.name}: потрібен ключ routes із маршрутами «<provider>:<model>»")
+    hints = data.get("hints") or {}
+    if not isinstance(hints, dict) or not all(isinstance(v, str) for v in hints.values()):
+        raise ProviderError(f"{path.name}: hints — словник «поле → підказка»")
+    errs = []
+    for key, raw in data["routes"].items():
+        mine: list[str] = []
+        _route_errors(str(key), raw, mine)
+        errs += [f"{key}: {m}" for m in mine]
+    if errs:
+        raise ProviderError(f"{path.name}: каталог зламаний —\n  " + "\n  ".join(errs))
+    routes = {key: Route(key, raw["provider"], raw["model"], raw["kind"], raw["fields"], tuple(raw.get("rules") or ()),
+                         raw.get("prompt_field"), raw.get("prompt_max_chars"), raw.get("price"), raw["manual"],
+                         " ".join(raw["verified"].split()))
+              for key, raw in data["routes"].items()}
+    _CACHE[path] = (mtime, routes, hints)
+    return routes, hints
+
+
+def route(key: str, *, path: Path | None = None) -> Route:
+    routes = load(path)
+    try:
+        return routes[key]
+    except KeyError:
+        raise ProviderError(f"немає маршруту «{key}» у {Path(path or CATALOG).name} (є: {', '.join(routes)})") from None
+
+
+def validate(key: str, payload: dict, *, path: Path | None = None) -> list[str]:
+    """Payload проти схеми маршруту: "API: …" повідомлення українською; [] — можна відправляти.
+    None у полі = поле не надіслано; обов'язкове поле не може бути None чи порожнім рядком."""
+    r, hints = route(key, path=path), _catalog(path)[1]
+    if not isinstance(payload, dict):
+        return [f"{PREFIX}payload має бути словником, а не {type(payload).__name__}"]
+    out: list[str] = []
+    _check_fields(r.fields, payload, out, hints, where=f" (маршрут {key} його не приймає)")
+    text = payload.get(r.prompt_field) if r.prompt_field else None
+    if r.prompt_max_chars and isinstance(text, str) and len(text) > r.prompt_max_chars:
+        out.append(f"«{r.prompt_field}»: {len(text)} символів, максимум {r.prompt_max_chars}")
+    for rule in r.rules:
+        if msg := RULES[rule][1](r, payload):
+            out.append(msg)
+    return [PREFIX + m for m in dict.fromkeys(out)]
+
+
+def split(key: str, payload: dict, *, path: Path | None = None) -> dict[str, dict]:
+    """Payload → {"path": …, "query": …, "body": …} за полем `in` (ElevenLabs: voice_id — у шляху, формат — у query)."""
+    r = route(key, path=path)
+    out: dict[str, dict] = {"path": {}, "query": {}, "body": {}}
+    for k, v in payload.items():
+        out[r.fields.get(k, {}).get("in", "body")][k] = v
+    return out
+
+
+def price(key: str, payload: dict, *, path: Path | None = None) -> float | None:
+    """USD за один виклик: секундні — ставка × duration (-1 → максимум маршруту); зображення — за кадр;
+    голос — за 1K символів. None — ціни в каталозі немає або з payload її не порахувати."""
+    r = route(key, path=path)
+    p = r.price
+    if not p:
+        return None
+    if "by" in p:
+        table = p["video_input"] if p.get("video_input") and _set(payload.get("reference_videos")) else p["values"]
+        rate = table.get(str(_value(r, payload, p["by"])))
+    else:
+        rate = p.get("rate")
+    if rate is None:
+        return None
+    if p["unit"] == "image":
+        return round(rate, 6)
+    if p["unit"] == "1k_chars":
+        text = payload.get(r.prompt_field) if r.prompt_field else None
+        return round(rate * len(text) / 1000, 6) if isinstance(text, str) else None
+    dur = _value(r, payload, "duration")
+    if dur is not None and dur in r.fields.get("duration", {}).get("also", ()):
+        dur = r.fields["duration"].get("max")
+    return round(rate * dur, 6) if _num(dur) and dur > 0 else None
+
+
+def video_rates(key: str, *, path: Path | None = None) -> dict[str, float]:
+    """{"480p": …, "720p": …} — USD за секунду без відео-референсів (кошторис, fabrica/costs.py)."""
+    r = route(key, path=path)
+    p = r.price or {}
+    if p.get("unit") != "second" or p.get("by") != "resolution":
+        raise ProviderError(f"маршрут «{key}» не має посекундних ставок за роздільністю (price.by: resolution)")
+    return {str(k): float(v) for k, v in p["values"].items()}
