@@ -39,8 +39,8 @@ style:
   original: An original fictional character, not resembling any real person.
   # ---- v2
   image: >-
-    Photorealistic 35mm film still from a slow-burn Mexican horror feature film: natural unretouched skin with visible
-    pores, true-to-life textures and materials, muted desaturated palette with deep teal shadows and warm practical
+    Photorealistic 35mm film still from a slow-burn Mexican horror feature film: true-to-life skin, textures and
+    materials, muted desaturated palette with deep teal shadows and warm practical
     highlights, gentle shallow depth of field, clean low-noise image.
   image_footage:
     # Кадр чіткий: старіння (зерно, розмиття) — один раз у монтажі (§3 #15, §4.5.5).
@@ -58,11 +58,11 @@ style:
     vhs: >-
       Handheld home-video camcorder look: moderate shake, imperfect framing, autofocus hunting, small exposure shifts;
       no stabilization, no gimbal.
-    phone: "Handheld smartphone video: light natural shake, autofocus hunting; no stabilization."
+    phone: "Handheld smartphone video look, natural phone-camera motion; no stabilization."
   low_light:
     image: >-
-      Dim but readable exposure: the faces are caught by the motivated light and the shadows still hold detail; clean
-      low-noise image.
+      Dim but readable exposure: the subjects are caught by the motivated light and the shadows still hold detail;
+      clean low-noise image.
     video: Clean low-noise image; dark areas stay clean without colour noise.
 
 # Правила під Seedance / Nano Banana — додаються в кожен промпт кадру (v1).
@@ -612,6 +612,25 @@ locations:
         ref: casa_vale.kitchen
         framing: medium wide shot of the kitchen
         time: day
+      # 8.09–8.15 (дзеркало): окремі плити «прямо в дзеркало» і «від дзеркала до дверей»; базова — з порога, під кутом.
+      mirror:
+        replace: true
+        desc: >-
+          the same small bathroom seen straight into the old mirror with worn silvering above the white sink; the
+          mirror shows the bathroom behind the camera, with the open dark doorway reflected on the right
+        light: night, a single bare bulb above the mirror
+        ref: casa_vale.plate
+        framing: medium close-up straight into the mirror
+        time: night
+      mirror_side:
+        replace: true
+        desc: >-
+          the same small bathroom seen from beside the mirror toward the door: the edge of the white sink in the lower
+          foreground, the tiled wall, the open dark doorway on the left
+        light: night, a single bare bulb above the mirror
+        ref: casa_vale.plate
+        framing: medium wide shot from the mirror toward the doorway
+        time: night
   archivo:
     base: >-
       a municipal archive and newspaper library in an old colonial building: tall wooden shelves of bound newspaper

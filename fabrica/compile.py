@@ -533,7 +533,12 @@ def _people_line(cast: list[dict], size: str | None) -> str:
     return _sent("Blocking: " + "; ".join(x for x in [head, *who] if x)) if who or head else ""
 
 
-def _sound(spec: S.ShotSpec, cast: list[dict], first: bool) -> list[str]:
+# Дія, де рот відкритий (крик, сміх, плач …): «рот закритий» тоді суперечив би дії — не пишемо його.
+_OPEN_MOUTH = re.compile(r"\b(scream\w*|shout\w*|yell\w*|laugh\w*|giggl\w*|gasp\w*|sob\w*|cr(?:y|ies|ying)|"
+                         r"whisper\w*|talk\w*|speak\w*|mouth (?:opens?|open|falls open|wide)|open mouth|jaw drops)\b", re.I)
+
+
+def _sound(spec: S.ShotSpec, cast: list[dict], first: bool, action: str = "") -> list[str]:
     """Репліки (§2.6: мова й акцент перед кожною), роти, звуки; «No BGM» дописує шаблон.
 
     on_screen — lip-sync «says only this line, once»; за кадром (offscreen або мовця немає в кадрі) — голос за
@@ -555,9 +560,11 @@ def _sound(spec: S.ShotSpec, cast: list[dict], first: bool) -> list[str]:
     if speaks:
         others = "; everyone else keeps their mouth closed." if len(cast) > 1 else "."
         out.append(f"Then the speaker's lips close{others}")
-    elif cast:
+    elif cast and not _OPEN_MOUTH.search(action):
         out.append("Everyone in the frame keeps their mouth naturally closed" + ("." if lines else
                                                                                    "; there is no narration."))
+    elif cast:
+        out.append("" if lines else "There is no narration.")
     else:
         out.append("There is no narration." if not lines else "")
     noise = (spec.sound.sfx if first else []) + spec.sound.ambience
@@ -681,7 +688,7 @@ def video_items(spec: S.ShotSpec, data: Data, templates: dict[str, Template], *,
                "blocking": _people_line(cast, size) if loose else "",
                "continuity": [_strip(x) for x in spec.continuity if _strip(x)] if loose else [],
                "action": _sent(c.action), "end_state": _strip(c.end_state), "camera": camera_sentence(c.camera),
-               "light": light, "sound": _sound(spec, cast, c.index == 1), "lock": _lock(data, cast),
+               "light": light, "sound": _sound(spec, cast, c.index == 1, c.action or ""), "lock": _lock(data, cast),
                "preserve": _preserve(cast), "constants": [_sent(x) for x in _en(data, "video_constants")],
                "size": _shot_size(size) or _strip(place["framing"]),
                "place": _strip(place["desc"]), "style": "" if spec.footage else _sent(style.get("video"))}
