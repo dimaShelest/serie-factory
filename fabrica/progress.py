@@ -12,12 +12,13 @@ status: todo (ще не почали) | in_work (у роботі) | done (є р�
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 
 import yaml
 
-from fabrica import config
+from fabrica import lab as lab_mod
 
-PROGRESS = config.ROOT / "lab" / "progress.yaml"
+PROGRESS: Path | None = None        # None — поруч із журналом: lab_mod.RESULTS.with_name("progress.yaml")
 STATUSES = ("todo", "in_work", "done", "approved", "skip")
 CLOSED = ("done", "approved", "skip")          # «готово» для лічильника й «Далі»
 PASS_SCORE = 4
@@ -31,15 +32,21 @@ def _now() -> str:
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 
+def path() -> Path:
+    """lab/progress.yaml — у тій самій теці, що й журнал (тести, що підміняють lab.RESULTS, не чіпають репо)."""
+    return PROGRESS or lab_mod.RESULTS.with_name("progress.yaml")
+
+
 def _read() -> dict:
-    if not PROGRESS.exists():
+    p = path()
+    if not p.exists():
         return {}
     try:
-        raw = yaml.safe_load(PROGRESS.read_text(encoding="utf-8-sig")) or {}
+        raw = yaml.safe_load(p.read_text(encoding="utf-8-sig")) or {}
     except yaml.YAMLError as e:
-        raise ProgressError(f"{PROGRESS.name}: зламаний YAML — {e}") from None
+        raise ProgressError(f"{p.name}: зламаний YAML — {e}") from None
     if not isinstance(raw, dict) or not all(isinstance(v, dict) for v in raw.values()):
-        raise ProgressError(f"{PROGRESS.name}: очікую {{історія: {{елемент: {{status, at, prompt_sha}}}}}}")
+        raise ProgressError(f"{p.name}: очікую {{історія: {{елемент: {{status, at, prompt_sha}}}}}}")
     return raw
 
 
@@ -55,11 +62,12 @@ def set_status(slug: str, item_id: str, status: str, prompt_sha: str) -> dict:
     data = _read()
     entry = {"status": status, "at": _now(), "prompt_sha": prompt_sha}
     data.setdefault(slug, {})[item_id] = entry
-    PROGRESS.parent.mkdir(parents=True, exist_ok=True)
-    tmp = PROGRESS.with_suffix(".tmp")
+    p = path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_suffix(".tmp")
     with tmp.open("w", encoding="utf-8", newline="\n") as f:
         yaml.safe_dump(data, f, allow_unicode=True, sort_keys=True, width=110)
-    tmp.replace(PROGRESS)
+    tmp.replace(p)
     return entry
 
 

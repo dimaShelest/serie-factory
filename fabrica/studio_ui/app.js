@@ -423,10 +423,10 @@ function copyBtn(label, text, cls = 'btn small') {
   return h('button', {type: 'button', class: cls, onclick: e => copyText(text, e.currentTarget)}, label);
 }
 
-function copyBlock(label, text) {
+function copyBlock(label, text, prose = false) {
   return h('div', {class: 'cblock'},
     h('div', {class: 'cblock-head'}, h('span', {}, label), copyBtn('Копіювати', text)),
-    h('pre', {}, text));
+    h('pre', {class: prose ? 'prose' : null}, text));
 }
 
 function setBusy(btn, on, label) {
@@ -445,7 +445,8 @@ function setBusy(btn, on, label) {
   }
 }
 
-function mediaEl(path, caption) {
+function mediaEl(path, caption, known) {
+  if (known === null) return h('div', {class: 'nofile'}, `${caption ? caption + ' · ' : ''}${NO_LOCAL}`);
   const url = mediaUrl(path);
   const audio = AUDIO.test(path);
   let el;
@@ -739,7 +740,7 @@ function stateBlock(title, v) {
 
 function slotEl(n, i) {
   const state = n.state || 'missing';
-  const file = n.file && (state === 'ok' || state === 'golden' || state === 'weak' || state === 'clip');
+  const file = n.file && n.url !== null && (state === 'ok' || state === 'golden' || state === 'weak' || state === 'clip');
   return h('li', {class: `slot s-${state}`},
     h('div', {class: 'slot-head'}, h('b', {}, slotLabel(n, i)), ' = ', h('code', {}, n.ref || '?')),
     file ? mediaEl(n.file, '') : null,
@@ -764,7 +765,7 @@ function manualOne(it, m, j) {
   const body = [];
   if (m.url) body.push(h('p', {class: 'url'}, h('a', {href: m.url, target: '_blank', rel: 'noopener'}, m.url)));
   for (const [cmd, chunk] of howParts(m.how)) body.push(cmd ? copyBlock('Команда', chunk) : h('p', {class: 'how'}, chunk));
-  if (present(m.text)) body.push(copyBlock('Текст', asText(m.text)));
+  if (present(m.text)) body.push(copyBlock('Текст', asText(m.text), true));
   if (present(m.endpoint)) body.push(copyBlock('Endpoint', asText(m.endpoint)));
   if (present(m.cmd)) body.push(copyBlock('Команда', asText(m.cmd)));
   if (present(m.body)) body.push(copyBlock('Тіло запиту (JSON)', asText(m.body)));
@@ -821,17 +822,18 @@ function lessonsBlock(it) {
   const ids = lessonIds(it.extra && it.extra.lessons);
   if (!ids.length) return null;
   const rules = new Map(S.lessons.map(l => [String(l.id), l.rule]));
+  const text = Array.isArray(it.extra.lessons_text) ? it.extra.lessons_text : [];
   return h('div', {class: 'section'}, details(it.id, 'lessons', false,
     h('summary', {}, `Уроки в промпті (${ids.length})`),
-    ul(ids.map(id => (rules.get(id) ? `${id}: ${rules.get(id)}` : id)))));
+    ul(ids.map((id, i) => (rules.get(id) ? `${id}: ${rules.get(id)}` : text[i] || id)))));
 }
 
 function resultEl(r) {
   const sc = Number(r.score);
   const old = r.current === false;
   return h('div', {class: 'result' + (old ? ' old' : '')},
-    r.file ? mediaEl(r.file, '') : h('div', {class: 'nofile'}, 'без файлу'),
-    r.last_frame ? h('div', {style: 'margin-top:6px'}, mediaEl(r.last_frame, 'останній кадр')) : null,
+    r.file ? mediaEl(r.file, '', r.url) : h('div', {class: 'nofile'}, 'без файлу'),
+    r.last_frame ? h('div', {style: 'margin-top:6px'}, mediaEl(r.last_frame, 'останній кадр', r.last_url)) : null,
     h('div', {class: 'meta'},
       h('span', {class: `score-badge s${sc}`}, `${r.score ?? '?'}/5`), ' ',
       h('b', {}, TOOL_UA[r.tool] || r.tool || ''),
@@ -1074,10 +1076,14 @@ function renderTop() {
   sel.replaceChildren(...seqs.map(s => h('option', {value: s.name}, s.title || s.name)));
   sel.value = d.seq || '';
   const pc = $('#profile-chip');
-  const pl = profileLabel(d.profile);
+  const perr = d.profile && d.profile.error;
+  const pl = perr ? 'профіль: помилка' : profileLabel(d.profile);
   pc.hidden = !pl;
   pc.textContent = pl;
-  pc.title = d.profile ? ['профіль генерації: ' + (d.profile.name || ''), d.profile.surface, d.profile.note].filter(Boolean).join(' · ') : '';
+  pc.className = 'chip' + (perr ? ' bad' : '');
+  pc.title = perr ? String(perr) : d.profile
+    ? ['профіль генерації: ' + (d.profile.name || ''), d.profile.surface, d.profile.note].filter(Boolean).join(' · ')
+    : '';
   const bc = $('#backend-chip');
   const b = d.rewrite_backend;
   bc.hidden = !b;

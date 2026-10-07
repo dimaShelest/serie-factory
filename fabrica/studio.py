@@ -268,7 +268,7 @@ class Studio:
         passed = any(r.get("score", 0) >= lab_mod.PASS_SCORE for r in current)
         status, stale = progress_mod.effective(c.progress.get(item.id), item.prompt_sha, golden=golden, passed=passed)
         lesson_ids = [x if isinstance(x, str) else x.get("id") for x in item.extra.get("lessons") or []]
-        hits = lessons_mod.lint_hits(c.slug, lesson_ids, item.prompt) if lesson_ids else []
+        hits = lessons_mod.lint_hits(c.slug, rewrite_mod.lesson_ids(item), item.prompt) if c.lessons else []
         warns = {WARN_KEYS[k]: v for k, v in viewer_mod.split_warnings(item.warnings + hits).items()}
         extra = {k: v for k, v in item.extra.items() if k not in ("manual", "lessons", "state_in", "state_out")}
         st_in, st_out = viewer_mod.state_in(item, c.carry), item.extra.get("state_out") or []

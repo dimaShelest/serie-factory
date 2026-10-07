@@ -359,7 +359,9 @@ def lab_lessons(off: list[str] = typer.Option(None, "--off", help="вимкну�
         typer.echo(f"{'✓ увімкнено' if active else '✗ вимкнено'} {lid}")
     rows = lessons_mod.all(slug)
     if not rows:
-        typer.echo(f"Уроків ще немає ({lessons_mod.path(slug).relative_to(config.ROOT).as_posix()}) — їх додає студія.")
+        where = lessons_mod.path(slug)
+        where = where.relative_to(config.ROOT) if where.is_relative_to(config.ROOT) else where
+        typer.echo(f"Уроків ще немає ({where.as_posix()}) — їх додає студія (кнопка «Редагувати»).")
     for r in rows:
         scope = ", ".join(f"{k}: {v}" for k, v in (r.get("scope") or {}).items()) or "усі"
         typer.echo(f"{'●' if r.get('active', True) else '○'} {r['id']:<4} [{scope}] {r['rule']}"

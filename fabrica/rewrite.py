@@ -221,13 +221,15 @@ def source_of(slug: str, item: prompts_mod.Item, data: prompts_mod.Data | None =
     part, shot = _part(item), item.extra.get("shot")
     if item.template.id == "voice.line" and part and shot:
         m = re.search(r"-voice(\d+)$", item.id)
-        return {"kind": "line", "key": shot, "part": part, "n": int(m.group(1)) if m else 1, "target": "line",
-                "fields": {"delivery": item.extra.get("delivery"), "speaker": item.extra.get("character"),
-                           "delivery_source": item.extra.get("delivery_source")}, "editable": ["delivery"]}
+        n = int(m.group(1)) if m else 1
+        return _mark({"kind": "line", "key": shot, "part": part, "n": n, "target": "line",
+                      "fields": {"delivery": item.extra.get("delivery"), "speaker": item.extra.get("character"),
+                                 "delivery_source": item.extra.get("delivery_source")}, "editable": ["delivery"]},
+                     ["delivery"] if _line_overridden(data, part, shot, n) else [])
     if part and shot:
         fields, overridden = shot_in(data, part, shot, cache)
-        return {"kind": "shot", "key": shot, "part": part, "target": "overlay", "fields": fields,
-                "editable": list(SHOT_FIELDS), "overridden": overridden}
+        return _mark({"kind": "shot", "key": shot, "part": part, "target": "overlay", "fields": fields,
+                      "editable": list(SHOT_FIELDS)}, overridden)
     if item.set == "test-pack":
         return {"kind": "test", "key": shot or item.id, "target": None, "fields": _test_fields(slug, shot),
                 "editable": []}
@@ -239,9 +241,22 @@ def source_of(slug: str, item: prompts_mod.Item, data: prompts_mod.Data | None =
     over = (data.overrides.get("prompt_en") or {})
     for p in path:
         over = over.get(p) if isinstance(over, dict) else None
-    return {"kind": kind, "key": key, "target": "prompt_en", "path": path,
-            "fields": {k: v for k, v in entry.items() if k not in EN_SKIP}, "editable": editable,
-            "overridden": sorted(over) if isinstance(over, dict) else []}
+    return _mark({"kind": kind, "key": key, "target": "prompt_en", "path": path,
+                  "fields": {k: v for k, v in entry.items() if k not in EN_SKIP}, "editable": editable},
+                 sorted(over) if isinstance(over, dict) else [])
+
+
+def _mark(src: dict, overridden: list[str]) -> dict:
+    """«змінено через студію»: поле overridden — лише коли щось справді змінено (порожнього списку не віддаємо)."""
+    return src | ({"overridden": overridden} if overridden else {})
+
+
+def _line_overridden(data: prompts_mod.Data, part: int, shot: str, n: int) -> bool:
+    for key in (shot, f"p{part}-{shot}"):
+        lines = ((data.overrides.get("shots") or {}).get(key) or {}).get("lines") or {}
+        if isinstance(lines, dict) and "delivery" in ({str(k): v for k, v in lines.items()}.get(str(n)) or {}):
+            return True
+    return False
 
 
 def _test_fields(slug: str, shot: str | None) -> dict:
@@ -307,6 +322,10 @@ def build_prompt(item: prompts_mod.Item, src: dict, lessons: list[dict], tags: l
             json.dumps(fields, ensure_ascii=False, indent=1)]
     if formats:
         rows += ["VALUE FORMATS:"] + [f"- {f}: {v}" for f, v in formats.items()]
+    clip = item.extra.get("clip") if isinstance(item.extra.get("clip"), dict) else {}
+    if (clip.get("of") or 1) > 1:
+        rows.append(f"CLIP: this item is clip {clip['index']} of {clip['of']} — its action / end_state / camera come "
+                    f"from clips[{clip['index'] - 1}]: to change them, return the whole `clips` array.")
     rows += ["ACTIVE LESSONS FOR THIS ITEM:"] + ([f"- {x['id']}: {x['rule']}" for x in lessons] or ["- none"])
     rows += [f"ITEM TAGS (for lesson scope.tags): {', '.join(tags) or '—'}",
              "HUMAN FEEDBACK (may be Ukrainian):", f'"""{feedback.strip()}"""',
@@ -353,7 +372,8 @@ def _find(items: list[prompts_mod.Item], item_id: str) -> prompts_mod.Item:
     return hit
 
 
-def _ids_with_dropped(item: prompts_mod.Item) -> list[str]:
+def lesson_ids(item: prompts_mod.Item) -> list[str]:
+    """Уроки, що стосуються елемента: ті, що в промпті (extra.lessons), і ті, що не вмістились (попередження)."""
     dropped = [m.group(1) for w in item.warnings if (m := re.match(r"урок (L\d+) не вмістився", w))]
     return list(dict.fromkeys([*(item.extra.get("lessons") or []), *dropped]))
 
@@ -425,7 +445,7 @@ def propose(slug: str, item_id: str, feedback: str, *, backend: str | None = Non
                            if src["kind"] == "test" else f"не знаю, з чого компілюється «{item_id}»")
     tags = item_tags(slug, item, data)
     known = {x.get("id"): x for x in lessons_mod.load(slug)}
-    active = [known[i] for i in _ids_with_dropped(item) if i in known]
+    active = [known[i] for i in lesson_ids(item) if i in known]
     name = backend or backend_name()
     fn = BACKENDS.get(name)
     if fn is None:

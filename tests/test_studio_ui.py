@@ -137,7 +137,8 @@ def test_css_dark_and_responsive():
 
 @pytest.mark.skipif(not NODE, reason="node не встановлено")
 def test_app_js_syntax():
-    r = subprocess.run([NODE, "--check", str(UI / "app.js")], capture_output=True, text=True, timeout=60)
+    r = subprocess.run([NODE, "--check", str(UI / "app.js")], capture_output=True, text=True, encoding="utf-8",
+                       timeout=60)
     assert r.returncode == 0, r.stderr
 
 
@@ -151,18 +152,25 @@ const res = {
   stat: m.diffStat(m.diffWords('one two three', 'one four three five')),
   warn: m.groupWarnings(['API: unknown key', 'lint: «boy» (вік)', 'немає кадру']),
   warnObj: m.groupWarnings({api: ['x'], lint: [], data: ['y']}),
-  profile: m.profileLabel({name: 'manual-5s', surface: 'dropshot AI Studio (Seedance 2.5)', clip_s: [5], resolution: '720p'}),
-  profile2: m.profileLabel({name: 'replicate-2.5', clip_min_s: 4, clip_max_s: 30, resolution_by_tier: {hero: '720p', secondary: '480p'}}),
-  clip: m.clipParts({clip: {index: 1, of: 2, gen_s: 5, window: [0, 3], start: 'frame', start_ref: 'p1.1.02.frame', start_item: 'p1-1.02-frame'}}),
-  clip2: m.clipParts({clip: {index: 2, of: 2, gen_s: 5, window: [0, 2.5], start: 'prev_last', start_ref: 'p1.1.02.c1.last', start_item: 'p1-1.02-video'}}),
+  profile: m.profileLabel({name: 'manual-5s', surface: 'dropshot AI Studio (Seedance 2.5)', clip_s: [5],
+                           resolution: '720p'}),
+  profile2: m.profileLabel({name: 'replicate-2.5', clip_min_s: 4, clip_max_s: 30,
+                            resolution_by_tier: {hero: '720p', secondary: '480p'}}),
+  clip: m.clipParts({clip: {index: 1, of: 2, gen_s: 5, window: [0, 3], start: 'frame', start_ref: 'p1.1.02.frame',
+                            start_item: 'p1-1.02-frame'}}),
+  clip2: m.clipParts({clip: {index: 2, of: 2, gen_s: 5, window: [0, 2.5], start: 'prev_last',
+                             start_ref: 'p1.1.02.c1.last', start_item: 'p1-1.02-video'}}),
   clipNone: m.clipParts({}),
   missing: m.slotState({ref: 'mina.plate', state: 'missing', item: 'loc-mina'}),
   ok: m.slotState({ref: 'mina.plate', state: 'ok', score: 5}),
-  tool: [m.defaultTool({manual: [{surface: 'dropshot AI Studio (Seedance 2.5)'}], route: 'cloudflare:x', kind: 'video'}),
-         m.defaultTool({manual: [{surface: 'AI Studio / Gemini · dropshot Image'}], route: 'replicate:x', kind: 'image'}),
+  tool: [m.defaultTool({manual: [{surface: 'dropshot AI Studio (Seedance 2.5)'}], route: 'cloudflare:x',
+                        kind: 'video'}),
+         m.defaultTool({manual: [{surface: 'AI Studio / Gemini · dropshot Image'}], route: 'replicate:x',
+                        kind: 'image'}),
          m.defaultTool({manual: [], route: 'elevenlabs:eleven_v4', kind: 'voice'}),
          m.defaultTool({kind: 'video'})],
-  manual: m.sortManual([{surface: 'Replicate playground'}, {surface: 'dropshot AI Studio'}, 'текст']).map(x => x.surface || x.text),
+  manual: m.sortManual([{surface: 'Replicate playground'}, {surface: 'dropshot AI Studio'}, 'текст'])
+    .map(x => x.surface || x.text),
   how: m.howParts('Відкрий сторінку.\n\n  curl -X POST $URL\n\nГотово.'),
   qs: m.qs({story: 'la-garganta', seq: 'part:1', x: null}),
   media: m.mediaUrl('media/lab/la garganta/a#1.png'),
