@@ -157,6 +157,9 @@ def test_state_first30(base: str) -> None:
     names = [s["name"] for s in data["sequences"]]
     assert names[0] == "first30" and {"part:1", "casting", "test-pack"} <= set(names)
     assert data["profile"]["name"] == "lab-2.5" and data["profile"]["clip_max_s"] == 10
+    bud = data["budget"]                                                     # ліміт тестів first30 — $40
+    assert bud["limit"] == 40 and bud["spent"] == 0 and bud["runs"] == 0 and bud["per_pass"] > 0
+    assert bud["left_passes"] == int(40 // bud["per_pass"])
     assert data["rewrite_backend"] == {"name": "fake", "model": "m", "ok": True, "note": ""}
     assert [s["n"] for s in data["steps"]] == [1, 2, 3, 4, 5, 6, 7] and data["steps"][0]["title"]
     assert data["progress"] | {"next": None} == {"done": 0, "total": len(want), "next": None, "approved": 0,

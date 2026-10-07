@@ -309,11 +309,27 @@ class Studio:
                   "total": sum(1 for i in items if i["step"] == s.n),
                   "done": sum(1 for i in closed if i["step"] == s.n)} for s in prompts_mod.STEPS]
         return {"story": slug, "seq": seq, "sequences": self.sequences(slug), "profile": self.profile(),
+                "budget": self.budget(slug, seq, c, items),
                 "rewrite_backend": rewrite_mod.backend_status(), "steps": steps,
                 "progress": {"done": len(closed), "total": len(items), "next": nxt,
                              "approved": sum(1 for i in items if i["status"] == "approved"),
                              "skipped": sum(1 for i in items if i["status"] == "skip")},
                 "items": items}
+
+    @staticmethod
+    def budget(slug: str, seq: str, c: _Ctx, items: list[dict]) -> dict | None:
+        """Ліміт тестів послідовності (sequences.yaml budget_usd): оцінка за прайсом API — кожен записаний результат
+        відео = одна платна генерація за ціною поточного payload. None — у послідовності ліміту немає."""
+        limit = (prompts_mod.sequences(slug).get(seq) or {}).get("budget_usd")
+        if not limit:
+            return None
+        price = {i.id: providers_mod.price(i.route, i.payload) or 0.0 for i in c.items if i.kind == "video"}
+        runs = {x["id"]: len(x["results"]) for x in items if x["id"] in price}
+        spent = sum(price[k] * n for k, n in runs.items())
+        per_pass = sum(price.values())
+        return {"limit": float(limit), "spent": round(spent, 2), "per_pass": round(per_pass, 2),
+                "runs": sum(runs.values()), "left": round(float(limit) - spent, 2),
+                "left_passes": int((float(limit) - spent) // per_pass) if per_pass else None}
 
     # ------------------------------------------------------------ дії
 

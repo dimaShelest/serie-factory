@@ -41,6 +41,7 @@ h3, h4, h5 { margin: 0; }
 }
 .chip.ok { color: var(--ok); border-color: var(--ok); }
 .chip.bad { color: var(--bad); border-color: var(--bad); }
+.chip.warn { color: var(--warn, #e0b341); border-color: var(--warn, #e0b341); }
 .chip.on { color: var(--text); border-color: var(--info); }
 
 /* ---------- верхня панель ---------- */

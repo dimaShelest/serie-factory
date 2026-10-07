@@ -1291,6 +1291,17 @@ function renderTop() {
     bc.textContent = `✎ ${backendLabel(b)} ${bad ? '✗' : '✓'}`;
     bc.title = bad ? `Переписувач недоступний: ${b.note || ''}` : b.note || 'Переписувач промптів готовий';
   }
+  const bu = $('#budget-chip');
+  const bg = d.budget;
+  bu.hidden = !bg;
+  if (bg) {
+    const share = bg.limit ? bg.spent / bg.limit : 0;
+    bu.className = 'chip ' + (share >= 1 ? 'bad' : share >= 0.8 ? 'warn' : 'ok');
+    bu.textContent = `$ ${num(bg.spent)} / ${num(bg.limit)}`
+      + (bg.left_passes != null ? ` · ще ≈ ${bg.left_passes} прох.` : '');
+    bu.title = `Бюджет тестів відео цієї послідовності (оцінка за прайсом API): записано генерацій — ${bg.runs}; `
+      + `повний прохід усіх кліпів ≈ $${num(bg.per_pass)}; лишилось ≈ $${num(bg.left)}.`;
+  }
   const pr = d.progress || {};
   const done = pr.done ?? items.filter(i => CLOSED.has(i.status)).length;
   const total = pr.total ?? items.length;

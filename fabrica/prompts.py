@@ -388,7 +388,7 @@ def sequences(slug: str) -> dict[str, dict]:
         raise PromptError(f"{path.name}: очікую словник «назва: {{title, part, shots}}»")
     errors = []
     for name, s in seqs.items():
-        ok = (isinstance(s, dict) and not set(s) - {"title", "part", "shots", "notes"} and s.get("part") in (1, 2, 3, 4)
+        ok = (isinstance(s, dict) and not set(s) - {"title", "part", "shots", "notes", "budget_usd"} and s.get("part") in (1, 2, 3, 4)
               and isinstance(s.get("title"), str) and bool(s["title"].strip()))
         if not ok or not isinstance(s.get("shots"), list) or not s["shots"] \
                 or not all(isinstance(x, str) for x in s["shots"]):
