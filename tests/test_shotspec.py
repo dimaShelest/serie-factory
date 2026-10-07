@@ -84,16 +84,17 @@ def test_derive_mode(tier: str, reuse: str | None, mode: str | None, want: str) 
 
 @pytest.mark.parametrize(("views", "size", "want"), [
     (["face"], "medium", "clear"), (["three_quarter"], None, "clear"), (["face"], "close-up", "clear"),
-    (["face"], "wide", "partial"), (["face"], "extreme wide", "partial"),
-    (["face"], "Wide, seen from the doorway", "partial"),
-    (["face"], "low-angle wide", "partial"), (["face"], "medium wide", "clear"), (["face"], "medium-wide", "clear"),
+    # анфас на загальному — теж clear: Replicate відхиляє фронтальне обличчя будь-якого розміру (§6.2 п.3, C1)
+    (["face"], "wide", "clear"), (["face"], "extreme wide", "clear"),
+    (["three_quarter"], "Wide, seen from the doorway", "clear"),
+    (["back", "face"], "wide", "clear"), (["back", "face"], "medium close-up", "clear"),
     (["profile"], "medium", "partial"), (["distant"], "close-up", "partial"), (["back", "profile"], "wide", "partial"),
+    (["distant", "back"], "extreme wide", "partial"),
     (["back"], "medium", "none"), (["silhouette", "blurred", "hidden"], "close-up", "none"), ([], "medium", "none"),
-    (["back", "face"], "medium close-up", "clear"),
 ])
 def test_derive_face(views: list[str], size: str | None, want: str) -> None:
     people = [S.Person(id=f"p{i}", view=v) for i, v in enumerate(views)]
-    assert S.derive_face(people, S.Camera(size=size)) == want
+    assert S.derive_face(people, S.Camera(size=size)) == want == S.derive_face(people)
 
 
 @pytest.mark.parametrize(("text", "want"), [
@@ -114,6 +115,12 @@ def test_expand_people_groups_state_and_dedupe() -> None:
     assert (out[0].view, out[0].screen) == ("back", "left")                    # явний запис виграє в групи
     assert all(p.view == "profile" and p.screen is None for p in out[1:])     # учасники групи — без screen
     assert out[0].state == ["nosebleed", "wet"] and out[1].state == ["nosebleed", "dusty"]
+    # «четвірка, але Vale спиною»: група перша — явний запис однаково виграє
+    out = S.expand_people([S.Person(id="los_cuatro", view="profile"), S.Person(id="vale", view="back", screen="left")],
+                          groups)
+    assert [(p.id, p.view, p.screen) for p in out] == [
+        ("diego", "profile", None), ("sofia", "profile", None), ("mateo", "profile", None), ("vale", "back", "left")]
+    assert S.derive_face(out) == "partial"
 
 
 def test_person_state_string_and_camera_text() -> None:
@@ -121,6 +128,13 @@ def test_person_state_string_and_camera_text() -> None:
     shot = S.ShotIn.model_validate({"camera": "slow steady push-in", "people": ["vale", {"id": "beto"}]})
     assert shot.camera.text == "slow steady push-in" and shot.camera.move == "static"
     assert [p.id for p in shot.people] == ["vale", "beto"] and shot.people[0].view == "face"
+    assert S.Camera(text="slow pan", size="wide", angle="low angle").size == "wide"     # статичні поля — можна
+    for bad in ({"text": "slow pan", "move": "pan_left"}, {"text": "x", "speed": "slow"},
+                {"text": "x", "endpoint": "y"}):
+        with pytest.raises(ValueError, match="не обидва"):
+            S.Camera(**bad)
+    with pytest.raises(ValueError, match="рядком або словником"):
+        S.ShotIn.model_validate({"camera": 5})
 
 
 def _shot(**kw) -> Shot:
@@ -131,21 +145,24 @@ def test_derive_lines_precedence_and_on_screen() -> None:
     sh = _shot(has_dialogue_visible=True, dialogue=[
         {"text_es": "Ni se te ocurra.", "character_id": "vale", "line_id": "l1"},
         {"text_es": "¡Mírenme!", "character_id": "diego"},
-        {"text_es": "Por aquí.", "character_id": "mateo"},
+        {"text_es": "Por aquí.", "character_id": "mateo", "line_id": "l3"},
         {"text_es": "¿Quién?", "character_id": "sofia", "offscreen": True},
         {"text_es": "Hola.", "character_id": "renata"}])
     people = [S.Person(id="vale"), S.Person(id="diego", view="back"), S.Person(id="mateo", view="profile"),
               S.Person(id="sofia")]
-    lines, warn = S.derive_lines(sh, people, {"l1": "whisper"},
-                                 {1: S.LineIn(delivery="shout"), 3: S.LineIn(delivery="quiet_fear", on_screen=False)})
+    lines, warn = S.derive_lines(sh, people, {"l1": "whisper", "l3": "normal"},
+                                 {1: S.LineIn(delivery="shout"), 2: S.LineIn(on_screen=True),
+                                  3: S.LineIn(delivery="quiet_fear", on_screen=False), 4: S.LineIn(on_screen=True)})
     got = [(ln.n, ln.delivery, ln.delivery_source, ln.on_screen) for ln in lines]
     assert got == [(1, "whisper", "script", True),       # script виграє в оверлею → попередження
-                   (2, "shout", "guess", False),         # спиною до камери — рота не видно
-                   (3, "quiet_fear", "overlay", False),  # оверлей перевизначає on_screen
-                   (4, "normal", "guess", False),        # за кадром
+                   (2, "shout", "guess", False),         # спиною до камери — on_screen з оверлею неможливий
+                   (3, "quiet_fear", "overlay", False),  # script normal = не задано; оверлей вимикає on_screen
+                   (4, "normal", "guess", False),        # за кадром — on_screen з оверлею неможливий
                    (5, "normal", "default", False)]      # не в people
     assert lines[3].offscreen and lines[0].line_id == "l1" and lines[0].speaker == "vale"
-    assert len(warn) == 1 and "репліка 1" in warn[0] and "whisper" in warn[0]
+    assert len(warn) == 3 and "репліка 1" in warn[0] and "whisper" in warn[0]
+    assert "репліка 2" in warn[1] and "рота мовця не видно" in warn[1]
+    assert "репліка 4" in warn[2] and "за кадром" in warn[2]
 
 
 def test_derive_lines_needs_visible_dialogue_flag() -> None:
@@ -161,6 +178,16 @@ def test_plate_and_light_time(data) -> None:
     assert S.light_time("warm daylight through the broken windows") == "day"
     assert S.light_time("dawn, warm low sunrise light") == "dawn" and S.light_time("night, phone lights") == "night"
     assert S.light_time("a single cold flashlight beam") is None and S.light_time(None) is None
+
+
+def test_time_clash_points_to_existing_variant(data) -> None:
+    t, w = S._time(data, "casa_vale", "living", None, "daylight through the window")
+    assert t == "day" and "casa_vale.living" in w[0] and "візьми variant living_day" in w[0]
+    _, w = S._time(data, "mina", "dawn", "night", None)                     # плита mina — ніч
+    assert "візьми плиту без variant" in w[0]
+    _, w = S._time(data, "casa_minero", "ceiling", None, "warm daylight")    # денного стану немає
+    assert "потрібен окремий денний стан локації" in w[0]
+    assert S._time(data, "mina", "dawn", None, "dawn light") == ("dawn", [])
 
 
 def test_spec_refs_and_edit_window(data, out_root: Path) -> None:
@@ -199,7 +226,7 @@ def test_part_specs_v2_scene_inheritance(data, out_root: Path) -> None:
     assert {p.id: p.state for p in sp.people} == {"vale": ["nosebleed"], "mateo": [], "diego": ["nosebleed"],
                                                   "sofia": ["nosebleed"]}
     assert sp.camera.size == "wide" and sp.camera.move == "push_in" and sp.camera.speed == "very slow"
-    assert sp.face == "partial"                                              # анфас на загальному
+    assert sp.face == "clear"                          # анфас на загальному → маршрут з обличчям (§6.2 п.3)
     assert sp.sound.ambience == ["soft mountain wind"] and sp.sound.sfx == ["a low rumble from the mountain"]
     assert sp.continuity == ["hundreds of small grey pebbles hang motionless in the air at different heights",
                              "the mine entrance stays dark"]
@@ -211,7 +238,7 @@ def test_part_specs_v2_null_overrides_scene_and_first_last(data, out_root: Path)
     sp = _specs(data, out_root, FIX / "overlay_v2.yaml")["4.06"]
     assert (sp.mode, sp.variant, sp.face, sp.gen_s, sp.edit_s) == ("first_last", None, "none", 5, 4.2)
     assert sp.end_frame.startswith("Mateo stands") and sp.people[0].state == []
-    assert sp.time == "dawn" and any("світанковий стан" in w and "mina.plate" in w for w in sp.warnings)
+    assert sp.time == "dawn" and any("візьми variant dawn" in w and "mina.plate" in w for w in sp.warnings)
 
 
 def test_part_specs_v2_lines_and_people(data, out_root: Path) -> None:
@@ -221,11 +248,12 @@ def test_part_specs_v2_lines_and_people(data, out_root: Path) -> None:
     ln = by["1.04"].lines[0]                                                 # l02: script whisper > оверлей shout
     assert (ln.delivery, ln.delivery_source, ln.on_screen) == ("whisper", "script", False)
     assert by["1.04"].people == [] and any("не діє" in w for w in by["1.04"].warnings)
+    assert any("people порожній" in w and "los_siete" in w for w in by["1.04"].warnings) and by["1.04"].face == "none"
     ln = by["8.12"].lines[0]
     assert (ln.delivery, ln.delivery_source, ln.on_screen) == ("whisper", "script", False)   # оверлей вимкнув
     sp = by["8.06"]
     assert sp.light == "daylight through the window" and sp.time == "day" and sp.face == "none"
-    assert any("денний стан" in w for w in sp.warnings)                      # плита living — ніч
+    assert any("візьми variant living_day" in w for w in sp.warnings)        # плита living — ніч
     assert sp.lines[0].offscreen and not sp.lines[0].on_screen and sp.lines[0].delivery_source == "guess"
     sp = by["1.07"]
     assert sp.people[0].state == ["wet"] and sp.face == "clear" and sp.footage == "vhs" and sp.beat == "scare"
@@ -254,6 +282,81 @@ def test_part_specs_not_generated_shots(data, out_root: Path) -> None:
     assert (ln.text_es, ln.offscreen, ln.on_screen, ln.delivery_source) == ("Hola.", True, False, "default")
 
 
+def test_script_written_by_code_keeps_overlay_delivery(data, out_root: Path) -> None:
+    """script.json з model_dump_json() має delivery: normal у кожній репліці — це «не задано», діє оверлей."""
+    path = out_root / SLUG / "part1" / "script.json"
+    path.write_text(Script.model_validate_json(path.read_text(encoding="utf-8")).model_dump_json(),
+                    encoding="utf-8", newline="\n")
+    assert '"delivery":"normal"' in path.read_text(encoding="utf-8")
+    by = _specs(data, out_root, FIX / "overlay_v2.yaml")
+    ln = by["4.04"].lines[0]
+    assert (ln.delivery, ln.delivery_source) == ("quiet_fear", "overlay")
+    assert not any("не діє" in w for w in by["4.04"].warnings)
+    assert (by["1.04"].lines[0].delivery, by["1.04"].lines[0].delivery_source) == ("whisper", "script")
+
+
+def test_on_screen_line_forces_face_route(data, out_root: Path, tmp_path: Path) -> None:
+    """Рот у кадрі → face clear навіть у профіль (§6.2 п.4); on_screen оверлею всупереч рядку — попередження."""
+    text = ("version: 2\nshots:\n"
+            "  \"4.04\": {people: [{id: sofia, view: profile}], frame: a, action: b}\n"
+            "  \"8.12\": {people: [{id: vale, view: three_quarter}], frame: a, action: b, face: partial}\n"
+            "  \"8.06\": {variant: living_day, people: [{id: vale, view: back}], frame: a, action: b,\n"
+            "           lines: {1: {on_screen: true}}}\n")
+    by = _specs(data, out_root, _write(tmp_path, text))
+    assert by["4.04"].lines[0].on_screen and by["4.04"].face == "clear"
+    sp = by["8.12"]
+    assert sp.lines[0].on_screen and sp.face == "partial"                   # явний face лишається, але
+    assert any("on_screen" in w and "face clear" in w for w in sp.warnings)  # з попередженням
+    sp = by["8.06"]
+    assert not sp.lines[0].on_screen and sp.face == "none"
+    assert any("on_screen з оверлею неможливий" in w and "за кадром" in w for w in sp.warnings)
+
+
+def test_not_generated_shots_ignore_overlay_fields(data, out_root: Path, tmp_path: Path) -> None:
+    """Шот без відео: end_frame / action / §12 не йдуть у спеку (з попередженням); місце й час не перевіряються."""
+    text = ("version: 2\nscenes:\n  \"2\": {time: day, variant: sunset}\n"
+            "shots:\n  \"2.01\": {mode: first_last, frame: a, end_frame: b, action: c, window: [0, 1]}\n")
+    sp = _specs(data, out_root, _write(tmp_path, text))["2.01"]                # still + plate:mina → none
+    assert (sp.mode, sp.frame, sp.end_frame, sp.action, sp.window, sp.time) == ("none", "", None, "", None, "day")
+    assert sp.variant == "sunset" and len(sp.warnings) == 1
+    assert sp.warnings[0].startswith("mode, frame, end_frame, action, window з оверлею не діють: шот не генерується")
+    path = out_root / SLUG / "part1" / "shots.json"
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    raw["shots"][3]["reuse"] = None                                           # 2.01 → still
+    path.write_text(Shots.model_validate(raw).model_dump_json(), encoding="utf-8", newline="\n")
+    text = "version: 2\nshots:\n  \"2.01\": {mode: first_last, frame: a, end_frame: b, action: c, end_state: d}\n"
+    sp = _specs(data, out_root, _write(tmp_path, text))["2.01"]
+    assert (sp.mode, sp.frame, sp.end_frame, sp.action, sp.end_state, sp.gen_s) == ("still", "a", None, "", None, 0)
+    assert any(w.startswith("mode, end_frame, action, end_state з оверлею не діють: шот still") for w in sp.warnings)
+
+
+def test_clip_fields_pass_to_spec(data, out_root: Path, tmp_path: Path) -> None:
+    """§12: window / event_s / clips / handoff читаються й ідуть у спеку (розбивка на кліпи — окрема фаза)."""
+    text = ("version: 2\nshots:\n  \"1.07\": {variant: tunnel, frame: a, action: b, window: [1.5, 2.5], event_s: 2,\n"
+            "    handoff: continue, clips: [{action: c, camera: handheld jolt}, {action: d, end_state: e,\n"
+            "    camera: {move: pull_out}}]}\n")
+    sp = _specs(data, out_root, _write(tmp_path, text))["1.07"]
+    assert (sp.window, sp.event_s, sp.handoff) == ((1.5, 2.5), 2, "continue")
+    assert [(c.action, c.end_state) for c in sp.clips] == [("c", None), ("d", "e")]
+    assert sp.clips[0].camera.text == "handheld jolt" and sp.clips[1].camera.move == "pull_out"
+    assert (sp.window, sp.clips, sp.handoff) != (None, [], "cut")
+    by = _specs(data, out_root, FIX / "overlay_v2.yaml")
+    assert (by["4.03"].window, by["4.03"].event_s, by["4.03"].clips, by["4.03"].handoff) == (None, None, [], "cut")
+
+
+def test_supporting_with_look_can_be_in_people(data, out_root: Path, tmp_path: Path) -> None:
+    """supporting з tag / look — у people (лише текстом); лише з голосом — невідомий для кадру."""
+    data.en["supporting"] = {"policia_companero": {"tag": "the heavy-set policeman", "look": "heavy-set"},
+                             "conductora_noticias": {"voice_design": "Native Spanish (Mexico City)."}}
+    sp = _specs(data, out_root, FIX / "overlay_v2.yaml")["7.08"]
+    assert [p.id for p in sp.people] == ["policia_companero"] and not any("без опису" in w for w in sp.warnings)
+    text = "version: 2\nshots:\n  \"7.08\": {people: [{id: policia_companero, view: back}], frame: a, action: b}\n"
+    assert _specs(data, out_root, _write(tmp_path, text))["7.08"].people[0].view == "back"
+    msg = _err(S.part_specs, data, 1, out_root=out_root, overlay=_write(
+        tmp_path, "version: 2\nshots:\n  \"8.06\": {people: [conductora_noticias]}\n"))
+    assert "«conductora_noticias»" in msg
+
+
 def test_part_specs_missing_overlay_file(data, out_root: Path, tmp_path: Path) -> None:
     by = _specs(data, out_root, tmp_path / "absent.yaml")
     assert all("немає англійського опису" in " ".join(s.warnings) for s in by.values() if s.mode != "none")
@@ -276,7 +379,7 @@ def test_overlay_v1_converts(data, out_root: Path) -> None:
     assert sp.camera.size == "extreme close-up" and sp.camera.text == "handheld VHS camcorder, a sharp jolt backwards"
     sp = by["4.03"]
     assert [p.id for p in sp.people] == ["vale", "diego", "sofia", "mateo"] and sp.variant == "dawn"
-    assert sp.camera.size == "wide" and sp.camera.text == "slow steady push-in" and sp.face == "partial"
+    assert sp.camera.size == "wide" and sp.camera.text == "slow steady push-in" and sp.face == "clear"
     assert by["8.06"].camera.size == "over the shoulder" and by["8.06"].light == "daylight through the window"
 
 
@@ -327,6 +430,18 @@ def test_real_overlay_and_shotlist_part1() -> None:
     ("\"4.03\": {beat: scare, composition: x}\n", ["шот 4.03", "beat", "version: 2"]),
     ("- just\n- a list\n", ["очікую словник"]),
     ("version: 2\nshots: {\"4.03\": [unclosed\n", ["зламаний YAML"]),
+    # змішані типи ключів YAML (4.03 без лапок — число) — SpecError, не TypeError
+    ("shots:\n  4.03: {frame: x}\n  \"4.04\": {frame: y}\n", ["є shots", "немає version: 2"]),
+    ("\"4.03\": {1: x, composition: y}\n", ["шот 4.03", "[1]", "не з v1"]),
+    ("version: 2\nshots: {}\n4.03: {frame: x}\n\"4.04\": {frame: y}\n", ["зайві ключі", "4.03", "4.04"]),
+    ("version: 2\nshots:\n  \"4.03\": {camera: 5}\n", ["шот 4.03", "camera: має бути рядком або словником"]),
+    ("\"4.03\": {composition: x, framing: Wide, camera: 5}\n", ["шот 4.03", "рядком або словником"]),
+    ("version: 2\nshots:\n  \"4.03\": {camera: {text: slow push, move: push_in}}\n",
+     ["шот 4.03", "camera", "не обидва"]),
+    ("version: 2\nshots:\n  \"4.03\": {window: [2, 1]}\n", ["шот 4.03", "window", "початок < кінець"]),
+    ("version: 2\nshots:\n  \"4.03\": {window: [1, 2], event_s: 3}\n", ["шот 4.03", "event_s 3 поза window"]),
+    ("version: 2\nshots:\n  \"4.03\": {clips: [{end_state: x}]}\n", ["шот 4.03", "clips.0.action", "бракує поля"]),
+    ("version: 2\nshots:\n  \"4.03\": {handoff: fade}\n", ["шот 4.03", "«fade»", "continue"]),
 ])
 def test_overlay_errors_name_file_and_shot(tmp_path: Path, text: str, needles: list[str]) -> None:
     msg = _err(S.load_overlay, SLUG, 1, _write(tmp_path, text))
@@ -363,12 +478,24 @@ def test_overlay_errors_are_collected(tmp_path: Path) -> None:
     ("version: 2\nshots:\n  \"4.03\": {location: atlantis}\n", ["шот 4.03", "локації «atlantis»"]),
     ("version: 2\nshots:\n  \"4.04\": {lines: {2: {delivery: shout}}}\n", ["шот 4.04", "lines [2]"]),
     ("version: 2\nshots:\n  \"4.03\": {lines: {1: {delivery: shout}}}\n", ["шот 4.03", "lines [1]", "0 реплік"]),
+    ("version: 2\nshots:\n  \"4.03\": {people: [vale, {id: vale, view: back}]}\n",
+     ["шот 4.03", "«vale» у people двічі"]),
+    ("version: 2\nshots:\n  \"7.08\": {people: [policia_companero]}\n", ["шот 7.08", "«policia_companero»"]),
 ])
 def test_part_specs_cross_checks(data, out_root: Path, tmp_path: Path, text: str, needles: list[str]) -> None:
     msg = _err(S.part_specs, data, 1, out_root=out_root, overlay=_write(tmp_path, text))
     assert "part1_prompts_en.yaml" in msg
     for n in needles:
         assert n in msg, (n, msg)
+
+
+def test_unknown_state_reported_once(data, out_root: Path, tmp_path: Path) -> None:
+    """Стан сцени перевіряється на сцені, не ще раз у кожному шоті; стан групи — один раз, не на кожного."""
+    msg = _err(S.part_specs, data, 1, out_root=out_root, overlay=_write(tmp_path, (
+        "version: 2\nscenes:\n  \"4\": {state: {vale: [bleeding]}}\n"
+        "shots:\n  \"4.03\": {people: [{id: los_cuatro, state: [soaked]}]}\n")))
+    assert msg.count("«bleeding»") == 1 and "сцена 4" in msg
+    assert msg.count("«soaked»") == 1 and "у los_cuatro" in msg
 
 
 def test_states_unchecked_without_states_in_prompt_en(data, out_root: Path, tmp_path: Path) -> None:
@@ -416,7 +543,7 @@ def test_test_pack_legacy(data) -> None:
     assert (t1.prefix, t1.frame_ref, t1.video_id, t1.tier, t1.mode) == ("tp-T1", "tp.T1.frame", "video", "hero", "i2v")
     assert (t1.edit_s, t1.gen_s, t1.camera.size, t1.camera.text) == (8, 8, "wide", "slow steady push-in")
     assert t1.frame.startswith("Four young adults") and t1.action.startswith("The hundreds")
-    assert t1.light == "dawn, warm low sunrise light through mist" and t1.time == "dawn" and t1.face == "partial"
+    assert t1.light == "dawn, warm low sunrise light through mist" and t1.time == "dawn" and t1.face == "clear"
     assert t1.success and t1.success == by["T1"].success
     t4 = by["T4"]
     assert (t4.video_id, t4.tier, t4.footage, t4.face, t4.people) == ("buildup", "found_footage", "vhs", "none", [])
@@ -436,7 +563,7 @@ def test_test_pack_new_keys(data) -> None:
     cam = t1.camera
     assert (cam.size, cam.angle, cam.lens_mm, cam.move, cam.speed, cam.text) == (
         "wide", "eye level", 35, "push_in", "very slow", None)
-    assert (t1.tier, t1.edit_s, t1.gen_s, t1.time, t1.face) == ("hero", 5.5, 6, "dawn", "partial")
+    assert (t1.tier, t1.edit_s, t1.gen_s, t1.time, t1.face) == ("hero", 5.5, 6, "dawn", "clear")
     assert t1.sound.sfx == ["a low rumble"] and t1.end_state and t1.continuity and t1.warnings == []
     t6 = by["T6"]
     assert (t6.mode, t6.tier, t6.face, t6.time, t6.gen_s) == ("first_last", "secondary", "partial", "day", 4)
@@ -465,6 +592,19 @@ def test_test_pack_new_keys(data) -> None:
     ("{location: mina, frame: a, people: [ghost]}", "[]", ["тест T9", "«ghost»"]),
     ("{location: mina, frame: a, people: [{id: vale, state: [bleeding]}]}", "[]", ["«bleeding»"]),
     ("{location: mina, frame: a, framng: Wide}", "[]", ["framng", "зайве поле"]),
+    # одне значення — в одному місці
+    ("{location: mina, frame: a, light: x}", "[{duration_s: 4, action: x, light: y}]", ["тест T9", "light і в frame"]),
+    ("{location: mina, frame: a}", "[{duration_s: 4, action: x, tier: hero, resolution: 480p}]",
+     ["тест T9", "tier hero — це 720p", "480p"]),
+    ("{location: mina, frame: a}", "[{duration_s: 4, action: x, tier: still}]", ["videos.0.tier", "«still»"]),
+    ("{location: mina, frame: a, framing: Wide, camera: {size: medium}}", "[]", ["тест T9", "framing і camera.size"]),
+    ("{location: mina, frame: a, camera: {size: wide}}", "[{duration_s: 4, action: x, camera: {size: close-up}}]",
+     ["тест T9", "«wide» у frame", "«close-up» у videos.camera"]),
+    ("{location: mina, frame: a, camera: {move: push_in}}", "[{duration_s: 4, action: x, camera: slow pan}]",
+     ["тест T9", "camera (frame + videos)", "не обидва"]),
+    ("{location: mina, frame: a}", "[{duration_s: 4, action: x, camera: 5}]",
+     ["videos.0.camera", "рядком або словником"]),
+    ("{location: mina, frame: a, people: [{id: los_cuatro, state: [bleeding]}]}", "[]", ["у los_cuatro", "«bleeding»"]),
 ])
 def test_test_pack_errors(data, tmp_path: Path, frame: str, videos: str, needles: list[str]) -> None:
     path = _write(tmp_path, f"tests:\n  - id: T9\n    title: t\n    frame: {frame}\n    videos: {videos}\n",
@@ -473,11 +613,21 @@ def test_test_pack_errors(data, tmp_path: Path, frame: str, videos: str, needles
     assert "test_pack.yaml" in msg
     for n in needles:
         assert n in msg, (n, msg)
+    assert msg.count("«bleeding»") <= 1                                     # стан групи — одна помилка
+
+
+def test_test_pack_same_light_and_matching_tier_are_fine(data, tmp_path: Path) -> None:
+    path = _write(tmp_path, "tests:\n  - id: T9\n    title: t\n    frame: {location: mina, frame: a, light: x}\n"
+                  "    videos: [{duration_s: 4, action: b, light: x, tier: secondary, resolution: 480p}]\n",
+                  "test_pack.yaml")
+    sp = S.test_pack_specs(data, path)[0]
+    assert (sp.light, sp.tier) == ("x", "secondary")
 
 
 def test_test_pack_shape_errors(data, tmp_path: Path) -> None:
     assert "tests" in _err(S.test_pack_specs, data, _write(tmp_path, "tests: {}\n", "tp.yaml"))
     assert "зайві ключі" in _err(S.test_pack_specs, data, _write(tmp_path, "tests: []\nextra: 1\n", "tp.yaml"))
+    assert "зайві ключі" in _err(S.test_pack_specs, data, _write(tmp_path, "tests: []\nextra: 1\n2: 3\n", "tp.yaml"))
     assert "немає" in _err(S.test_pack_specs, data, tmp_path / "absent.yaml")
     dup = ("tests:\n  - {id: T1, title: a, frame: {location: mina, frame: x}}\n"
            "  - {id: T1, title: b, frame: {location: mina, frame: y}}\n")

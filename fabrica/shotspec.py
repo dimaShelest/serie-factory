@@ -26,7 +26,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from fabrica import bible as bible_mod
-from fabrica.models import Script, Shot, Shots, Tier
+from fabrica.models import Script, Shot, Shots
 
 if TYPE_CHECKING:
     from fabrica.prompts import Data
@@ -51,8 +51,10 @@ SIZES = {"extreme_wide": "extreme wide", "wide": "wide", "medium_wide": "medium 
          "medium_close": "medium close-up", "close_up": "close-up", "insert": "extreme close-up"}
 V1_KEYS = {"composition", "action", "camera", "light", "variant", "people", "framing"}
 LIPS = ("face", "three_quarter", "profile")          # ракурси, де видно рот того, хто говорить
+FRONTAL = ("face", "three_quarter")                   # обличчя до камери → face clear (маршрут з обличчям)
 TIME_ADJ = {"day": "денний", "night": "нічний", "dawn": "світанковий", "dusk": "вечірній"}
-_WIDE = re.compile(r"(?<!medium )\bwide\b")
+TIER_RES = {"hero": "720p", "secondary": "480p", "found_footage": "480p"}
+VideoTier = Literal["hero", "secondary", "found_footage"]
 _LIGHT_TIME = [("dawn", r"\b(dawn|sunrise)\b"), ("dusk", r"\b(dusk|sunset|twilight)\b"),
                ("day", r"\b(day|daylight|daytime|sunlight|midday|noon)\b"), ("night", r"\b(night|moonlight)\b")]
 
@@ -90,7 +92,14 @@ class Camera(_Strict):
     angle: str | None = None         # eye level | low angle | high angle | overhead | POV
     lens_mm: int | None = None
     shake: Literal["none", "light", "moderate", "strong"] = "none"
-    text: str | None = None          # старий рядок camera: компілятор бере дослівно
+    text: str | None = None          # рядок camera: компілятор бере дослівно; move тоді невідомий, не static
+
+    @model_validator(mode="after")
+    def _text_or_move(self) -> Camera:
+        if self.text and (self.move != "static" or self.speed or self.target or self.endpoint):
+            raise ValueError("або рядок (text), або словник із move / speed / target / endpoint — не обидва: "
+                             "рядок компілятор бере дослівно, рух зі словника загубився б")
+        return self
 
 
 class Sound(_Strict):
@@ -107,6 +116,19 @@ class Line(_Strict):
     on_screen: bool = False          # рот того, хто говорить, у кадрі → lip-sync
     offscreen: bool = False
     delivery_source: Literal["script", "overlay", "guess", "default"]
+
+
+class ClipIn(_Strict):
+    """Кліп довгого шоту (§12): кліп k ≥ 2 стартує з останнього кадру кліпу k-1."""
+
+    action: str
+    end_state: str | None = None
+    camera: Camera | None = None
+
+    @field_validator("camera", mode="before")
+    @classmethod
+    def _text(cls, v: object) -> object:
+        return _camera_before(v)
 
 
 class ShotSpec(_Strict):
@@ -134,6 +156,10 @@ class ShotSpec(_Strict):
     lines: list[Line]
     face: Face
     video_id: str = "video"          # суфікс відео-елемента: tp-T4-buildup
+    window: tuple[float, float] | None = None     # §12: що з кліпу лишити в монтажі (с від початку кліпу)
+    event_s: float | None = None                  # §12: секунда події (скрімер) у кліпі
+    clips: list[ClipIn] = []                      # §12: кліпи довгого шоту по порядку
+    handoff: Literal["cut", "continue"] = "cut"   # §12: continue — старт з останнього кадру попереднього шоту
     continuity: list[str] = []       # видимі факти, що тримаються (стан сцени + шоту)
     success: list[str] = []
     notes: list[str] = []
@@ -161,7 +187,11 @@ def _people_before(v: object) -> object:
 
 
 def _camera_before(v: object) -> object:
-    return {"text": v} if isinstance(v, str) else v
+    if isinstance(v, str):
+        return {"text": v}
+    if v is None or isinstance(v, (dict, BaseModel)):
+        return v
+    raise ValueError("має бути рядком або словником {size, move, …}")
 
 
 class LineIn(_Strict):
@@ -204,6 +234,11 @@ class ShotIn(_Strict):
     lines: dict[int, LineIn] = {}             # n репліки в шоті (з 1) → delivery / on_screen
     success: list[str] = []
     notes: list[str] = []
+    # §12 (кліпи й стики; розбивку на кліпи робить окрема фаза — тут лише читаємо й перевіряємо форму)
+    window: tuple[float, float] | None = None # що з кліпу лишити в монтажі, с від початку кліпу
+    event_s: float | None = Field(None, ge=0) # секунда події (скрімер) у кліпі
+    clips: list[ClipIn] = []                  # кліпи довгого шоту по порядку
+    handoff: Literal["cut", "continue"] = "cut"
 
     @field_validator("people", mode="before")
     @classmethod
@@ -221,6 +256,10 @@ class ShotIn(_Strict):
             raise ValueError("mode first_last потребує end_frame (композиція останньої миті)")
         if self.end_frame and self.mode != "first_last":
             raise ValueError("end_frame лише для mode first_last")
+        if self.window and not 0 <= self.window[0] < self.window[1]:
+            raise ValueError(f"window {list(self.window)}: потрібно [початок, кінець], 0 ≤ початок < кінець")
+        if self.window and self.event_s is not None and not self.window[0] <= self.event_s <= self.window[1]:
+            raise ValueError(f"event_s {self.event_s:g} поза window {list(self.window)}")
         return self
 
 
@@ -229,8 +268,8 @@ class ShotIn(_Strict):
 
 class TPVideo(_Strict):
     id: str = "video"
-    resolution: Literal["480p", "720p"] | None = None     # v1; tier важливіший
-    tier: Tier | None = None
+    resolution: Literal["480p", "720p"] | None = None     # v1; без tier — tier з роздільності
+    tier: VideoTier | None = None
     duration_s: float = Field(gt=0)
     mode: VideoMode = "i2v"
     action: str
@@ -365,14 +404,12 @@ def _from_v1(body: object) -> object:
     """Шот v1 → v2: composition → frame, framing → camera.size, рядок camera → camera.text."""
     if not isinstance(body, dict):
         return body
-    out = {k: v for k, v in body.items() if k not in ("composition", "framing", "camera")}
+    out = {k: v for k, v in body.items() if k not in ("composition", "framing")}
     if "composition" in body:
         out["frame"] = body["composition"]
-    cam = _camera_before(body["camera"]) if "camera" in body else {}
-    if body.get("framing") and isinstance(cam, dict):
-        cam = {**cam, "size": str(body["framing"]).lower()}
-    if cam:
-        out["camera"] = cam
+    cam = body.get("camera")
+    if body.get("framing") and (cam is None or isinstance(cam, (str, dict))):
+        out["camera"] = {**({"text": cam} if isinstance(cam, str) else cam or {}), "size": str(body["framing"]).lower()}
     return out
 
 
@@ -393,10 +430,12 @@ def load_overlay(slug: str, part: int, path: Path | None = None) -> dict:
         raise SpecError(f"{name}: очікую словник (version: 2, scenes, shots)")
     errors: list[str] = []
     if "version" not in raw:
+        if found := [k for k in ("scenes", "shots") if k in raw]:
+            raise SpecError(f"{name}: є {', '.join(found)}, але немає version: 2 — додай рядок version: 2 на початок")
         version, scenes_raw = 1, {}
         shots_raw = {}
         for k, body in raw.items():
-            if isinstance(body, dict) and (extra := sorted(set(body) - V1_KEYS)):
+            if isinstance(body, dict) and (extra := sorted(set(body) - V1_KEYS, key=str)):
                 errors.append(f"{name} · шот {k}: поля {extra} — не з v1 (нові поля — в оверлеї version: 2)")
                 body = {f: v for f, v in body.items() if f in V1_KEYS}
             shots_raw[k] = _from_v1(body)
@@ -404,7 +443,7 @@ def load_overlay(slug: str, part: int, path: Path | None = None) -> dict:
         version = raw["version"]
         if version != 2:
             raise SpecError(f"{name}: version {version!r} — підтримую лише version: 2 (або старий v1 без version)")
-        extra = sorted(set(raw) - {"version", "scenes", "shots"})
+        extra = sorted(set(raw) - {"version", "scenes", "shots"}, key=str)
         if extra:
             errors.append(f"{name}: зайві ключі верхнього рівня {extra} (є version, scenes, shots)")
         scenes_raw, shots_raw = raw.get("scenes") or {}, raw.get("shots") or {}
@@ -455,17 +494,17 @@ def derive_mode(tier: str, reuse: str | None = None, mode: str | None = None) ->
     return mode or "i2v"
 
 
-def _is_wide(size: str | None) -> bool:
-    return bool(size) and bool(_WIDE.search(re.sub(r"[\s_-]+", " ", size.lower())))
+def derive_face(people: list[Person], camera: Camera | None = None) -> str:
+    """clear — хтось анфас / 3/4 (будь-який розмір кадру); partial — лише профіль / здалеку; інакше none.
 
-
-def derive_face(people: list[Person], camera: Camera) -> str:
-    """clear — анфас / 3/4 не на загальному; partial — профіль, здалеку або анфас на загальному; інакше none."""
+    Розмір кадру маршрут не змінює: Seedance на Replicate відхиляє фронтальне обличчя й на загальному
+    (дослідження §6.2 п.3, C1) — тож clear → маршрут з обличчям. Далекі фігури без читабельного обличчя —
+    view: distant. camera лишено в підписі для сумісності.
+    """
     views = {p.view for p in people}
-    frontal = bool(views & {"face", "three_quarter"})
-    if frontal and not _is_wide(camera.size):
+    if views & set(FRONTAL):
         return "clear"
-    if frontal or views & {"profile", "distant"}:
+    if views & {"profile", "distant"}:
         return "partial"
     return "none"
 
@@ -486,18 +525,20 @@ def _union(*lists: list[str]) -> list[str]:
 
 def expand_people(entries: list[Person], groups: dict[str, list[str]],
                   state: dict[str, list[str]] | None = None) -> list[Person]:
-    """Групи (los_cuatro) → учасники з тим самим view / facing / state і screen=None; повтори — перший виграє.
+    """Групи (los_cuatro) → учасники з тим самим view / facing / state і screen=None.
 
-    state — стан сцени {id або група: [ключі]}: іде перед власним станом людини.
+    Явний запис людини виграє в групи незалежно від порядку («четвірка, але Vale спиною»); між групами —
+    перший виграє. state — стан сцени {id або група: [ключі]}: іде перед власним станом людини.
     """
     scene: dict[str, list[str]] = {}
     for key, st in (state or {}).items():
         for pid in groups.get(key, [key]):
             scene[pid] = _union(scene.get(pid, []), st)
+    explicit = {p.id for p in entries if p.id not in groups}
     out: dict[str, Person] = {}
     for p in entries:
         for pid in groups.get(p.id, [p.id]):
-            if pid not in out:
+            if pid not in out and (pid == p.id or pid not in explicit):
                 one = p if pid == p.id else p.model_copy(update={"id": pid, "screen": None})
                 out[pid] = one.model_copy(update={"state": _union(scene.get(pid, []), one.state)})
     return list(out.values())
@@ -507,15 +548,16 @@ def derive_lines(shot: Shot, people: list[Person], script_delivery: dict[str, st
                  overlay: dict[int, LineIn] | None = None) -> tuple[list[Line], list[str]]:
     """Репліки шоту → Line. Манера: script.json → оверлей → вгадана → normal (delivery_source — звідки).
 
+    script.json «normal» = не задано (model_dump пише normal у кожну репліку) — тоді діє оверлей.
     on_screen: has_dialogue_visible, той, хто говорить, у people з видимим ротом (анфас / 3/4 / профіль) і не
-    за кадром; оверлей може перевизначити. Повертає (репліки, попередження).
+    за кадром; оверлей може перевизначити, але не всупереч цьому. Повертає (репліки, попередження).
     """
     script_delivery, overlay = script_delivery or {}, overlay or {}
     lips = {p.id for p in people if p.view in LIPS}
     lines, warnings = [], []
     for n, d in enumerate(shot.dialogue, 1):
         o = overlay.get(n) or LineIn()
-        if d.line_id in script_delivery:
+        if script_delivery.get(d.line_id, "normal") != "normal":
             how, src = script_delivery[d.line_id], "script"
             if o.delivery and o.delivery != how:
                 warnings.append(f"репліка {n}: delivery «{o.delivery}» з оверлею не діє — script.json каже «{how}»")
@@ -525,10 +567,16 @@ def derive_lines(shot: Shot, people: list[Person], script_delivery: dict[str, st
             how, src = guess, "guess"
         else:
             how, src = "normal", "default"
-        on = shot.has_dialogue_visible and d.character_id in lips and not d.offscreen
+        can = d.character_id in lips and not d.offscreen
+        on = shot.has_dialogue_visible and can
+        if o.on_screen and not can:
+            why = ("мовець за кадром" if d.offscreen else
+                   "рота мовця не видно (немає в people з view face / three_quarter / profile)")
+            warnings.append(f"репліка {n}: on_screen з оверлею неможливий — {why}")
+        elif o.on_screen is not None:
+            on = o.on_screen
         lines.append(Line(n=n, speaker=d.character_id, line_id=d.line_id, text_es=d.text_es, delivery=how,
-                          on_screen=on if o.on_screen is None else o.on_screen, offscreen=d.offscreen,
-                          delivery_source=src))
+                          on_screen=on, offscreen=d.offscreen, delivery_source=src))
     return lines, warnings
 
 
@@ -557,9 +605,13 @@ def _time(data: Data, location: str, variant: str | None, time: str | None, ligh
         return said, [f"prompt_en.yaml: time «{plate}» у {location}.{variant or 'plate'} — можна "
                       f"{', '.join(TIME_ADJ)}"]
     if said and plate and said != plate:
-        where = f"{location}.{variant or 'plate'}"
-        return said, [f"час шоту «{said}» ≠ час плити «{plate}» ({where}) — потрібен окремий "
-                      f"{TIME_ADJ.get(said, said)} стан локації"]
+        loc = (data.en.get("locations") or {}).get(location) or {}
+        names = sorted((k for k in loc.get("variants") or {} if plate_time(data, location, k) == said),
+                       key=lambda k: not (variant and str(k).startswith(variant)))   # living → living_day першим
+        fit = [f"variant {' або '.join(map(str, names))}"] if names else []
+        fit += ["плиту без variant"] if variant and loc.get("time") == said else []
+        fix = f"візьми {' або '.join(fit)}" if fit else f"потрібен окремий {TIME_ADJ.get(said, said)} стан локації"
+        return said, [f"час шоту «{said}» ≠ час плити «{plate}» ({location}.{variant or 'plate'}) — {fix}"]
     return said or plate, []
 
 
@@ -567,7 +619,11 @@ def _time(data: Data, location: str, variant: str | None, time: str | None, ligh
 
 
 def _known(data: Data) -> set[str]:
-    return set(data.en.get("characters") or {}) | set(data.en.get("members") or {})
+    """Хто може бути в people: characters, members і supporting з tag / look (другорядні — лише текстом, без
+    референсу обличчя; supporting лише з голосом — не в кадрі)."""
+    sup = {k for k, v in (data.en.get("supporting") or {}).items()
+           if isinstance(v, dict) and (v.get("tag") or v.get("look"))}
+    return set(data.en.get("characters") or {}) | set(data.en.get("members") or {}) | sup
 
 
 def _check_place(data: Data, location: str, variant: str | None, where: str) -> list[str]:
@@ -576,23 +632,25 @@ def _check_place(data: Data, location: str, variant: str | None, where: str) -> 
         return [f"{where}: локації «{location}» немає в prompt_en.yaml"]
     variants = locs[location].get("variants") or {}
     if variant and variant not in variants:
-        return [f"{where}: у локації «{location}» немає стану «{variant}» (є: {', '.join(variants) or '—'})"]
+        return [f"{where}: у локації «{location}» немає стану «{variant}» (є: {', '.join(map(str, variants)) or '—'})"]
     return []
 
 
 def _check_people(data: Data, people: list[Person], where: str) -> list[str]:
     known = _known(data)
-    bad = [p.id for p in people if p.id not in known and p.id not in data.groups]
-    bad += [m for p in people for m in data.groups.get(p.id, []) if m not in known]
-    return [f"{where}: невідомий персонаж «{pid}» (немає в prompt_en.yaml characters / members і в групах біблії)"
-            for pid in dict.fromkeys(bad)]
+    ids = [p.id for p in people]
+    bad = [pid for pid in ids if pid not in known and pid not in data.groups]
+    bad += [m for pid in ids for m in data.groups.get(pid, []) if m not in known]
+    return [f"{where}: невідомий персонаж «{pid}» (немає в prompt_en.yaml characters / members / supporting з tag "
+            f"і в групах біблії)" for pid in dict.fromkeys(bad)] + [
+        f"{where}: «{pid}» у people двічі — залиш один запис" for pid in dict.fromkeys(ids) if ids.count(pid) > 1]
 
 
 def _check_states(data: Data, people: list[Person], where: str) -> list[str]:
     states = data.en.get("states")
     if states is None:                        # старий prompt_en без states — перевіряти нема з чим
         return []
-    return [f"{where}: невідомий стан «{s}» у {p.id} (є в prompt_en.yaml states: {', '.join(states) or '—'})"
+    return [f"{where}: невідомий стан «{s}» у {p.id} (є в prompt_en.yaml states: {', '.join(map(str, states)) or '—'})"
             for p in people for s in p.state if s not in states]
 
 
@@ -615,22 +673,29 @@ def _sound(scene: Sound | None, shot: Sound | None) -> Sound:
     return Sound(**{f: getattr(shot if f in shot.model_fields_set else scene, f) for f in Sound.model_fields})
 
 
+# поля оверлею, що не діють, коли шот лише кадр (still) або не генерується (none)
+IGNORED = {"still": ("mode", "end_frame", "action", "end_state", "window", "event_s", "clips", "handoff"),
+           "none": ("mode", "frame", "end_frame", "action", "end_state", "camera", "face", "window", "event_s",
+                    "clips", "handoff")}
+
+
 def _part_spec(data: Data, part: int, sh: Shot, en: ShotIn | None, scene: SceneIn | None,
                delivery: dict[str, str], name: str) -> tuple[ShotSpec | None, list[str]]:
     where = f"{name} · шот {sh.id}"
     o, sc = en or ShotIn(), scene or SceneIn()
     mode = derive_mode(sh.tier, sh.reuse, o.mode)
-    generated = mode != "none"
+    generated, video = mode != "none", mode in VIDEO_MODES
     warnings: list[str] = []
-    if o.mode and mode in ("still", "none"):
-        warnings.append(f"mode «{o.mode}» з оверлею не діє: шот {'still' if mode == 'still' else 'не генерується'}")
+    if ignored := [f for f in IGNORED.get(mode, ()) if getattr(o, f) not in (None, "", [], "cut")]:
+        warnings.append(f"{', '.join(ignored)} з оверлею не {'діє' if len(ignored) == 1 else 'діють'}: шот "
+                        f"{'still (лише кадр)' if mode == 'still' else 'не генерується'}")
     location = o.location or sh.location_id or ""
     variant = _pick(o, sc, "variant")
     errors = []
     if generated and not location:
         errors.append(f"{where}: шот генерується, але без локації — додай location в оверлей або location_id "
                       "у розкадровку")
-    elif location:
+    elif generated:                           # плиту не генеруємо — і місце не перевіряємо
         errors += _check_place(data, location, variant, where)
     if o.people is None:
         known = [c for c in sh.characters if c in _known(data) or c in data.groups]
@@ -641,8 +706,8 @@ def _part_spec(data: Data, part: int, sh: Shot, en: ShotIn | None, scene: SceneI
     else:
         entries = o.people
         errors += _check_people(data, entries, where)
+    errors += _check_states(data, entries, where)             # стан сцени перевіряє part_specs — один раз
     people = expand_people(entries, data.groups, sc.state)
-    errors += _check_states(data, people, where)
     bad = sorted(n for n in o.lines if not 1 <= n <= len(sh.dialogue))
     if bad:
         errors.append(f"{where}: lines {bad} — у шоті {len(sh.dialogue)} реплік(и), нумерація з 1")
@@ -650,33 +715,42 @@ def _part_spec(data: Data, part: int, sh: Shot, en: ShotIn | None, scene: SceneI
         return None, errors
 
     size = SIZES.get(sh.framing or "")
-    if o.camera is not None:
+    if o.camera is not None and generated:
         camera = o.camera if o.camera.size else o.camera.model_copy(update={"size": size})
     elif en is None and generated and sh.camera:
         camera = Camera(size=size, text=f"{UA} {sh.camera}")
     else:
         camera = Camera(size=size)
-    frame, action = o.frame or "", o.action or ""
+    frame, action = (o.frame or "") if generated else "", (o.action or "") if video else ""
     if generated:
         if en is None:
             warnings.append(f"немає англійського опису шоту в {name} — у промпті український текст")
         elif not frame:
             warnings.append(f"немає frame (стартовий кадр) у {name} — у промпті український текст")
-        if en is not None and not action and mode in VIDEO_MODES:
+        if en is not None and not action and video:
             warnings.append(f"немає action у {name} — у промпті український текст")
+        if o.people == [] and sh.characters and o.face is None:
+            warnings.append(f"people порожній, а в shots.json є {', '.join(sh.characters)}: face=none → Replicate; "
+                            "задай people з view або face")
         frame = frame or f"{UA} {sh.action}"
-        action = action or (f"{UA} {sh.action}" if mode in VIDEO_MODES else "")
-    light = _pick(o, sc, "light")
-    time, tw = _time(data, location, variant, _pick(o, sc, "time"), light) if location else (None, [])
+        action = action or (f"{UA} {sh.action}" if video else "")
+    light, time = _pick(o, sc, "light"), _pick(o, sc, "time")
+    time, tw = _time(data, location, variant, time, light) if generated else (time, [])
     lines, lw = derive_lines(sh, people, delivery, o.lines)
+    speaks = any(ln.on_screen for ln in lines)     # рот у кадрі → маршрут з обличчям (§6.2 п.4)
+    face = (o.face if generated else None) or ("clear" if speaks else derive_face(people, camera))
+    if speaks and face != "clear":
+        warnings.append(f"face «{face}» з оверлею, а репліка on_screen — потрібен маршрут з обличчям (face clear)")
     return ShotSpec(
         id=sh.id, set=str(part), title=f"Ч.{part} · {sh.id}", scene_id=sh.scene_id, tier=sh.tier, beat=o.beat,
-        mode=mode, edit_s=sh.duration_s, gen_s=gen_seconds(sh.duration_s) if mode in VIDEO_MODES else 0,
+        mode=mode, edit_s=sh.duration_s, gen_s=gen_seconds(sh.duration_s) if video else 0,
         location=location, variant=variant, light=light, time=time,
-        footage=sh.footage if sh.footage in ("vhs", "phone") else None, frame=frame, end_frame=o.end_frame,
-        action=action, end_state=o.end_state, camera=camera, sound=_sound(sc.sound, o.sound), people=people,
-        lines=lines, face=o.face or derive_face(people, camera), continuity=_union(sc.continuity, o.continuity),
-        success=o.success, notes=o.notes, warnings=warnings + tw + lw), []
+        footage=sh.footage if sh.footage in ("vhs", "phone") else None, frame=frame,
+        end_frame=o.end_frame if mode == "first_last" else None, action=action,
+        end_state=o.end_state if video else None, camera=camera, sound=_sound(sc.sound, o.sound), people=people,
+        lines=lines, face=face, continuity=_union(sc.continuity, o.continuity), success=o.success, notes=o.notes,
+        window=o.window if video else None, event_s=o.event_s if video else None, clips=o.clips if video else [],
+        handoff=o.handoff if video else "cut", warnings=warnings + tw + lw), []
 
 
 def part_specs(data: Data, part: int, out_root: Path | None = None, overlay: Path | None = None) -> list[ShotSpec]:
@@ -698,9 +772,8 @@ def part_specs(data: Data, part: int, out_root: Path | None = None, overlay: Pat
             except ValidationError as e:
                 raise SpecError("\n".join(f"{path.name}: {_why(err)}" for err in e.errors(include_url=False))) from None
     shots, script = docs["shots.json"], docs.get("script.json")
-    # манера зі script.json — лише задана явно (delivery: normal за замовчуванням не рахуємо)
-    delivery = {ln.id: ln.delivery for sc in (script.scenes if script else []) for ln in sc.lines
-                if "delivery" in ln.model_fields_set}
+    # манера зі script.json; normal там = «не задано» (derive_lines тоді бере оверлей)
+    delivery = {ln.id: ln.delivery for sc in (script.scenes if script else []) for ln in sc.lines}
     ov = load_overlay(data.slug, part, overlay)
     name = (ov.get("path") or overlay or overlay_path(data.slug, part)).name
     scenes_ov, shots_ov = ov.get("scenes", {}), ov.get("shots", {})
@@ -738,22 +811,34 @@ def test_pack_path(slug: str) -> Path:
 def _tp_spec(data: Data, sid: str, title: str, f: TPFrame, v: TPVideo | None, success: list[str],
              where: str) -> tuple[ShotSpec | None, list[str]]:
     errors = _check_place(data, f.location, f.variant, where) + _check_people(data, f.people, where)
-    people = expand_people(f.people, data.groups)
-    errors += _check_states(data, people, where)
+    errors += _check_states(data, f.people, where)
     mode = v.mode if v else "still"
     end_frame = (v.end_frame if v else None) or f.end_frame
     if mode == "first_last" and not end_frame:
         errors.append(f"{where}: mode first_last потребує end_frame (композиція останньої миті)")
     if end_frame and mode != "first_last":
         errors.append(f"{where}: end_frame лише для mode first_last")
-    if errors:
-        return None, errors
+    # одне значення — в одному місці: друге мовчки губилося б
+    if v and f.light and v.light and f.light != v.light:
+        errors.append(f"{where}: light і в frame, і у videos — у спеки одне світло, залиш одне")
+    if v and v.tier and v.resolution and TIER_RES[v.tier] != v.resolution:
+        errors.append(f"{where}: tier {v.tier} — це {TIER_RES[v.tier]}, а resolution {v.resolution}; залиш одне")
+    if f.framing and f.camera and f.camera.size:
+        errors.append(f"{where}: framing і camera.size разом — залиш camera.size (framing — старий ключ)")
     cam = f.camera.model_dump(exclude_unset=True) if f.camera else {}
     if f.framing and "size" not in cam:
         cam["size"] = f.framing.lower()
     if v and v.camera:
-        cam |= v.camera.model_dump(exclude_unset=True)
-    camera = Camera(**cam)
+        vcam = v.camera.model_dump(exclude_unset=True)
+        if cam.get("size") and vcam.get("size") and cam["size"].lower() != vcam["size"].lower():
+            errors.append(f"{where}: розмір кадру «{cam['size']}» у frame і «{vcam['size']}» у videos.camera — "
+                          "задай один")
+        cam |= vcam
+    camera, errs = _validate(Camera, cam, f"{where} · camera (frame + videos)")
+    errors += errs
+    if errors:
+        return None, errors
+    people = expand_people(f.people, data.groups)
     tier = "still" if v is None else v.tier or ("hero" if v.resolution == "720p" else
                                                 "found_footage" if f.footage else "secondary")
     light = f.light or (v.light if v else None)
@@ -782,7 +867,7 @@ def test_pack_specs(data: Data, path: Path | None = None) -> list[ShotSpec]:
     name = path.name
     if not isinstance(raw, dict) or not isinstance(raw.get("tests"), list):
         raise SpecError(f"{name}: очікую словник з tests: [список тестів]")
-    extra = sorted(set(raw) - {"tests", "version"})
+    extra = sorted(set(raw) - {"tests", "version"}, key=str)
     errors = [f"{name}: зайві ключі верхнього рівня {extra} (є tests, version)"] if extra else []
     specs: list[ShotSpec] = []
     seen: set[str] = set()
