@@ -142,6 +142,7 @@ def test_foreign_origin_and_host_rejected(base: str) -> None:
     assert status == 403 and "127.0.0.1" in body["error"]
     status, body, _ = call(f"{base}/api/lessons?story={SLUG}", headers={"Host": "evil.example:80"})
     assert status == 403
+    assert call(f"{base}/api/lessons?story={SLUG}", headers={"Origin": "null"})[0] == 403
     assert call(f"{base}/api/lessons?story={SLUG}", headers={"Origin": base})[0] == 200
 
 
@@ -177,6 +178,9 @@ def test_state_first30(base: str) -> None:
     assert v["extra"]["clip"]["index"] == 1 and v["extra"]["edit_window"]
     assert v["source"]["kind"] == "shot" and v["source"]["key"] == "1.02" and "frame" in v["source"]["fields"]
     assert item(data, "cast-lupita-1994")["source"]["kind"] == "member"
+    tunnel = item(data, "loc-mina-tunnel")["source"]
+    assert (tunnel["kind"], tunnel["key"], tunnel["target"]) == ("location", "mina.tunnel", "prompt_en")
+    assert "desc" in tunnel["editable"] and "overridden" not in tunnel
     voice = item(data, "p1-1.02-voice1")
     assert voice["source"] | {"fields": {}} == {"kind": "line", "key": "1.02", "part": 1, "n": 1, "target": "line",
                                                 "fields": {}, "editable": ["delivery"]}

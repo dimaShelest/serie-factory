@@ -215,7 +215,7 @@ def _en_entry(data: prompts_mod.Data, item: prompts_mod.Item) -> tuple[str, str,
 def source_of(slug: str, item: prompts_mod.Item, data: prompts_mod.Data | None = None,
               cache: dict | None = None) -> dict:
     """Звідки компілюється елемент і що в ньому можна правити:
-    {"kind": shot|line|character|member|supporting|location|variant|test, "key", "fields", "editable", "target",
+    {"kind": shot|line|character|member|supporting|location|test, "key", "fields", "editable", "target",
      "part"?, "n"?, "path"?, "overridden"?}."""
     data = data or prompts_mod.Data(slug)
     part, shot = _part(item), item.extra.get("shot")
@@ -238,6 +238,7 @@ def source_of(slug: str, item: prompts_mod.Item, data: prompts_mod.Data | None =
         return {"kind": "other", "key": item.id, "target": None, "fields": {}, "editable": []}
     kind, key, path, entry = hit
     editable = list(dict.fromkeys([*EN_FIELDS[kind], *(k for k in entry if k not in EN_SKIP)]))
+    kind = "location" if kind == "variant" else kind               # стан локації — та сама локація, key «mina.tunnel»
     over = (data.overrides.get("prompt_en") or {})
     for p in path:
         over = over.get(p) if isinstance(over, dict) else None
@@ -364,11 +365,11 @@ def _patch(src: dict, changes: list[dict]) -> dict:
     return {"prompt_en": body}
 
 
-def _find(items: list[prompts_mod.Item], item_id: str) -> prompts_mod.Item:
+def _find(items: list[prompts_mod.Item], item_id: str, after: bool = False) -> prompts_mod.Item:
     hit = next((i for i in items if i.id == item_id), None)
     if hit is None:
         raise RewriteError(f"після правки елемента «{item_id}» більше немає (змінилась кількість кліпів?) — "
-                           "переформулюй відгук")
+                           "переформулюй відгук" if after else f"елемента «{item_id}» немає в наборі")
     return hit
 
 
@@ -476,7 +477,7 @@ def propose(slug: str, item_id: str, feedback: str, *, backend: str | None = Non
     preview = {**lesson, "id": lessons_mod.next_id(slug), "active": True} if lesson["rule"] else None
     try:
         with prompts_mod.pending_overrides(slug, patch), lessons_mod.pending(slug, preview):
-            new_item = _find(prompts_mod.build(slug, set_name), item_id)
+            new_item = _find(prompts_mod.build(slug, set_name), item_id, after=True)
     except (S.SpecError, prompts_mod.PromptError, lessons_mod.LessonError) as e:
         raise RewriteError(f"правка ламає дані — нічого не записано:\n{e}") from None
     p = {"id": f"rw-{uuid.uuid4().hex[:8]}", "story": slug, "item": item_id, "backend": name, "changes": changes,

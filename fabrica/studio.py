@@ -35,7 +35,7 @@ from email.parser import BytesParser
 from email.policy import default as email_policy
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, quote, urlsplit
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 from fabrica import bible as bible_mod
 from fabrica import config
@@ -451,11 +451,9 @@ class Handler(BaseHTTPRequestHandler):
         """Захист від DNS rebinding і чужих сторінок: Host і Origin (якщо є) — лише 127.0.0.1 / localhost."""
         ok = ("127.0.0.1", "localhost", "[::1]")
         host = (self.headers.get("Host") or "").rsplit(":", 1)[0] if self.headers.get("Host") else "127.0.0.1"
-        origin = self.headers.get("Origin")
-        if origin and origin != "null":
-            o = urlsplit(origin).hostname or ""
-            if o not in ("127.0.0.1", "localhost", "::1"):
-                return False
+        origin = self.headers.get("Origin")                      # «null» — sandbox-iframe чужої сторінки: ні
+        if origin and (urlsplit(origin).hostname or "") not in ("127.0.0.1", "localhost", "::1"):
+            return False
         return host in ok
 
     # ------------------------------------------------------------ маршрути
@@ -507,7 +505,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _static(self, name: str) -> None:
         root = UI.resolve()
-        f = (root / name).resolve()
+        f = (root / unquote(name)).resolve()
         if not f.is_relative_to(root) or not f.is_file():
             raise StudioError(404, "інтерфейсу студії немає (fabrica/studio_ui/)" if name == "index.html"
                               else f"немає файлу інтерфейсу: {name}")
