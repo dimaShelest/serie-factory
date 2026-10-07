@@ -1,17 +1,29 @@
 id: image.start_frame
 kind: image
-version: 1
-description: Стартовий кадр шоту (first frame для image-to-video) — локація + персонажі з ДНК + композиція.
-params:
-  tool: Gemini / Nano Banana
-  model: google/nano-banana
+version: 2
+profile: nano-banana
+route: replicate:google/nano-banana-2.1
+description: >-
+  Стартовий (which: first) або кінцевий (which: last, для first_last) кадр шоту — статична композиція першої миті, без
+  дієслів руху. Референси за порядком: Image 1 — локація (кінцевий кадр — стартовий кадр шоту), далі люди зліва
+  направо; лише обличчя / волосся / статура / одяг, поза й світло — з опису (§4.5, §4.6). Стан людей, безперервність,
+  світло (+ чиста темрява), камера, стиль кадру (плівка або found footage), сталі правила.
+payload:
   aspect_ratio: "16:9"
+  resolution: "2K"
+  output_format: png
+route_payload:
+  replicate:google/nano-banana-pro: {allow_fallback_model: false}
+  replicate:google/nano-banana-2.1: {google_search: false, image_search: false}
 prompt: |-
-  {% if refs %}Use the attached reference images for the identity of each person and for the location. {% endif %}
-  {% if footage %}{{ style.footage[footage] }} {% endif %}
-  {{ composition }}
-  {% if people %}People in the frame: {% for p in people %}{{ p.name }} — {{ p.desc }}{% if not loop.last %}; {% endif %}{% endfor %}.{% endif %}
-  Location: {{ loc_desc }}. Lighting: {{ light }}.
-  {{ framing }} shot, 16:9. {{ style.photo if not footage else "" }} Strictly: {{ rules | join("; ") }}.
-negative: |-
-  {{ negative.common | join(", ") }}
+  {% if footage %}Create one still frame.{% elif which == "last" %}Create the last frame of the same shot as one cinematic film still.{% else %}Create one cinematic film still.{% endif %}
+  {{ slots | join(" ") }}
+  {% if bind %}Use the people images only for each person's face, hair, build and clothing; their pose, position and lighting come from this description.{% endif %}
+  Scene: {{ scene }}
+  {{ blocking | join(" ") }}
+  {% if continuity %}Continuity: {{ continuity | join("; ") }}.{% endif %}
+  Lighting: {{ light }}. {{ low_light }}
+  {% if camera %}Camera: {{ camera }}.{% endif %}
+  {{ style }}
+  {{ lessons | join(" ") }}
+  {{ rules | join("; ") | capfirst }}.

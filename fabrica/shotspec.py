@@ -10,6 +10,7 @@
     series/<slug>/part<N>_prompts_en.yaml — англійський оверлей: v2 (version: 2, scenes, shots) строгий;
                                          v1 (шот → composition/action/camera/…) ще читається
     series/<slug>/lab/test_pack.yaml   — тест-пак: ті самі ShotSpec (set="test-pack", id T1, T4-face …)
+Кліпи (§12): clips(spec, providers.generation()) ділить відео шоту за профілем довжини кліпу (dropshot — 5 с).
 
 Помилки оверлею й тест-паку — SpecError українською з назвою файлу й шоту; що можна обійти (немає опису
 шоту, персонаж без англійського опису) — warnings у спеці.
@@ -483,6 +484,90 @@ def edit_window(spec: ShotSpec) -> str | None:
     if spec.mode not in VIDEO_MODES:
         return None
     return f"кліп {spec.gen_s} с → у монтаж {spec.edit_s:g} с"
+
+
+class Clip(_Strict):
+    """Кліп відео шоту (§12): що генерувати одним викликом і що з нього лишити в монтажі."""
+
+    index: int                       # 1 … of
+    of: int
+    gen_s: int                       # довжина генерації, с
+    window: tuple[float, float]      # що лишити в монтажі, с від початку кліпу
+    action: str
+    end_state: str | None = None
+    camera: Camera
+    start: Literal["frame", "prev_last", "none"]   # стартовий кадр шоту / останній кадр попереднього / t2v
+    warnings: list[str] = []
+
+
+def clip_plan(edit_s: float, profile: dict) -> tuple[int, int]:
+    """(довжина кліпу, скільки кліпів) за профілем: clip_s — найменша дозволена ≥ edit_s, інакше найбільша × n;
+    clip_min_s…clip_max_s — max(min, ceil(edit_s)), довше за максимум — n рівних кліпів."""
+    edit = round(edit_s, 3)
+    if "clip_s" in profile:
+        allowed = sorted(profile["clip_s"])
+        fit = [c for c in allowed if c >= edit]
+        return (fit[0], 1) if fit else (allowed[-1], math.ceil(edit / allowed[-1]))
+    lo, hi = profile["clip_min_s"], profile["clip_max_s"]
+    n = max(1, math.ceil(edit / hi))
+    return max(lo, math.ceil(round(edit / n, 3))), n
+
+
+def _window(spec: ShotSpec, gen_s: int) -> tuple[tuple[float, float], list[str]]:
+    """Вікно одного кліпу: window з оверлею → навколо event_s (скрімер) → (0, edit_s)."""
+    keep = min(spec.edit_s, gen_s)
+    if spec.window:
+        a, b = spec.window
+        if b <= gen_s:
+            return (a, b), [f"window {b - a:g} с ≠ edit_s {spec.edit_s:g} с (shots.json) — у монтажі шот вийде "
+                            "іншої довжини"] if abs((b - a) - spec.edit_s) > 0.05 else []
+        return (a, float(gen_s)) if a < gen_s else (0.0, keep), [
+            f"window {list(spec.window)} виходить за кліп {gen_s} с — обрізано"]
+    if spec.event_s is not None:
+        if spec.event_s > gen_s:
+            return (0.0, keep), [f"event_s {spec.event_s:g} за межами кліпу {gen_s} с — вікно з початку"]
+        a = min(max(0.0, spec.event_s - keep / 2), gen_s - keep)
+        return (round(a, 3), round(a + keep, 3)), []
+    return (0.0, keep), []
+
+
+def clips(spec: ShotSpec, profile: dict) -> list[Clip]:
+    """Кліпи відео шоту за профілем генерації (providers.generation()); [] — шот без відео.
+
+    Шот довший за кліп → n кліпів; кліп k ≥ 2 стартує з останнього кадру кліпу k-1. Дія / кінцевий стан / камера
+    кліпу — з clips оверлею, інакше та сама дія («continues») + попередження. handoff continue — перший кліп
+    стартує з останнього кадру попереднього шоту. Попередження — у warnings першого кліпу.
+    """
+    if spec.mode not in VIDEO_MODES:
+        return []
+    clip_s, n = clip_plan(spec.edit_s, profile)
+    first = "prev_last" if spec.handoff == "continue" else "none" if spec.mode == "t2v" else "frame"
+    warnings: list[str] = []
+    if n == 1:
+        window, warnings = _window(spec, clip_s)
+        return [Clip(index=1, of=1, gen_s=clip_s, window=window, action=spec.action, end_state=spec.end_state,
+                     camera=spec.camera, start=first, warnings=warnings)]
+    if spec.window or spec.event_s is not None:
+        warnings.append(f"window / event_s — лише для шоту з одного кліпу; тут {n} кліпи — ігнорую")
+    if not spec.clips:
+        warnings.append(f"шот {spec.edit_s:g} с довший за кліп {clip_s} с → {n} кліпи: опиши clips: [{{action, "
+                        "end_state, camera}] в оверлеї — поки та сама дія в кожному")
+    elif len(spec.clips) != n:
+        warnings.append(f"clips: в оверлеї {len(spec.clips)}, а кліпів {n} (шот {spec.edit_s:g} с, кліп {clip_s} с)")
+    out = []
+    for k in range(1, n + 1):
+        own = spec.clips[k - 1] if k <= len(spec.clips) else None
+        last = k == n
+        if own:
+            action, end, cam = own.action, own.end_state, own.camera or spec.camera
+            end = end or (spec.end_state if last else None)
+        else:
+            action = spec.action if k == 1 else f"The same action continues. {spec.action}"
+            end, cam = spec.end_state if last else None, spec.camera
+        keep = round(spec.edit_s - clip_s * (n - 1), 3) if last else float(clip_s)
+        out.append(Clip(index=k, of=n, gen_s=clip_s, window=(0.0, keep), action=action, end_state=end, camera=cam,
+                        start=first if k == 1 else "prev_last", warnings=warnings if k == 1 else []))
+    return out
 
 
 def derive_mode(tier: str, reuse: str | None = None, mode: str | None = None) -> str:

@@ -1,21 +1,37 @@
 id: image.character
 kind: image
-version: 1
-description: Лист персонажа — окремий кадр на кожен ракурс (анфас, 3/4, профіль, повний зріст, 3 емоції).
-params:
-  tool: Gemini / Nano Banana
-  model: google/nano-banana
+version: 2
+profile: nano-banana
+route: replicate:google/nano-banana-2.1      # ракурси й емоції (Image 1 = якір); якір анфас — nano-banana-pro (компілятор)
+description: >-
+  Герой: якір анфас — лише текстом (крок 1); ракурси 3/4, профіль, повний зріст і 3 емоції — новий кадр тієї самої
+  людини з якорем як Image 1 (крок 2). Формулювання — docs/research/2026-10-07-generators.md §4.3, §4.6.
+payload:
   aspect_ratio: "3:4"
+  resolution: "2K"
+  output_format: png
+route_payload:
+  replicate:google/nano-banana-pro: {allow_fallback_model: false}
+  replicate:google/nano-banana-2.1: {google_search: false, image_search: false}
 prompt: |-
-  {% if view != "front" %}Use the attached reference image as the identity reference: keep exactly the same face, hairstyle, skin tone, distinguishing marks and outfit. {% endif %}
-  {% if view == "front" %}Head-and-shoulders portrait, front-facing, eyes to camera,
-  {% elif view == "three_quarter" %}Head-and-shoulders portrait, three-quarter view facing left,
-  {% elif view == "profile" %}Head-and-shoulders portrait, strict left profile,
-  {% elif view == "full_body" %}Full body portrait, standing, front view, whole figure from head to shoes visible,
-  {% else %}Head-and-shoulders portrait, front-facing, expression: {{ emotion }},
+  {% if view == "front" %}
+  A photorealistic head-and-shoulders portrait of {{ name }}, {{ c.who }}, facing the camera, eyes to the lens.
+  {{ c.dna | join("; ") | capfirst }}. Clothing: {{ c.wardrobe }}. Expression: {{ c.expression }}.
+  {{ style.sheet_background | capfirst }}, so every facial feature is clearly readable.
+  {% else %}
+  Image 1 is the approved identity reference for {{ name }}. Create a new photograph of the exact same {{ noun }} —
+  the same face shape, eyes, nose, lips, eyebrows, skin tone, hair and clothing as in Image 1: {{ c.dna | join("; ") }};
+  wearing {{ c.wardrobe }} — now
+  {% if view == "three_quarter" %}in a three-quarter view turned toward camera left, head and shoulders.
+  {% elif view == "profile" %}in a strict left profile, head and shoulders.
+  {% elif view == "full_body" %}standing in a full-body view facing the camera, the whole figure visible from head to shoes.
+  {% else %}facing the camera, head and shoulders, with this expression: {{ emotion }}.
   {% endif %}
-  of {{ name }}, {{ c.who }}. {{ c.dna | join("; ") | capfirst }}. Wearing {{ c.wardrobe }}.
-  {% if view != "emotion" %}Expression: {{ c.expression }}.{% endif %}
-  {{ style.sheet_background }}. {{ style.photo }} {{ style.original }} Strictly: {{ rules | join("; ") }}.
-negative: |-
-  {{ negative.common | join(", ") }}, different person, changed hairstyle, changed outfit, accessories not in the description
+  Same plain light-grey seamless backdrop and the same soft even lighting as Image 1.
+  Only the {{ "expression" if view == "emotion" else "camera angle and framing" }} change{{ "s" if view == "emotion" else "" }};
+  {{ poss }} identity, hair and clothing stay identical.
+  {% endif %}
+  Shot on an 85mm lens at f/4, natural unretouched skin with visible pores and fine baby hairs, true-to-life colour.
+  {{ style.original }}
+  {{ lessons | join(" ") }}
+  {{ rules | join("; ") | capfirst }}. A single full-bleed photograph of one person.

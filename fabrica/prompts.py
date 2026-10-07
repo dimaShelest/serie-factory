@@ -1,14 +1,17 @@
-"""Лабораторія промптів: шаблони prompts/templates/ + біблія → пакет промптів для ручних тестів.
+"""Лабораторія промптів: шаблони prompts/templates/ + біблія + шот-спеки → пакет промптів для ручних тестів.
 
-Кожен елемент пакета — рівно той промпт, який автоматика відправить в API: текст, negative, параметри, сід,
-референси. Люди тестують його руками (SYNTX, Gemini / Nano Banana, Dreamina, Replicate, ElevenLabs), пишуть
-результат у журнал (`fabrica lab log`) і затверджують golden (`fabrica lab approve`). Автоматика бере лише golden.
+Кожен елемент пакета — рівно те, що отримає API: маршрут («<провайдер>:<модель>», prompts/providers.yaml),
+payload (тіло запиту; файли — «ref:<id референсу>»), слоти референсів і порядок виробництва (STEPS). Промпти
+компілює fabrica/compile.py зі структурованих даних (prompt_en.yaml, шот-спека fabrica/shotspec.py). Люди
+тестують руками (dropshot AI Studio, AI Studio / Gemini, Replicate, ElevenLabs), пишуть результат у журнал
+(`fabrica lab log`) і затверджують golden (`fabrica lab approve`). Автоматика бере лише golden.
 
 Набори:
-    casting    — герої (анфас, 3/4, профіль, повний зріст, 3 емоції, голос), сімка 1994 (+ мокрі), локації
-    test-pack  — series/<slug>/lab/test_pack.yaml: стартові кадри + відео
+    casting    — обличчя-якорі, ракурси й емоції, сімка 1994 (+ мокрі), локації (плити й стани), голоси
+    test-pack  — series/<slug>/lab/test_pack.yaml: стартові кадри + відео (кліпи)
     1 … 4      — частина: output/<slug>/part<N>/shots.json + series/<slug>/part<N>_prompts_en.yaml
-Англійські описи — series/<slug>/prompt_en.yaml (той самий id, що в bible.yaml).
+Послідовність (series/<slug>/lab/sequences.yaml, напр. first30) — шоти частини + усе з кастингу, без чого
+їх не зробити (sequence_items). Англійські описи — series/<slug>/prompt_en.yaml (той самий id, що в bible.yaml).
 """
 
 from __future__ import annotations
@@ -29,12 +32,51 @@ TEMPLATES = config.ROOT / "prompts" / "templates"
 OUT = config.ROOT / "prompts" / "out"
 OUTPUT = config.ROOT / "output"
 KINDS = ("image", "video", "voice")
-VIEWS = [("front", "front"), ("three_quarter", "34"), ("profile", "profile"), ("full_body", "full")]
-RESOLUTION = {"hero": "720p", "secondary": "480p", "found_footage": "480p"}
+SHA_SKIP = ("success", "manual", "edit_window", "state_in", "state_out")    # extra, що не входить у prompt_sha
 
 
 class PromptError(ValueError):
     """Шаблон або дані для промпту зламані — повідомлення пояснює, що виправити."""
+
+
+# ---------------------------------------------------------------- порядок виробництва
+
+
+@dataclass(frozen=True)
+class Step:
+    n: int
+    key: str
+    title: str          # заголовок кроку
+    todo: str           # що робить людина і що означає «готово»
+    tool: str           # де
+
+
+STEPS = (
+    Step(1, "identity", "Обличчя-якорі",
+         "Згенеруй якір лише текстом (без референсів), 2–3 спроби; найкращий запиши в журнал з оцінкою ≥ 4 і затверди "
+         "(golden) — це обличчя героя для всіх наступних кадрів.",
+         "Nano Banana Pro (AI Studio / dropshot / Replicate)"),
+    Step(2, "views", "Ракурси, емоції, мокрі",
+         "Прикріпи затверджений якір як Image 1 і згенеруй ракурс / емоцію / мокрий варіант; готово — обличчя, "
+         "волосся й одяг збігаються з якорем.", "Nano Banana 2.1 (Replicate) або Pro"),
+    Step(3, "locations", "Локації",
+         "Порожня плита локації лише текстом; стан того самого місця — з плитою як Image 1. Готово — у кадрі нікого "
+         "і жодних написів.", "Nano Banana 2.1 (Replicate) або Pro"),
+    Step(4, "voices", "Голоси (Voice Design)",
+         "Створи голос за описом, вибери найкраще прев'ю, збережи голос і впиши voice_id у bible.yaml.",
+         "ElevenLabs Voice Design"),
+    Step(5, "frames", "Стартові й кінцеві кадри",
+         "Прикріпи референси строго в порядку слотів (Image 1 — локація, далі люди зліва направо) і згенеруй статичний "
+         "кадр першої миті шоту. Готово — розстановка, ракурси й світло як в описі.", "Nano Banana 2.1 / Pro"),
+    Step(6, "video", "Відео (кліпи)",
+         "Завантаж затверджений стартовий кадр (кліп k ≥ 2 — останній кадр кліпу k-1), встав промпт і налаштування з "
+         "картки. Готово — одна безперервна дія без склейок, обличчя й одяг як на кадрі.",
+         "dropshot AI Studio (Seedance 2.5) / Replicate / Cloudflare"),
+    Step(7, "lines", "Репліки (озвучка)",
+         "Озвуч репліку затвердженим голосом: текст із тегом і налаштування рівно з payload.",
+         "ElevenLabs (eleven_v4)"),
+)
+STEP = {s.key: s.n for s in STEPS}
 
 
 # ---------------------------------------------------------------- шаблони
@@ -52,6 +94,10 @@ class Template:
     settings: dict
     path: Path
     sha: str               # хеш вмісту файлу: правка без нової версії ламає golden
+    route: str = ""        # маршрут за замовчуванням (prompts/providers.yaml)
+    profile: str = ""      # граматика моделі: seedance-2.5 | nano-banana | eleven_v4 | eleven_ttv_v3
+    payload: dict = field(default_factory=dict)          # типові поля payload для всіх маршрутів
+    route_payload: dict = field(default_factory=dict)    # {маршрут: додаткові поля} (напр. use_virtual_avatar)
 
     @property
     def ref(self) -> str:
@@ -70,9 +116,16 @@ def load_templates(root: Path = TEMPLATES) -> dict[str, Template]:
             raise PromptError(f"{path.name}: version має бути цілим ≥ 1")
         if tid in out:
             raise PromptError(f"{path.name}: id «{tid}» уже є в {out[tid].path.name}")
+        rp = data.get("route_payload") or {}
+        if not isinstance(data.get("payload") or {}, dict) or not isinstance(rp, dict) \
+                or not all(isinstance(v, dict) for v in rp.values()):
+            raise PromptError(f"{path.name}: payload — словник полів; route_payload — {{маршрут: словник полів}}")
+        if not isinstance(data.get("route") or "", str):
+            raise PromptError(f"{path.name}: route — рядок «<провайдер>:<модель>»")
         out[tid] = Template(tid, kind, data["version"], data.get("description", ""), data.get("params") or {},
                             data.get("prompt") or "", data.get("negative") or "", data.get("settings") or {},
-                            path, hashlib.sha256(raw).hexdigest()[:12])
+                            path, hashlib.sha256(raw).hexdigest()[:12], data.get("route") or "",
+                            data.get("profile") or "", data.get("payload") or {}, rp)
     return out
 
 
@@ -84,7 +137,8 @@ def _clean(text: str) -> str:
     text = re.sub(r"\s+", " ", text).strip()
     text = re.sub(r"\s+([.,;:])", r"\1", text)
     text = re.sub(r"([.;!?])(?=[A-Za-zÁÉÍÓÚÑáéíóúñ¡¿«])", r"\1 ", text)   # «ghost.plain» → «ghost. plain»
-    return re.sub(r"\.(\s*\.)+", ".", text)
+    text = re.sub(r"\.(\s+\.)+", ".", text)                              # «стан. .» → «стан.»
+    return re.sub(r"(?<!\.)\.\.(?!\.)", ".", text)                        # «..» → «.», але «...» лишається
 
 
 def render(t: Template, ctx: dict) -> tuple[str, str]:
@@ -104,7 +158,7 @@ def seed_for(item_id: str) -> int:
 
 @dataclass
 class Item:
-    id: str                 # cast-mateo-front, loc-mina-dawn, tp-T1-frame, p1-4.03-video …
+    id: str                 # cast-mateo-front, loc-mina-dawn, tp-T1-frame, p1-4.03-video, p1-4.03-video-2 …
     set: str
     kind: str
     title: str
@@ -112,7 +166,7 @@ class Item:
     prompt: str
     negative: str
     params: dict
-    refs: list[str] = field(default_factory=list)      # id референсів (mateo.front, mina.dawn, tp.T1.frame …)
+    refs: list[str] = field(default_factory=list)      # id референсів у порядку слотів payload (Image 1 …)
     produces: str | None = None                        # який референс дає цей елемент
     extra: dict = field(default_factory=dict)          # прев'ю голосу, критерії успіху, інструкції, вікно монтажу …
     warnings: list[str] = field(default_factory=list)  # дані + «lint: …» + «API: …»
@@ -123,9 +177,15 @@ class Item:
 
     @property
     def prompt_sha(self) -> str:
-        payload = {"prompt": self.prompt, "negative": self.negative, "params": self.params, "refs": self.refs,
-                   "template": self.template.ref, "route": self.route, "payload": self.payload,
-                   "extra": {k: v for k, v in self.extra.items() if k not in ("success", "manual")}}
+        """Хеш того, що йде в API (промпт, payload, маршрут, референси, шаблон) + змістовні extra. Не входить те, що
+        генерацію не змінює: поверхня (params.tool), вікно монтажу, стан для картки (state_in / state_out),
+        інструкції, критерії успіху — інакше нове вікно монтажу ламало б golden уже оплаченого кліпу."""
+        extra = {k: v for k, v in self.extra.items() if k not in SHA_SKIP}
+        if isinstance(extra.get("clip"), dict):
+            extra["clip"] = {k: v for k, v in extra["clip"].items() if k != "window"}
+        payload = {"prompt": self.prompt, "negative": self.negative, "refs": self.refs, "template": self.template.ref,
+                   "params": {k: v for k, v in self.params.items() if k != "tool"}, "route": self.route,
+                   "payload": self.payload, "extra": extra}
         return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()[:12]
 
 
@@ -141,12 +201,9 @@ class Data:
         self.en = yaml.safe_load(path.read_text(encoding="utf-8-sig"))
         self.characters = {c["id"]: c for c in self.bible.get("characters", [])}
         self.members = {m["id"]: m for s in self.bible.get("supporting", []) for m in s.get("members", [])}
+        self.supporting = {s["id"]: s for s in self.bible.get("supporting", [])}
         self.groups = {g["id"]: g["members"] for g in self.bible.get("groups", [])}
         self.locations = {loc["id"]: loc for loc in self.bible.get("locations", [])}
-
-    def common(self) -> dict:
-        return {"style": self.en["style"], "rules": self.en["rules"], "negative": self.en["negative"],
-                "uniform_1994": self.en["uniform_1994"], "wet_ghost": self.en["wet_ghost"]}
 
     def loc(self, loc_id: str) -> dict:
         try:
@@ -155,191 +212,67 @@ class Data:
             raise PromptError(f"prompt_en.yaml: немає локації «{loc_id}»") from None
 
     def place(self, loc_id: str, variant: str | None = None, light: str | None = None) -> dict:
-        """Опис, світло й настрій локації; стан (variant) — рядок або {desc, light}."""
+        """Місце один раз (без подвоєння бази): desc — повний опис; base — плита; change — що змінює стан;
+        replace — стан самодостатній (інше приміщення / ракурс); ref — батьківський референс стану; framing, time."""
         loc = self.loc(loc_id)
         v = (loc.get("variants") or {}).get(variant) if variant else None
         if variant and v is None:
             raise PromptError(f"prompt_en.yaml: у локації «{loc_id}» немає стану «{variant}»")
-        v = v if isinstance(v, dict) else {"desc": v}
-        # replace: true — інше приміщення / інший ракурс місця (тунель, вітальня, вулиця): база не потрібна;
-        # інакше стан доповнює базу (світанок, меблі на стелі, годинник 3:17).
-        if v.get("replace"):
-            desc = v["desc"]
-        else:
-            desc = loc["base"] + (f"; {v['desc']}" if v.get("desc") else "")
-        return {"loc_desc": desc, "light": light or v.get("light") or loc["light"], "mood": v.get("mood") or loc["mood"]}
-
-    def person(self, pid: str, state: str | None = None) -> dict:
-        """name / desc (повна ДНК) / short (для відео) / ref (референс обличчя)."""
-        if pid in self.en["characters"]:
-            c = self.en["characters"][pid]
-            return {"name": self.characters[pid]["name"], "desc": f"{c['who']}: {'; '.join(c['dna'])}; wearing "
-                    f"{c['wardrobe']}", "short": "; ".join(c["dna"][:2]), "ref": f"{pid}.front"}
-        if pid in self.en["members"]:
-            m = self.en["members"][pid]
-            desc = f"{m['who']}: {m['look']}; school uniform: {self.en['uniform_1994']}"
-            if state == "wet":
-                desc += f"; {self.en['wet_ghost']}"
-            return {"name": self.members[pid]["name"], "desc": desc, "short": m["look"].split(",")[0],
-                    "ref": f"{pid}.{'wet' if state == 'wet' else '1994'}"}
-        raise PromptError(f"prompt_en.yaml: немає персонажа «{pid}» (characters / members)")
-
-    def people(self, entries: list) -> list[dict]:
-        out = []
-        for e in entries:
-            pid, state = (e, None) if isinstance(e, str) else (e["id"], e.get("state"))
-            for one in self.groups.get(pid, [pid]):
-                out.append(self.person(one, state))
-        return out
-
-
-def _item(data: Data, t: Template, item_id: str, set_name: str, title: str, ctx: dict, *, refs=(), produces=None,
-          params=None, extra=None) -> Item:
-    prompt, negative = render(t, {**data.common(), **ctx, "refs": list(refs)})
-    p = {**t.params, **(params or {}), "seed": seed_for(item_id)}
-    return Item(item_id, set_name, t.kind, title, t, prompt, negative, p, list(refs), produces, extra or {})
+        v = v if isinstance(v, dict) else {"desc": v} if v else {}
+        replace = bool(v.get("replace"))
+        change = v.get("desc") or ""
+        desc = change if replace else loc["base"] + (f"; {change}" if change else "")
+        ref = v.get("ref") if replace else (v.get("ref") or f"{loc_id}.plate") if variant else None
+        return {"desc": desc, "base": loc["base"], "change": change, "replace": replace, "ref": ref,
+                "light": light or v.get("light") or loc["light"], "mood": v.get("mood") or loc.get("mood", ""),
+                "framing": v.get("framing") or loc.get("framing") or "wide establishing shot",
+                "plate_framing": loc.get("framing") or "wide establishing shot",
+                "time": v.get("time") or (None if replace else loc.get("time"))}
 
 
 # ---------------------------------------------------------------- набори
 
 
 def casting_items(data: Data, templates: dict[str, Template]) -> list[Item]:
-    items: list[Item] = []
-    tc, tv = templates["image.character"], templates["voice.design"]
-    for cid, ch in data.characters.items():
-        c = data.en["characters"].get(cid)
-        if c is None:
-            raise PromptError(f"prompt_en.yaml: немає персонажа «{cid}»")
-        base = {"c": c, "name": ch["name"]}
-        for view, suffix in VIEWS:
-            params = {"aspect_ratio": "2:3"} if view == "full_body" else None
-            items.append(_item(data, tc, f"cast-{cid}-{suffix}", "casting", f"{ch['name']} — {view}",
-                               {**base, "view": view, "emotion": ""}, refs=[] if view == "front" else [f"{cid}.front"],
-                               produces=f"{cid}.{view}", params=params))
-        for i, emotion in enumerate(c["emotions"], 1):
-            items.append(_item(data, tc, f"cast-{cid}-emo{i}", "casting", f"{ch['name']} — емоція {i}",
-                               {**base, "view": "emotion", "emotion": emotion}, refs=[f"{cid}.front"],
-                               produces=f"{cid}.emotion{i}"))
-        items.append(_item(data, tv, f"cast-{cid}-voice", "casting", f"{ch['name']} — голос", base,
-                           produces=f"{cid}.voice", extra={"preview_es": c["preview_es"]}))
-    tm = templates["image.member_1994"]
-    for mid, member in data.members.items():
-        m = data.en["members"].get(mid)
-        if m is None:
-            raise PromptError(f"prompt_en.yaml: немає учасника сімки «{mid}»")
-        ctx = {"m": m, "name": member["name"], "member_id": mid}
-        items.append(_item(data, tm, f"cast-{mid}-1994", "casting", f"{member['name']} — 1994",
-                           {**ctx, "variant": "base"}, refs=["mateo.front"] if mid == "tomas" else [],
-                           produces=f"{mid}.1994", params={"aspect_ratio": "3:4"}))
-        items.append(_item(data, tm, f"cast-{mid}-wet", "casting", f"{member['name']} — мокрий",
-                           {**ctx, "variant": "wet"}, refs=[f"{mid}.1994"], produces=f"{mid}.wet"))
-    tl = templates["image.location"]
-    for lid, loc in data.locations.items():
-        en = data.loc(lid)
-        items.append(_item(data, tl, f"loc-{lid}", "casting", f"{loc['name']} — плита", data.place(lid),
-                           produces=f"{lid}.plate"))
-        for variant in (en.get("variants") or {}):
-            items.append(_item(data, tl, f"loc-{lid}-{variant}", "casting", f"{loc['name']} — {variant}",
-                               data.place(lid, variant), refs=[f"{lid}.plate"], produces=f"{lid}.{variant}"))
-    return items
+    from fabrica import compile as compile_mod
 
-
-def _frame_and_videos(data: Data, templates: dict[str, Template], set_name: str, prefix: str, title: str,
-                      frame: dict, videos: list[dict], extra: dict) -> list[Item]:
-    loc_id, variant, footage = frame["location"], frame.get("variant"), frame.get("footage")
-    people = data.people(frame.get("people", []))
-    loc_ref = f"{loc_id}.{variant}" if variant else f"{loc_id}.plate"
-    frame_ref = f"{prefix.replace('-', '.')}.frame"
-    refs = [p["ref"] for p in people] + [loc_ref]
-    frame_item = _item(data, templates["image.start_frame"], f"{prefix}-frame", set_name, f"{title} — стартовий кадр",
-                       {"composition": frame["composition"], "people": people, "footage": footage,
-                        "framing": frame.get("framing", "Medium"), **data.place(loc_id, variant, frame.get("light"))},
-                       refs=refs, produces=frame_ref, extra=extra)
-    items = [frame_item]
-    for v in videos:
-        vid = f"{prefix}-video" if v["id"] == "video" else f"{prefix}-{v['id']}"
-        items.append(_item(data, templates["video.shot"], vid, set_name, f"{title} — відео ({v['id']})",
-                           {"action": v["action"], "camera": v["camera"], "light": v["light"], "people": people,
-                            "footage": footage},
-                           refs=[frame_ref] + [p["ref"] for p in people],
-                           params={"resolution": v["resolution"], "duration_s": v["duration_s"]},
-                           extra={**extra, "first_frame": frame_ref}))
-    return items
+    return (compile_mod.character_items(data, templates) + compile_mod.member_items(data, templates)
+            + compile_mod.location_items(data, templates) + compile_mod.voice_design_items(data, templates))
 
 
 def test_pack_items(data: Data, templates: dict[str, Template]) -> list[Item]:
-    path = bible_mod.SERIES / data.slug / "lab" / "test_pack.yaml"
-    tp = yaml.safe_load(path.read_text(encoding="utf-8-sig"))
-    items: list[Item] = []
-    for t in tp["tests"]:
-        extra = {"success": t.get("success", [])}
-        items += _frame_and_videos(data, templates, "test-pack", f"tp-{t['id']}", f"{t['id']} · {t['title']}",
-                                   t["frame"], t.get("videos", []), extra)
-        for ef in t.get("extra_frames", []):
-            items += _frame_and_videos(data, templates, "test-pack", f"tp-{t['id']}-{ef['id']}",
-                                       f"{t['id']} · {t['title']} ({ef['id']})", ef, ef.get("videos", []), extra)
-    return items
+    from fabrica import compile as compile_mod
+    from fabrica import shotspec
 
-
-def overlay_file(slug: str, part: int) -> Path:
-    """Англійські описи шотів частини: {shot_id: {composition, action, camera, light, variant}}."""
-    return bible_mod.SERIES / slug / f"part{part}_prompts_en.yaml"
+    return compile_mod.spec_items(shotspec.test_pack_specs(data), data, templates)
 
 
 def part_items(data: Data, templates: dict[str, Template], part: int, out_root: Path | None = None) -> list[Item]:
-    from fabrica.models import Script, Shots       # важкі моделі — лише коли збираємо частину
+    from fabrica import compile as compile_mod
+    from fabrica import shotspec
 
-    folder = (out_root or OUTPUT) / data.slug / f"part{part}"
-    shots_path = folder / "shots.json"
-    if not shots_path.exists():
-        raise PromptError(f"немає {shots_path} — спершу `fabrica shotlist {data.slug} {part}`")
-    shots = Shots.model_validate_json(shots_path.read_text(encoding="utf-8-sig"))
-    script_path = folder / "script.json"
-    script = Script.model_validate_json(script_path.read_text(encoding="utf-8-sig")) if script_path.exists() else None
-    delivery = {ln.id: ln.delivery for sc in (script.scenes if script else []) for ln in sc.lines}
-    overlay_path = overlay_file(data.slug, part)
-    overlay = (yaml.safe_load(overlay_path.read_text(encoding="utf-8-sig")) or {}) if overlay_path.exists() else {}
-    voices = {**{c: (data.characters[c].get("voice") or {}) for c in data.characters},
-              **{m: (data.members[m].get("voice") or {}) for m in data.members},
-              **{s["id"]: (s.get("voice") or {}) for s in data.bible.get("supporting", [])}}
-    tv = templates["voice.line"]
-    items: list[Item] = []
-    for sh in shots.shots:
-        prefix = f"p{part}-{sh.id}"
-        if sh.tier not in ("montage",) and not (sh.reuse or "").startswith(("shot:", "plate:", "asset:")):
-            en = overlay.get(sh.id) or {}
-            warn = [] if en else [f"немає англійського опису шоту в {overlay_path.name} — у промпті український текст"]
-            known = [c for c in sh.characters if c in data.en["characters"] or c in data.en["members"]
-                     or c in data.groups]
-            frame = {"location": sh.location_id or "mina", "variant": en.get("variant"), "light": en.get("light"),
-                     "people": en.get("people", known), "footage": {"vhs": "vhs", "phone": "phone"}.get(sh.footage),
-                     "framing": en.get("framing") or (sh.framing or "medium").replace("_", " ").capitalize(),
-                     "composition": en.get("composition") or f"[UA → EN] {sh.action}"}
-            videos = [] if sh.tier == "still" else [{
-                "id": "video", "resolution": RESOLUTION.get(sh.tier, "480p"), "duration_s": sh.duration_s,
-                "action": en.get("action") or f"[UA → EN] {sh.action}", "camera": en.get("camera") or sh.camera,
-                "light": en.get("light") or data.place(sh.location_id or "mina", en.get("variant"))["light"]}]
-            if sh.location_id is None:
-                warn.append("у шоту немає location_id — взято mina")
-            new = _frame_and_videos(data, templates, str(part), prefix, f"Ч.{part} · {sh.id}", frame, videos,
-                                    {"tier": sh.tier})
-            for it in new:
-                it.warnings += warn
-            items += new
-        for n, d in enumerate(sh.dialogue, 1):
-            v = voices.get(d.character_id or "", {})
-            how = delivery.get(d.line_id or "", "normal")
-            items.append(_item(data, tv, f"{prefix}-voice{n}", str(part), f"Ч.{part} · {sh.id} — репліка {n}",
-                               {"text": d.text_es},
-                               params={"voice_id": v.get("voice_id"), "voice": v.get("description"),
-                                       "delivery": how, "settings": tv.settings.get(how, tv.settings["normal"])},
-                               extra={"character": d.character_id, "offscreen": d.offscreen}))
+    return compile_mod.spec_items(shotspec.part_specs(data, part, out_root), data, templates)
+
+
+def by_step(items: list[Item]) -> list[Item]:
+    """Порядок виробництва: (крок, порядок появи)."""
+    return sorted(items, key=lambda i: i.step)
+
+
+def select(items: list[Item], kinds: list[str] | None = None, only: str | None = None, where: str = "") -> list[Item]:
+    """Фільтр --kind / --only (елемент, шот «4.03» чи префікс «tp-T1»)."""
+    if kinds:
+        items = [i for i in items if i.kind in kinds]
+    if only:
+        items = [i for i in items if i.id == only or i.id.startswith(f"{only}-") or f"-{only}-" in f"{i.id}-"]
+        if not items:
+            raise PromptError(f"у наборі «{where}» немає елемента «{only}»")
     return items
 
 
 def build(slug: str, set_name: str, kinds: list[str] | None = None, only: str | None = None,
           out_root: Path | None = None, templates: dict[str, Template] | None = None) -> list[Item]:
-    """out_root=None → prompts.OUTPUT на момент виклику (тести й --out підміняють)."""
+    """out_root=None → prompts.OUTPUT на момент виклику (тести й --out підміняють). Порядок — за кроками."""
     templates = templates or load_templates()
     data = Data(slug)
     if set_name == "casting":
@@ -350,17 +283,77 @@ def build(slug: str, set_name: str, kinds: list[str] | None = None, only: str | 
         items = part_items(data, templates, int(set_name), out_root)
     else:
         raise PromptError(f"невідомий набір «{set_name}»: casting, test-pack або номер частини 1–4")
-    if kinds:
-        items = [i for i in items if i.kind in kinds]
-    if only:
-        items = [i for i in items if i.id == only or i.id.startswith(f"{only}-") or f"-{only}-" in f"{i.id}-"]
-        if not items:
-            raise PromptError(f"у наборі «{set_name}» немає елемента «{only}»")
-    return items
+    return select(by_step(items), kinds, only, set_name)
+
+
+# ---------------------------------------------------------------- послідовності
+
+
+def sequences_path(slug: str) -> Path:
+    return bible_mod.SERIES / slug / "lab" / "sequences.yaml"
+
+
+def sequences(slug: str) -> dict[str, dict]:
+    """series/<slug>/lab/sequences.yaml → {назва: {title, part, shots}}; файлу немає — {}."""
+    path = sequences_path(slug)
+    if not path.exists():
+        return {}
+    raw = yaml.safe_load(path.read_text(encoding="utf-8-sig")) or {}
+    seqs = raw.get("sequences", raw) if isinstance(raw, dict) else None
+    if not isinstance(seqs, dict):
+        raise PromptError(f"{path.name}: очікую словник «назва: {{title, part, shots}}»")
+    errors = []
+    for name, s in seqs.items():
+        ok = (isinstance(s, dict) and not set(s) - {"title", "part", "shots", "notes"} and s.get("part") in (1, 2, 3, 4)
+              and isinstance(s.get("title"), str) and bool(s["title"].strip()))
+        if not ok or not isinstance(s.get("shots"), list) or not s["shots"] \
+                or not all(isinstance(x, str) for x in s["shots"]):
+            errors.append(f"{path.name} · {name}: потрібні title (непорожній рядок), part (1–4), shots — непорожній "
+                          "список id у лапках (\"1.01\")")
+        elif dup := sorted({x for x in s["shots"] if s["shots"].count(x) > 1}):
+            errors.append(f"{path.name} · {name}: шоти повторюються: {', '.join(dup)}")
+    if errors:
+        raise PromptError("\n".join(errors))
+    return seqs
+
+
+def sequence_items(slug: str, name: str, out_root: Path | None = None,
+                   templates: dict[str, Template] | None = None) -> list[Item]:
+    """Елементи послідовності в порядку виробництва: замикання залежностей (кастинг → кадри → відео → репліки).
+
+    Беремо елементи шотів послідовності, потім усе, що вони потребують (needs → produces; «….last» — кліп), рекурсивно
+    — і з кастингу, і з частини (напр. попередній шот для handoff continue)."""
+    seqs = sequences(slug)
+    if name not in seqs:
+        raise PromptError(f"немає послідовності «{name}» у {sequences_path(slug).name} (є: {', '.join(seqs) or '—'})")
+    from fabrica import compile as compile_mod
+    from fabrica import shotspec
+
+    seq = seqs[name]
+    templates = templates or load_templates()
+    data = Data(slug)
+    specs = shotspec.part_specs(data, seq["part"], out_root)
+    if missing := [s for s in seq["shots"] if s not in {sp.id for sp in specs}]:
+        raise PromptError(f"послідовність «{name}»: шотів {missing} немає в shots.json частини {seq['part']}")
+    part = compile_mod.spec_items(specs, data, templates)
+    pool = casting_items(data, templates) + part
+    producer = {i.produces: i for i in pool if i.produces}
+    chosen: dict[str, Item] = {}
+    todo = [i for i in part if i.extra.get("shot") in seq["shots"]]
+    while todo:
+        it = todo.pop()
+        if it.id in chosen:
+            continue
+        chosen[it.id] = it
+        for need in it.needs:
+            src = producer.get(need) or producer.get(need.removesuffix(".last"))
+            if src and src.id not in chosen:
+                todo.append(src)
+    return by_step([i for i in pool if i.id in chosen])
 
 
 def set_of(item_id: str) -> str:
-    """Набір за префіксом id: cast-/loc- → casting, tp- → test-pack, p<N>- → N."""
+    """Набір за префіксом id: cast-/loc- → casting, tp- → test-pack, p<N>- → N (і кліпи «-video-2»)."""
     if item_id.startswith(("cast-", "loc-")):
         return "casting"
     if item_id.startswith("tp-"):

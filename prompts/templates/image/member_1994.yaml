@@ -1,16 +1,31 @@
 id: image.member_1994
 kind: image
-version: 1
-description: Сімка 1994 — портрет у стилі плівки 1994 (base) і «мокрий» варіант для привидів (wet).
-params:
-  tool: Gemini / Nano Banana
-  model: google/nano-banana
+version: 2
+profile: nano-banana
+route: replicate:google/nano-banana-2.1      # мокрий і обличчя з чужого якоря (Image 1); якір лише текстом — nano-banana-pro
+description: >-
+  Сімка 1994: якір кожного учасника (поясний портрет, одяг 1994, лише текстом; обличчя з якоря героя — Image 1,
+  якщо в біблії «= <Ім'я>») і мокрий варіант від якоря (Image 1). Дорослі, без шкільної форми (§7.2).
+payload:
   aspect_ratio: "3:4"
+  resolution: "2K"
+  output_format: png
+route_payload:
+  replicate:google/nano-banana-pro: {allow_fallback_model: false}
+  replicate:google/nano-banana-2.1: {google_search: false, image_search: false}
 prompt: |-
-  {% if variant == "wet" %}Use the attached reference image as the identity reference: same person, same school uniform, now {{ wet_ghost }}
-  {% else %}{% if member_id == "tomas" %}Use the attached reference image (Mateo) as the identity reference. {% endif %}
-  Half-length portrait of {{ name }}, {{ m.who }}: {{ m.look }}. School uniform: {{ uniform_1994 }}. {{ style.era_1994 }}
+  {% if variant == "wet" %}
+  Image 1 is the approved identity reference for {{ name }}. Create a new half-length photograph of {{ wet }}.
+  Keep the face, hair, build and clothing exactly as in Image 1; only the wet state changes.
+  Same plain light-grey seamless backdrop and the same soft even lighting as Image 1.
+  {% else %}
+  {% if face_of %}Image 1 is the approved identity reference for {{ face_of }}: give {{ name }} exactly the same face —
+  the same face shape, eyes, nose, lips, eyebrows and skin tone as in Image 1. {% endif %}
+  A photorealistic half-length portrait of {{ name }}, {{ m.who }}, facing the camera: {{ m.look }}.
+  Clothing: {{ m.wardrobe }}. Expression: {{ m.mood }}. Early-1990s hairstyle, clothes and accessories.
+  {{ style.sheet_background | capfirst }}, so every facial feature is clearly readable.
   {% endif %}
-  {{ style.original }} Strictly: {{ rules | join("; ") }}.
-negative: |-
-  {{ negative.common | join(", ") }}, modern clothes, smartphone, monstrous eyes, zombie
+  Shot on an 85mm lens at f/4, natural unretouched skin with visible pores, true-to-life colour.
+  {{ style.original }}
+  {{ lessons | join(" ") }}
+  {{ rules | join("; ") | capfirst }}. A single full-bleed photograph of one person.

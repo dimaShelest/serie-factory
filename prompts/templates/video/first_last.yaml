@@ -1,0 +1,27 @@
+id: video.first_last
+kind: video
+version: 2
+profile: seedance-2.5
+route: replicate:bytedance/seedance-2.5
+description: >-
+  Перший + останній кадр (image + last_frame_image, aspect adaptive; §2.2 E): «Preserve … Generate a continuous
+  transition from the first frame to the last frame. Motion … Camera … Lighting … Sound …» + сталі речення.
+payload:
+  aspect_ratio: adaptive
+  generate_audio: true
+  output_format: mp4
+route_payload:
+  cloudflare:bytedance/seedance-2.5: {use_virtual_avatar: true}
+prompt: |-
+  Single continuous shot, no cuts.
+  {{ clean_head }}
+  {{ footage }}
+  {{ blocking }}
+  {% if continuity %}Continuity: {{ continuity | join("; ") }}.{% endif %}
+  Preserve {{ preserve }}. Generate a continuous transition from the first frame to the last frame.
+  Motion: {{ action }}{% if end_state %} End state: {{ end_state }}.{% endif %}
+  {{ camera }}
+  Lighting: {{ light }}.
+  {{ sound | join(" ") }} No BGM.
+  {{ lessons | join(" ") }}
+  {{ constants | join(" ") }}

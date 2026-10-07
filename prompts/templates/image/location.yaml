@@ -1,13 +1,32 @@
 id: image.location
 kind: image
-version: 1
-description: Плита локації (порожня, без людей) — базова і стани (світанок, стеля, годинник 3:17 …).
-params:
-  tool: Gemini / Nano Banana
-  model: google/nano-banana
+version: 2
+profile: nano-banana
+route: replicate:google/nano-banana-2.1
+description: >-
+  Локація без людей. plate — плита лише текстом; variant — стан того самого місця (Image 1 = плита: та сама
+  архітектура, змінюється лише описане); related — окремий кадр із батьківським референсом (Image 1 — для матеріалів
+  і предметів); standalone — окремий кадр лише текстом. Кадрування — з даних (framing), не «wide establishing» завжди.
+payload:
   aspect_ratio: "16:9"
+  resolution: "2K"
+  output_format: png
+route_payload:
+  replicate:google/nano-banana-pro: {allow_fallback_model: false}
+  replicate:google/nano-banana-2.1: {google_search: false, image_search: false}
 prompt: |-
-  Cinematic wide establishing shot of {{ loc_desc }}. Lighting: {{ light }}. Mood: {{ mood }}. Empty, no people.
-  {{ style.photo }} Strictly: {{ rules[0] }}.
-negative: |-
-  {{ negative.common | join(", ") }}, people, person, crowd
+  {% if mode == "variant" %}
+  Image 1 is the location: {{ base }}. Keep the place, its architecture and materials{{ " and the camera position" if same_view else "" }}
+  exactly as in Image 1; change only this: {{ change }}.
+  {% if not same_view %}Framing: {{ framing }}.{% endif %}
+  {% elif mode == "related" %}
+  Image 1 is a reference of the same place: keep its architecture, materials, colours and every object that appears in
+  both exactly as in Image 1. Create a new photograph of {{ desc }}. Framing: {{ framing }}.
+  {% else %}
+  A photorealistic photograph of {{ desc }}. Framing: {{ framing }}.
+  {% endif %}
+  Lighting: {{ light }}. Mood: {{ mood }}.
+  The place is empty and deserted: only the architecture, the materials and the objects described.
+  {{ style.image }}
+  {{ lessons | join(" ") }}
+  {{ rules | join("; ") | capfirst }}.

@@ -246,20 +246,33 @@ def prompts(slug: str = Slug,
             set_name: str = typer.Argument(..., metavar="НАБІР", help="casting | test-pack | номер частини 1–4"),
             kind: list[str] = typer.Option(None, "--kind", help="image | video | voice (можна кілька)"),
             only: str = typer.Option(None, "--only", help="один елемент або шот, напр. tp-T1 чи 4.03"),
+            sequence: str = typer.Option(None, "--sequence",
+                                         help="послідовність із series/<slug>/lab/sequences.yaml, напр. first30"),
             out: Path = Out) -> None:
-    """Пакет промптів для ручних тестів: prompts/out/<slug>/<набір>/ (*.md + index.html для телевізора)."""
+    """Пакет промптів для ручних тестів: prompts/out/<slug>/<набір або послідовність>/ (*.md + index.html)."""
     for k in kind or []:
         if k not in prompts_mod.KINDS:
             raise ValueError(f"--kind {k}: має бути image, video або voice")
-    items = prompts_mod.build(slug, set_name, kind or None, only, out)
+    if sequence:
+        seq = prompts_mod.sequences(slug).get(sequence)
+        if seq and str(seq["part"]) != set_name:
+            raise ValueError(f"послідовність «{sequence}» — з частини {seq['part']}, а набір «{set_name}»")
+        items = prompts_mod.select(prompts_mod.sequence_items(slug, sequence, out), kind or None, only, sequence)
+    else:
+        items = prompts_mod.build(slug, set_name, kind or None, only, out)
     producers = [] if set_name == "casting" else prompts_mod.build(slug, "casting")
-    index = viewer_mod.write_package(slug, set_name, items, producers=producers)
+    index = viewer_mod.write_package(slug, sequence or set_name, items, producers=producers)
     by_kind = ", ".join(f"{k}: {sum(1 for i in items if i.kind == k)}" for k in prompts_mod.KINDS
                         if any(i.kind == k for i in items))
     typer.echo(f"✓ {len(items)} промптів ({by_kind}) → {index.parent}")
-    warned = sum(1 for i in items if i.warnings)
-    if warned:
-        typer.echo(f"  ⚠️ {warned} з попередженнями (див. переглядач)")
+    steps = " · ".join(f"{s.n} {s.title}: {n}" for s in prompts_mod.STEPS
+                       if (n := sum(1 for i in items if i.step == s.n)))
+    typer.echo(f"  кроки: {steps}")
+    warns = [w for i in items for w in i.warnings]
+    if warns:
+        api, lint = sum(w.startswith("API:") for w in warns), sum(w.startswith("lint:") for w in warns)
+        typer.echo(f"  ⚠️ попередження: API {api} · lint {lint} · дані {len(warns) - api - lint} "
+                   f"(у {sum(1 for i in items if i.warnings)} елементах; див. переглядач)")
     typer.echo(f"Переглядач: {index}")
 
 

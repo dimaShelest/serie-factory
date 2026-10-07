@@ -1,10 +1,16 @@
 id: voice.design
 kind: voice
-version: 1
-description: Кастинг голосу — опис для ElevenLabs Voice Design + текст прев'ю іспанською (≥ 100 символів).
-params:
-  tool: ElevenLabs Voice Design
-  model: eleven_multilingual_ttv_v2
+version: 2
+profile: eleven_ttv_v3
+route: elevenlabs:eleven_ttv_v3
+description: >-
+  Кастинг голосу (ElevenLabs Voice Design, eleven_ttv_v3): voice_description в офіційному форматі «Native Spanish
+  (Mexico City). <Стать>, <вік>. Perfect quality. Persona: …. Emotion: …. <тембр, темп>» (дорослий вік); text — прев'ю
+  героя іспанською (100–1000 символів); guidance_scale 5, loudness 0.5, сід, should_enhance false (§5.7).
+payload:
+  model_id: eleven_ttv_v3
+  guidance_scale: 5
+  loudness: 0.5
+  should_enhance: false
 prompt: |-
-  {{ c.voice }}. Character: {{ name }}, {{ c.who }}. Natural, cinematic delivery for a Spanish-language horror drama.
-negative: ""
+  {{ description }}

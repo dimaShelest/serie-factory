@@ -1,0 +1,30 @@
+id: video.i2v
+kind: video
+version: 3
+profile: seedance-2.5
+route: replicate:bytedance/seedance-2.5      # обличчя в кадрі (face clear) → cloudflare:bytedance/seedance-2.5 (компілятор)
+description: >-
+  Image-to-video від стартового кадру (Seedance 2.5, порядок блоків §2.2 A): формат → чиста темрява (ніч) → дефекти
+  камери (found footage) → «кліп починається» → розстановка й continuity (лише маршрут з обличчям: кадр там приблизний) → дія +
+  кінцевий стан → камера → світло → звук (репліка за формулою §2.6) + No BGM → замок → уроки → сталі речення.
+  Люди — лише теги (роль + одяг), зовнішність не переописуємо.
+payload:
+  aspect_ratio: adaptive        # зі стартовим кадром — лише adaptive
+  generate_audio: true
+  output_format: mp4
+route_payload:
+  cloudflare:bytedance/seedance-2.5: {use_virtual_avatar: true}
+prompt: |-
+  Single continuous shot, no cuts.
+  {{ clean_head }}
+  {{ footage }}
+  The clip begins exactly at this moment.
+  {{ blocking }}
+  {% if continuity %}Continuity: {{ continuity | join("; ") }}.{% endif %}
+  {{ action }}{% if end_state %} End state: {{ end_state }}.{% endif %}
+  {{ camera }}
+  {% if light %}Light: {{ light }}.{% endif %}
+  {{ sound | join(" ") }} No BGM.
+  {{ lock }}
+  {{ lessons | join(" ") }}
+  {{ constants | join(" ") }}

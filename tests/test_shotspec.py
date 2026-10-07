@@ -645,3 +645,77 @@ def test_real_test_pack_loads() -> None:
     by = {s.id: s for s in specs}
     assert by["T4"].video_id == "buildup" and by["T4-face"].gen_s >= 4
     assert all(s.frame and (s.action or s.mode == "still") for s in specs)
+
+
+# ---------------------------------------------------------------- кліпи (§12)
+
+
+FIXED = {"name": "manual-5s", "clip_s": [5], "resolution": "720p"}
+RANGED = {"name": "replicate-2.5", "clip_min_s": 4, "clip_max_s": 30, "resolution_by_tier": {"hero": "720p"}}
+
+
+@pytest.mark.parametrize(("edit", "profile", "want"), [
+    (0.5, FIXED, (5, 1)), (3, FIXED, (5, 1)), (5, FIXED, (5, 1)), (5.0000001, FIXED, (5, 1)), (7, FIXED, (5, 2)),
+    (10, FIXED, (5, 2)), (11, FIXED, (5, 3)), (4, {"clip_s": [4, 8]}, (4, 1)), (6, {"clip_s": [4, 8]}, (8, 1)),
+    (9, {"clip_s": [4, 8]}, (8, 2)), (0.5, RANGED, (4, 1)), (7, RANGED, (7, 1)), (4.2, RANGED, (5, 1)),
+    (40, RANGED, (20, 2)),
+])
+def test_clip_plan(edit: float, profile: dict, want: tuple[int, int]) -> None:
+    assert S.clip_plan(edit, profile) == want
+
+
+def _clip_spec(data, out_root: Path, **update) -> S.ShotSpec:
+    return _specs(data, out_root, FIX / "overlay_v2.yaml")["4.03"].model_copy(update=update)
+
+
+def test_clips_single_window_and_scare_event(data, out_root: Path) -> None:
+    (c,) = S.clips(_clip_spec(data, out_root, edit_s=3.0), FIXED)
+    assert (c.index, c.of, c.gen_s, c.window, c.start, c.warnings) == (1, 1, 5, (0.0, 3.0), "frame", [])
+    sp = _clip_spec(data, out_root, edit_s=3.0)
+    assert (c.action, c.end_state, c.camera) == (sp.action, sp.end_state, sp.camera)
+    (c,) = S.clips(_clip_spec(data, out_root, edit_s=1.0, beat="scare", event_s=2.0), FIXED)
+    assert c.window == (1.5, 2.5)                                           # 1 с навколо події
+    (c,) = S.clips(_clip_spec(data, out_root, edit_s=1.0, event_s=0.2), FIXED)
+    assert c.window == (0.0, 1.0)                                           # не виходить за початок
+    (c,) = S.clips(_clip_spec(data, out_root, edit_s=2.0, window=(1.0, 3.0)), FIXED)
+    assert c.window == (1.0, 3.0)
+    (c,) = S.clips(_clip_spec(data, out_root, edit_s=2.0, window=(3.0, 7.0)), FIXED)
+    assert c.window == (3.0, 5.0) and "обрізано" in c.warnings[0]
+    (c,) = S.clips(_clip_spec(data, out_root, edit_s=8.0), RANGED)
+    assert (c.gen_s, c.window) == (8, (0.0, 8.0))
+
+
+def test_clips_split_with_and_without_overlay_clips(data, out_root: Path) -> None:
+    sp = _clip_spec(data, out_root, edit_s=7.0)
+    a, b = S.clips(sp, FIXED)
+    assert (a.window, b.window, a.start, b.start) == ((0.0, 5.0), (0.0, 2.0), "frame", "prev_last")
+    assert a.action == sp.action and b.action == f"The same action continues. {sp.action}"
+    assert (a.end_state, b.end_state) == (None, sp.end_state) and "clips" in a.warnings[0] and b.warnings == []
+    own = [S.ClipIn(action="x", camera=S.Camera(move="pan_left")), S.ClipIn(action="y", end_state="z")]
+    a, b = S.clips(sp.model_copy(update={"clips": own}), FIXED)
+    assert (a.action, a.camera.move, a.end_state, b.action, b.end_state) == ("x", "pan_left", None, "y", "z")
+    assert b.camera == sp.camera and a.warnings == []
+    a, b, c = S.clips(sp.model_copy(update={"edit_s": 11.0, "clips": own}), FIXED)
+    assert "в оверлеї 2, а кліпів 3" in a.warnings[0] and c.action.startswith("The same action continues.")
+    assert c.window == (0.0, 1.0) and c.end_state == sp.end_state
+    a, _ = S.clips(sp.model_copy(update={"window": (0.0, 2.0)}), FIXED)
+    assert any("лише для шоту з одного кліпу" in w for w in a.warnings)
+
+
+def test_clips_handoff_t2v_and_no_video(data, out_root: Path) -> None:
+    (c,) = S.clips(_clip_spec(data, out_root, edit_s=4.0, handoff="continue"), FIXED)
+    assert c.start == "prev_last"
+    (c,) = S.clips(_clip_spec(data, out_root, edit_s=4.0, mode="t2v"), FIXED)
+    assert c.start == "none"
+    a, b = S.clips(_clip_spec(data, out_root, edit_s=6.0, mode="t2v"), FIXED)
+    assert (a.start, b.start) == ("none", "prev_last")
+    assert S.clips(_clip_spec(data, out_root, mode="still"), FIXED) == []
+    assert S.clips(_clip_spec(data, out_root, mode="none"), FIXED) == []
+
+
+def test_clips_window_length_must_match_edit(data, out_root: Path) -> None:
+    (c,) = S.clips(_clip_spec(data, out_root, edit_s=1.0, window=(0.0, 3.0)), FIXED)
+    assert c.window == (0.0, 3.0) and c.warnings == ["window 3 с ≠ edit_s 1 с (shots.json) — у монтажі шот вийде "
+                                                     "іншої довжини"]
+    (c,) = S.clips(_clip_spec(data, out_root, edit_s=2.0, window=(1.0, 3.04)), FIXED)
+    assert c.warnings == []                                                 # допуск 0.05 с

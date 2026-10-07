@@ -1,0 +1,27 @@
+id: video.t2v
+kind: video
+version: 2
+profile: seedance-2.5
+route: replicate:bytedance/seedance-2.5
+description: >-
+  Text-to-video без референсів (§2.2 D): порожні загальні плани, погода, статисти. Суб'єкт + хто в кадрі (теги) +
+  continuity + дія + місце + стиль + камера + звук + сталі речення. Вхідного зображення немає → фільтр облич не діє,
+  маршрут завжди Replicate (use_virtual_avatar — лише для вхідних зображень).
+payload:
+  aspect_ratio: "16:9"          # без кадру — явне співвідношення
+  generate_audio: true
+  output_format: mp4
+prompt: |-
+  Single continuous shot, no cuts.
+  {{ clean_head }}
+  {{ footage }}
+  {{ size | capfirst }} of {{ place }}.
+  {{ blocking }}
+  {% if continuity %}Continuity: {{ continuity | join("; ") }}.{% endif %}
+  {{ action }}{% if end_state %} End state: {{ end_state }}.{% endif %}
+  {{ style }}
+  {{ camera }}
+  Light: {{ light }}.
+  {{ sound | join(" ") }} No BGM.
+  {{ lessons | join(" ") }}
+  {{ constants | join(" ") }}
