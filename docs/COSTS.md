@@ -39,7 +39,8 @@ Seedance 2.5 — через **Replicate** (клієнт підключимо, к
 
 | Дата | Серіал / серія | script | refs | voice | video | repair | Разом | Ліміт | Примітка |
 |---|---|---|---|---|---|---|---|---|---|
-| план | LA GARGANTA · ч.1 (тільки відео Seedance, × 2 спроби) | | | | $126–145 | | $126–145 | TODO | `series/la-garganta/part1_shotlist.md`; без lip-sync (46 с), голосу й стілів |
+| план | LA GARGANTA · ч.1 (тільки відео Seedance, × 2 спроби) | | | | $127–146 | | $127–146 | TODO | `series/la-garganta/part1_shotlist.md`; без lip-sync (46 с), голосу й стілів |
+| план | LA GARGANTA · ч.2 (тільки відео Seedance, × 2 спроби) | | | | $127–138 | | $127–138 | 160 | `series/la-garganta/part2_shotlist.md`; ♻ 40 с з ч.1; без lip-sync (65 с) і голосу |
 
 ## Тестові та інші витрати
 
