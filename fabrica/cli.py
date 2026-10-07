@@ -23,7 +23,10 @@ from fabrica import bible as bible_mod
 from fabrica import config
 from fabrica import costs as costs_mod
 from fabrica import lab as lab_mod
+from fabrica import lessons as lessons_mod
+from fabrica import progress as progress_mod
 from fabrica import prompts as prompts_mod
+from fabrica import providers as providers_mod
 from fabrica import shotlist as shotlist_mod
 from fabrica import story as story_mod
 from fabrica import video as video_mod
@@ -166,11 +169,32 @@ def costs(slug: str = Slug, part: int = Part, out: Path = Out,
         typer.echo(f"✗ немає {shots_path} — спершу `fabrica shotlist {slug} {part}`", err=True)
         raise typer.Exit(1)
     shots = Shots.model_validate_json(_read(shots_path))
-    est = costs_mod.estimate(shots, costs_mod.load_rates(), attempts=attempts, min_clip_s=min_clip)
-    typer.echo(f"Кошторис відео {slug} ч.{part} (× {attempts} спроби, кліп ≥ {min_clip:g} с):")
-    for tier, t in sorted(est.tiers.items(), key=lambda kv: -kv[1].usd):
-        typer.echo(f"  {tier:<14} {t.shots:>3} шотів  {t.screen_s:>6g} с  ${t.usd:>8.2f}")
-    typer.echo(f"  {'разом':<14} {'':>3}        {'':>6}    ${est.usd:>8.2f}")
+    old = costs_mod.estimate(shots, costs_mod.load_rates(), attempts=attempts, min_clip_s=min_clip)
+    try:                                         # кліпи рівно як піде в API (маршрут + payload, профіль кліпу)
+        items = prompts_mod.build(slug, str(part), kinds=["video"], out_root=out)
+        est, why = costs_mod.estimate_items(items, attempts=attempts, shots=shots), ""
+    except (ValueError, KeyError) as e:          # промпти не збираються — старий кошторис за shots.json
+        items, est, why = [], old, str(e).splitlines()[0] if str(e) else type(e).__name__
+    if items:
+        try:
+            prof = providers_mod.generation().get("name", "")
+        except providers_mod.ProviderError:
+            prof = ""
+        typer.echo(f"Кошторис відео {slug} ч.{part} за скомпільованими кліпами ({len(items)} кліпів, профіль "
+                   f"{prof or '—'}, × {attempts} спроби):")
+        for tier, t in sorted(est.tiers.items(), key=lambda kv: -kv[1].usd):
+            typer.echo(f"  {tier:<14} {t.shots:>3} шотів  {t.screen_s:>6g} с у монтаж · генерація {t.billed_s:>5g} с  "
+                       f"${t.usd:>8.2f}")
+        typer.echo(f"  {'разом':<14} {'':>3}        {'':>6}    ${est.usd:>8.2f}")
+        if est.unpriced:
+            typer.echo(f"  ⚠️ без ціни в каталозі (не в сумі): {', '.join(est.unpriced)}")
+        typer.echo(f"  для порівняння — за екранними секундами shots.json (кліп ≥ {min_clip:g} с): ${old.usd:>8.2f}")
+    else:
+        typer.echo(f"Кошторис відео {slug} ч.{part} (× {attempts} спроби, кліп ≥ {min_clip:g} с):"
+                   + (f"  · промпти не зібрались ({why}) — рахую за shots.json" if why else ""))
+        for tier, t in sorted(est.tiers.items(), key=lambda kv: -kv[1].usd):
+            typer.echo(f"  {tier:<14} {t.shots:>3} шотів  {t.screen_s:>6g} с  ${t.usd:>8.2f}")
+        typer.echo(f"  {'разом':<14} {'':>3}        {'':>6}    ${est.usd:>8.2f}")
     typer.echo(f"  без генерації (♻): {est.reused_s:g} с · lip-sync: {est.lipsync_s:g} с (ставка Sync — TODO)")
     ledger = Ledger(out / "fabrica.sqlite")
     try:
@@ -289,9 +313,17 @@ def lab_log(item: str = typer.Argument(..., help="id елемента з пак�
             notes: str = typer.Option("", "--notes", help="що вийшло, що виправити"),
             story: str = typer.Option(None, "--story", help="серіал (типово — єдиний у series/)")) -> None:
     """Записати результат ручного тесту промпту (прив'язується до версії шаблону й промпту)."""
-    e = lab_mod.log(_story(story), item, tool, score, file, notes)
+    slug = _story(story)
+    e = lab_mod.log(slug, item, tool, score, file, notes)
     typer.echo(f"✓ #{e['id']} {e['item']} · {e['tool']} · {e['score']}/5 · {e['template']}@v{e['template_version']} "
                f"· промпт {e['prompt_sha']}" + (f" · {e['file']}" if e["file"] else ""))
+    if e.get("last_frame"):
+        typer.echo(f"  останній кадр: {e['last_frame']}")
+    for w in e.get("warnings") or []:
+        typer.echo(f"  ⚠️ {w}")
+    if e["item"] == item and not item.endswith(lab_mod.LAST):
+        if status := progress_mod.on_log(slug, item, score, e["prompt_sha"]):
+            typer.echo(f"  статус у студії: {status}")
 
 
 @lab_app.command("approve")
@@ -300,7 +332,11 @@ def lab_approve(target: str = typer.Argument(..., help="id шаблону (image
                 force: bool = typer.Option(False, "--force", help="без результату ≥ 4 у журналі"),
                 story: str = typer.Option(None, "--story")) -> None:
     """Позначити версію шаблону або промпт елемента як golden — лише їх використовує автоматика."""
-    typer.echo(f"★ {lab_mod.approve(_story(story), target, force)}")
+    slug = _story(story)
+    typer.echo(f"★ {lab_mod.approve(slug, target, force)}")
+    if target not in prompts_mod.load_templates():
+        item = lab_mod.find_item(slug, target)
+        progress_mod.set_status(slug, item.id, "approved", item.prompt_sha)
 
 
 @lab_app.command("status")
@@ -309,6 +345,40 @@ def lab_status(story: str = typer.Option(None, "--story")) -> None:
     """Шаблони: версія, golden, скільки тестів і середня оцінка."""
     for line in lab_mod.status(_story(story)):
         typer.echo(line)
+
+
+@lab_app.command("lessons")
+@friendly
+def lab_lessons(off: list[str] = typer.Option(None, "--off", help="вимкнути урок, напр. L3 (можна кілька)"),
+                on: list[str] = typer.Option(None, "--on", help="увімкнути урок знову"),
+                story: str = typer.Option(None, "--story")) -> None:
+    """Уроки лабораторії (series/<slug>/lab/lessons.yaml): список; --off / --on — вимкнути / увімкнути."""
+    slug = _story(story)
+    for lid, active in [*((x, False) for x in off or []), *((x, True) for x in on or [])]:
+        lessons_mod.set_active(slug, lid, active)
+        typer.echo(f"{'✓ увімкнено' if active else '✗ вимкнено'} {lid}")
+    rows = lessons_mod.all(slug)
+    if not rows:
+        typer.echo(f"Уроків ще немає ({lessons_mod.path(slug).relative_to(config.ROOT).as_posix()}) — їх додає студія.")
+    for r in rows:
+        scope = ", ".join(f"{k}: {v}" for k, v in (r.get("scope") or {}).items()) or "усі"
+        typer.echo(f"{'●' if r.get('active', True) else '○'} {r['id']:<4} [{scope}] {r['rule']}"
+                   + (f"\n       проблема: {r['problem']}" if r.get("problem") else ""))
+
+
+@app.command()
+@friendly
+def studio(story: str = typer.Option(None, "--story", help="серіал (типово — єдиний у series/)"),
+           sequence: str = typer.Option(None, "--sequence", help="послідовність, напр. first30 (типово — перша)"),
+           port: int = typer.Option(8765, "--port", min=1, max=65535, help="порт на 127.0.0.1"),
+           no_open: bool = typer.Option(False, "--no-open", help="не відкривати браузер")) -> None:
+    """Студія: локальний застосунок для ручних тестів (копіювати промпти, позначати прогрес, журнал, «Редагувати»)."""
+    from fabrica import studio as studio_mod
+
+    try:
+        studio_mod.serve(_story(story), sequence, port, open_browser=not no_open, log=typer.echo)
+    except studio_mod.StudioError as e:
+        raise ValueError(str(e)) from None
 
 
 @app.command("schema")

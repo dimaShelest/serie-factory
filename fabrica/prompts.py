@@ -16,9 +16,12 @@ payload (тіло запиту; файли — «ref:<id референсу>»),
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import re
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -189,8 +192,86 @@ class Item:
         return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()[:12]
 
 
+# ---------------------------------------------------------------- правки студії (overrides.yaml)
+
+OVERRIDE_KEYS = ("shots", "scenes", "prompt_en")
+_PENDING: ContextVar[dict[str, dict] | None] = ContextVar("pending_overrides", default=None)
+
+
+def overrides_path(slug: str) -> Path:
+    return bible_mod.SERIES / slug / "lab" / "overrides.yaml"
+
+
+def deep_merge(base, over):
+    """Словники — рекурсивно; списки й значення — заміна (prompt_en: characters.mateo.dna — увесь список)."""
+    if not isinstance(base, dict) or not isinstance(over, dict):
+        return copy.deepcopy(over)
+    out = dict(base)
+    for k, v in over.items():
+        out[k] = deep_merge(base.get(k), v) if k in base else copy.deepcopy(v)
+    return out
+
+
+def merge_fields(base, over: dict) -> dict:
+    """Шот / сцена: заміна поля цілком (camera, people …); lines — за номером репліки, поле в поле."""
+    out = dict(base) if isinstance(base, dict) else {}
+    for k, v in over.items():
+        if k == "lines" and isinstance(v, dict) and isinstance(out.get(k), dict):
+            lines = {_n(n): dict(x) if isinstance(x, dict) else x for n, x in out[k].items()}
+            for n, x in v.items():
+                lines[_n(n)] = {**lines.get(_n(n), {}), **x} if isinstance(x, dict) else x
+            out[k] = lines
+        else:
+            out[k] = copy.deepcopy(v)
+    return out
+
+
+def _n(n):
+    return int(n) if isinstance(n, str) and n.isdigit() else n
+
+
+def merge_overrides(base: dict, patch: dict) -> dict:
+    """Шар правок поверх шару: shots / scenes — merge_fields на шот; prompt_en — deep_merge."""
+    out = {k: copy.deepcopy(base.get(k) or {}) for k in OVERRIDE_KEYS}
+    for block in ("shots", "scenes"):
+        for key, body in (patch.get(block) or {}).items():
+            out[block][str(key)] = merge_fields(out[block].get(str(key)), body or {})
+    out["prompt_en"] = deep_merge(out["prompt_en"], patch.get("prompt_en") or {})
+    return out
+
+
+def load_overrides(slug: str) -> dict:
+    """series/<slug>/lab/overrides.yaml (правки студії, у Git) + правки «на пробу» (pending_overrides) →
+    {shots, scenes, prompt_en}. Ключ шоту / сцени «1.02» — для будь-якої частини, «p1-1.02» — лише для частини 1
+    (shotspec.part_specs). Файлу немає — порожньо."""
+    path = overrides_path(slug)
+    raw = {}
+    if path.exists():
+        try:
+            raw = yaml.safe_load(path.read_text(encoding="utf-8-sig")) or {}
+        except yaml.YAMLError as e:
+            raise PromptError(f"{path.name}: зламаний YAML — {e}") from None
+    if not isinstance(raw, dict) or set(raw) - set(OVERRIDE_KEYS) \
+            or not all(isinstance(raw.get(k) or {}, dict) for k in OVERRIDE_KEYS):
+        raise PromptError(f"{path.name}: очікую словник із shots, scenes, prompt_en (кожен — словник)")
+    out = merge_overrides({}, raw)
+    pending = (_PENDING.get() or {}).get(slug)
+    return merge_overrides(out, pending) if pending else out
+
+
+@contextmanager
+def pending_overrides(slug: str, patch: dict):
+    """Правки «на пробу» (студія: пропозиція перед записом): Data й шот-спеки бачать їх поверх overrides.yaml.
+    Лише в поточному потоці / контексті — інші запити студії їх не бачать."""
+    token = _PENDING.set({**(_PENDING.get() or {}), slug: patch})
+    try:
+        yield
+    finally:
+        _PENDING.reset(token)
+
+
 class Data:
-    """Біблія (bible.yaml) + англійський шар (prompt_en.yaml) однієї історії."""
+    """Біблія (bible.yaml) + англійський шар (prompt_en.yaml) однієї історії + правки студії (overrides.yaml)."""
 
     def __init__(self, slug: str) -> None:
         self.slug = slug
@@ -199,6 +280,9 @@ class Data:
         if not path.exists():
             raise PromptError(f"немає {path.relative_to(config.ROOT).as_posix()} — англійського шару для промптів")
         self.en = yaml.safe_load(path.read_text(encoding="utf-8-sig"))
+        self.overrides = load_overrides(slug)
+        if self.overrides["prompt_en"]:
+            self.en = deep_merge(self.en, self.overrides["prompt_en"])
         self.characters = {c["id"]: c for c in self.bible.get("characters", [])}
         self.members = {m["id"]: m for s in self.bible.get("supporting", []) for m in s.get("members", [])}
         self.supporting = {s["id"]: s for s in self.bible.get("supporting", [])}

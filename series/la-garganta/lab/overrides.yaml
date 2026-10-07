@@ -1,0 +1,16 @@
+# Правки промптів через студію (`fabrica studio` → «Редагувати»). Компілятор накладає їх останніми:
+# shots / scenes — поле в поле поверх part<N>_prompts_en.yaml (ключ «p1-1.02» — лише частина 1,
+# «1.02» — будь-яка частина); prompt_en — вкладено поверх prompt_en.yaml. Можна правити й руками.
+#
+# Формат (DESIGN §16; поля шоту — ShotIn у fabrica/shotspec.py):
+#   shots:
+#     "p1-1.02": {action: "…", camera: {move: static}, lines: {1: {delivery: whisper}}}
+#   scenes:
+#     "p1-s01": {light: "…"}
+#   prompt_en:
+#     characters: {mateo: {dna: ["…"]}}
+# Студія переписує файл цілком (ця шапка лишається; інші коментарі — ні). Порожньо — правок немає.
+
+shots: {}
+scenes: {}
+prompt_en: {}

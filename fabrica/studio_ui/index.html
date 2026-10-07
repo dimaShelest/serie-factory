@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Студія промптів</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top" id="top">
+  <div class="top-row">
+    <div class="brand">
+      <span class="story" id="story">…</span>
+      <span class="sub">студія промптів</span>
+    </div>
+    <label class="seq-label">Послідовність
+      <select id="seq" aria-label="Послідовність"></select>
+    </label>
+    <span class="chip" id="profile-chip" hidden></span>
+    <span class="chip" id="backend-chip" hidden></span>
+    <button type="button" class="btn ghost push" id="lessons-btn">Уроки</button>
+  </div>
+  <div class="top-row row2">
+    <div class="progress" role="progressbar" aria-label="Зроблено" aria-valuemin="0" id="progress">
+      <div class="bar"><span id="progress-fill"></span></div>
+      <b id="progress-text">0 / 0</b>
+    </div>
+    <div class="next-line" id="next-line"></div>
+    <button type="button" class="btn primary big" id="next-btn" title="Клавіша n">Далі →</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="side" aria-label="Кроки виробництва">
+    <h2>Кроки</h2>
+    <div class="step-list" id="step-list"></div>
+    <div class="side-tools">
+      <input type="search" id="search" placeholder="Пошук: 1.02, mateo, mina…" aria-label="Пошук">
+      <label class="toggle"><input type="checkbox" id="hide-done"> Сховати готові</label>
+    </div>
+    <p class="keys">Клавіші: <kbd>j</kbd> / <kbd>k</kbd> — наступна / попередня картка · <kbd>c</kbd> — копіювати промпт
+      · <kbd>n</kbd> — далі</p>
+  </aside>
+  <main id="main" tabindex="-1">
+    <p class="loading">Завантажую…</p>
+  </main>
+</div>
+
+<div class="backdrop" id="backdrop" hidden></div>
+<section class="panel" id="lessons-panel" role="dialog" aria-modal="true" aria-labelledby="lessons-title" hidden>
+  <div class="panel-head">
+    <h2 id="lessons-title">Уроки</h2>
+    <button type="button" class="btn" id="lessons-close">Закрити</button>
+  </div>
+  <div class="panel-body" id="lessons-body"></div>
+</section>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<script src="/static/app.js" defer></script>
+</body>
+</html>

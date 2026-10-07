@@ -1,0 +1,18 @@
+# Уроки лабораторії (fabrica/lessons.py): правило rule дописується в промпти елементів, яким підходить scope.
+# Додає студія (кнопка «Редагувати» → «зберегти урок»); вимкнути — `uv run fabrica lab lessons --off L3`.
+#
+# Формат одного уроку:
+#   - id: L1
+#     at: "2026-10-07T21:00:00+03:00"
+#     item: p1-1.02-video                      # де помітили
+#     route: replicate:bytedance/seedance-2.5  # на чому помітили (довідка; фільтр — у scope)
+#     kind: video
+#     problem: "Камера тремтить, хоч просили статичну"          # людським текстом
+#     rule: "The camera stays locked off on a tripod for the whole clip."   # ОДНЕ позитивне речення англійською
+#     scope: {kind: video, route: …, template: video.i2v, location: mina, character: lupita, tags: [vhs]}
+#     avoid: ["\\bshaky\\b"]                   # необов'язково: regex → «lint: урок L1: …»
+#     priority: 0                              # більше — важливіше (бракує місця — першими випадають менші)
+#     active: true                             # false — вимкнено (історія лишається)
+# Студія переписує файл цілком (ця шапка лишається; інші коментарі — ні).
+
+lessons: []

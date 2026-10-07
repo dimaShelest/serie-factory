@@ -11,6 +11,9 @@ dependencies = [
     "typer>=0.27.2",
 ]
 
+[project.optional-dependencies]
+claude = ["anthropic>=1.11.0"]           # переписувач студії через Claude: uv sync --extra claude; REWRITE_BACKEND=claude
+
 [project.scripts]
 fabrica = "fabrica.cli:main"         # uv run fabrica --help
 

@@ -414,18 +414,21 @@ def _from_v1(body: object) -> object:
     return out
 
 
-def load_overlay(slug: str, part: int, path: Path | None = None) -> dict:
+def load_overlay(slug: str, part: int, path: Path | None = None, overrides: dict | None = None) -> dict:
     """Оверлей частини → {version, path, scenes: {id: SceneIn}, shots: {id: ShotIn}}; {} — файлу немає.
 
     v1 (без version: верхній рівень — шоти з composition/action/camera/light/variant/people/framing) приводиться
     до форми v2; v2 — строгий (version: 2, scenes, shots). Усі помилки — одним SpecError.
+    overrides — правки студії цієї частини {shots, scenes} (part_overrides): поле в поле поверх оверлею, до перевірки.
     """
     path = path or overlay_path(slug, part)
-    if not path.exists():
+    touched = {b: set((overrides or {}).get(b) or {}) for b in ("shots", "scenes")}
+    if not path.exists() and not any(touched.values()):
         return {}
-    raw = _read_yaml(path)
-    if raw is None:
+    raw = _read_yaml(path) if path.exists() else {"version": 2}
+    if raw is None and not any(touched.values()):
         return {}
+    raw = {"version": 2} if raw is None else raw
     name = path.name
     if not isinstance(raw, dict):
         raise SpecError(f"{name}: очікую словник (version: 2, scenes, shots)")
@@ -451,6 +454,13 @@ def load_overlay(slug: str, part: int, path: Path | None = None) -> dict:
         for what, block in (("scenes", scenes_raw), ("shots", shots_raw)):
             if not isinstance(block, dict):
                 raise SpecError(f"{name}: {what} має бути словником (id → опис)")
+    if overrides:
+        from fabrica import prompts                # prompts імпортує цей модуль — лише тут
+
+        for block, ov in ((scenes_raw, overrides.get("scenes")), (shots_raw, overrides.get("shots"))):
+            for k, body in (ov or {}).items():
+                old = next((x for x in block if isinstance(x, (str, int)) and str(x) == k), k)
+                block[old] = prompts.merge_fields(block.get(old), body or {})
     scenes: dict[str, SceneIn] = {}
     shots: dict[str, ShotIn] = {}
     for out, block, model, what in ((scenes, scenes_raw, SceneIn, "сцени"), (shots, shots_raw, ShotIn, "шоту")):
@@ -462,7 +472,8 @@ def load_overlay(slug: str, part: int, path: Path | None = None) -> dict:
             if k in out:
                 errors.append(f"{name}: id {what} «{k}» повторюється")
                 continue
-            obj, errs = _validate(model, body, f"{name} · {'сцена' if model is SceneIn else 'шот'} {k}")
+            src = f"{name} + overrides.yaml" if k in touched["scenes" if model is SceneIn else "shots"] else name
+            obj, errs = _validate(model, body, f"{src} · {'сцена' if model is SceneIn else 'шот'} {k}")
             errors += errs
             if obj is not None:
                 out[k] = obj
@@ -838,6 +849,25 @@ def _part_spec(data: Data, part: int, sh: Shot, en: ShotIn | None, scene: SceneI
         handoff=o.handoff if video else "cut", warnings=warnings + tw + lw), []
 
 
+def part_overrides(data: Data, part: int, shot_ids: set[str], scene_ids: set[str]) -> dict:
+    """Правки студії (data.overrides з series/<slug>/lab/overrides.yaml) для частини: ключ «p<N>-<id>» — лише частина N
+    (його пише студія; перемагає), «<id>» без префікса — будь-яка частина, де такий шот / сцена є (інакше пропуск)."""
+    from fabrica import prompts                # prompts імпортує цей модуль — лише тут
+
+    ov, own = getattr(data, "overrides", None) or {}, f"p{part}-"
+    aliases = set().union(*(_scene_aliases(s) for s in scene_ids)) if scene_ids else set()
+    out: dict[str, dict] = {}
+    for block, known in (("shots", shot_ids), ("scenes", aliases)):
+        rows = {str(k): v or {} for k, v in (ov.get(block) or {}).items()}
+        mine = {k: v for k, v in rows.items() if k in known}
+        for k, v in rows.items():
+            if k.startswith(own):
+                mine[k[len(own):]] = prompts.merge_fields(mine.get(k[len(own):]), v)
+        if mine:
+            out[block] = mine
+    return out
+
+
 def part_specs(data: Data, part: int, out_root: Path | None = None, overlay: Path | None = None) -> list[ShotSpec]:
     """Спеки всіх шотів частини в порядку shots.json (montage / reuse — mode none, але з репліками).
 
@@ -859,10 +889,10 @@ def part_specs(data: Data, part: int, out_root: Path | None = None, overlay: Pat
     shots, script = docs["shots.json"], docs.get("script.json")
     # манера зі script.json; normal там = «не задано» (derive_lines тоді бере оверлей)
     delivery = {ln.id: ln.delivery for sc in (script.scenes if script else []) for ln in sc.lines}
-    ov = load_overlay(data.slug, part, overlay)
+    ids = {sh.id for sh in shots.shots}
+    ov = load_overlay(data.slug, part, overlay, part_overrides(data, part, ids, {sh.scene_id for sh in shots.shots}))
     name = (ov.get("path") or overlay or overlay_path(data.slug, part)).name
     scenes_ov, shots_ov = ov.get("scenes", {}), ov.get("shots", {})
-    ids = {sh.id for sh in shots.shots}
     errors = [f"{name} · шот {k}: такого шоту немає в shots.json частини {part}" for k in shots_ov if k not in ids]
     aliases = {sid: _scene_aliases(sid) for sid in {sh.scene_id for sh in shots.shots}}
     errors += [f"{name} · сцена {k}: такої сцени немає в shots.json частини {part} (є: "
