@@ -140,6 +140,8 @@ wet_ghost: >-
   quiet and sad expression, very dark background lit by a single cold flashlight beam. No gore, no wounds, no blood.
 
 locations:
+  # Стан (variant): рядок або {desc, light, mood, replace}. replace: true — інше приміщення чи ракурс (база не
+  # додається); без replace — стан того самого місця (база + стан).
   mina:
     base: >-
       the entrance (bocamina) of an abandoned silver mine cut into a steep rocky mountainside above a small Mexican
@@ -151,9 +153,21 @@ locations:
         desc: the same entrance at dawn, low mist, small pebbles scattered on the ground
         light: dawn, pale golden sunrise light through low mist
         mood: eerie stillness after a night nobody remembers
-      tunnel: a narrow mine tunnel, wet rough rock walls, old timber supports, rusted rails, darkness cut by flashlight beams through floating dust
-      flooded: the lower tunnel with knee-deep still black water reflecting flashlight beams, dripping ceiling
-      collapse: the tunnel blocked by a wall of fallen boulders, dust hanging in the air
+      tunnel:
+        replace: true
+        desc: a narrow abandoned silver-mine tunnel with wet rough rock walls, old timber supports and rusted rail tracks
+        light: total darkness except handheld flashlight beams cutting through floating dust
+        mood: claustrophobic, the mountain hums, water drips
+      flooded:
+        replace: true
+        desc: the lower flooded tunnel of the mine with knee-deep still black water, a dripping rock ceiling and old timber supports
+        light: darkness, flashlight beams reflecting on the black water
+        mood: cold, still, something waits under the water
+      collapse:
+        replace: true
+        desc: a mine tunnel blocked by a wall of fallen boulders
+        light: darkness, flashlight beams through hanging dust
+        mood: trapped, the mountain settles
   plaza_reloj:
     base: >-
       a small Mexican colonial mining-town plaza: cobblestones, colorful facades with dark windows, a parish church,
@@ -162,7 +176,13 @@ locations:
     light: night, warm yellow streetlights
     mood: a sleepy town holding its breath
     variants:
-      clock_317: close view of the clock face; the hour hand and the minute hand both point almost exactly at the 3 o'clock position, nearly overlapping (time 3:17)
+      street:
+        replace: true
+        desc: a narrow cobblestone street with colorful colonial facades leading to the town plaza
+        light: night, warm yellow streetlights
+      clock_317: >-
+        close view of the clock face; the hour hand and the minute hand both point almost exactly at the 3 o'clock
+        position, nearly overlapping (time 3:17)
   casa_minero:
     base: >-
       a humble old miner's one-room house: whitewashed adobe walls, a single metal bed, wooden table and chairs, an oil
@@ -170,6 +190,16 @@ locations:
     light: night, cold flashlight light, red-blue police lights flickering through the small window
     mood: wrongness, silence
     variants:
+      exterior:
+        replace: true
+        desc: >-
+          the outside of an old miner's whitewashed adobe house on a dirt street, a police pickup with flashing lights
+          parked in front (no markings, no text), no crowd
+        light: night, flashing red and blue police lights
+      patrol_car:
+        replace: true
+        desc: the inside of a parked municipal patrol car on a dirt street, dark dashboard, the mountain visible through the windshield
+        light: night, faint dashboard glow and distant police lights
       ceiling: >-
         all the furniture — bed, table, chairs, lamp — is stuck upside-down to the ceiling, defying gravity; wet bare
         footprints on the dusty floor lead from the door to where the bed used to stand; water drips from the bed on
@@ -179,8 +209,16 @@ locations:
     light: night, a single bare bulb
     mood: loneliness, a threat behind your back
     variants:
-      living: a modest living room, an old sofa, a small TV on a stand with a dark screen, a window showing the dark mountain
-      kitchen: a small kitchen with a glass of water on the table
+      living:
+        replace: true
+        desc: >-
+          a modest living room in a Mexican house: an old sofa, a wooden table, a small TV on a stand, a window
+          showing the dark mountain
+        light: night, a single warm lamp
+      kitchen:
+        replace: true
+        desc: a small kitchen in a modest Mexican house, a glass of water on the table
+        light: night, dim light from the hallway
   archivo:
     base: >-
       a municipal archive and newspaper library in an old colonial building: tall wooden shelves of bound newspaper
@@ -204,7 +242,11 @@ locations:
     light: day, warm lamps
     mood: power and polish
     variants:
-      police: a small-town police station office, an old desk with paper files, a two-way radio, a corkboard with photos and no readable text, fluorescent light
+      police:
+        replace: true
+        desc: a small-town police station office, an old desk with paper files, a two-way radio, a corkboard with photos and no readable text
+        light: cold fluorescent light
+        mood: tired routine
   panteon:
     base: >-
       a Mexican village cemetery during Día de Muertos: hundreds of candles, graves covered with bright orange

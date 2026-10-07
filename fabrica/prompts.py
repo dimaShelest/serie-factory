@@ -156,8 +156,13 @@ class Data:
         if variant and v is None:
             raise PromptError(f"prompt_en.yaml: у локації «{loc_id}» немає стану «{variant}»")
         v = v if isinstance(v, dict) else {"desc": v}
-        return {"loc_desc": loc["base"] + (f"; {v['desc']}" if v.get("desc") else ""),
-                "light": light or v.get("light") or loc["light"], "mood": v.get("mood") or loc["mood"]}
+        # replace: true — інше приміщення / інший ракурс місця (тунель, вітальня, вулиця): база не потрібна;
+        # інакше стан доповнює базу (світанок, меблі на стелі, годинник 3:17).
+        if v.get("replace"):
+            desc = v["desc"]
+        else:
+            desc = loc["base"] + (f"; {v['desc']}" if v.get("desc") else "")
+        return {"loc_desc": desc, "light": light or v.get("light") or loc["light"], "mood": v.get("mood") or loc["mood"]}
 
     def person(self, pid: str, state: str | None = None) -> dict:
         """name / desc (повна ДНК) / short (для відео) / ref (референс обличчя)."""
@@ -301,14 +306,14 @@ def part_items(data: Data, templates: dict[str, Template], part: int, out_root: 
             warn = [] if en else [f"немає англійського опису шоту в {overlay_path.name} — у промпті український текст"]
             known = [c for c in sh.characters if c in data.en["characters"] or c in data.en["members"]
                      or c in data.groups]
-            frame = {"location": sh.location_id or "mina", "variant": en.get("variant"),
-                     "people": known, "footage": {"vhs": "vhs", "phone": "phone"}.get(sh.footage),
-                     "framing": (sh.framing or "medium").replace("_", " ").capitalize(),
+            frame = {"location": sh.location_id or "mina", "variant": en.get("variant"), "light": en.get("light"),
+                     "people": en.get("people", known), "footage": {"vhs": "vhs", "phone": "phone"}.get(sh.footage),
+                     "framing": en.get("framing") or (sh.framing or "medium").replace("_", " ").capitalize(),
                      "composition": en.get("composition") or f"[UA → EN] {sh.action}"}
             videos = [] if sh.tier == "still" else [{
                 "id": "video", "resolution": RESOLUTION.get(sh.tier, "480p"), "duration_s": sh.duration_s,
                 "action": en.get("action") or f"[UA → EN] {sh.action}", "camera": en.get("camera") or sh.camera,
-                "light": en.get("light") or data.place(sh.location_id or "mina")["light"]}]
+                "light": en.get("light") or data.place(sh.location_id or "mina", en.get("variant"))["light"]}]
             if sh.location_id is None:
                 warn.append("у шоту немає location_id — взято mina")
             new = _frame_and_videos(data, templates, str(part), prefix, f"Ч.{part} · {sh.id}", frame, videos,

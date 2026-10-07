@@ -134,7 +134,7 @@ def test_template_edit_changes_sha(tmp_path: Path) -> None:
     assert after.template.sha != before.template.sha and after.prompt_sha != before.prompt_sha
 
 
-def test_part_set_with_voice_and_warnings(tmp_path: Path) -> None:
+def test_part_set_with_voice_and_warnings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     folder = tmp_path / SLUG / "part1"
     folder.mkdir(parents=True)
     shutil.copy(FIXTURE, folder / "script.json")
@@ -149,7 +149,11 @@ def test_part_set_with_voice_and_warnings(tmp_path: Path) -> None:
     assert chuy.params["delivery"] == "shout" and chuy.params["settings"]["style"] == 0.7
     videos = [i for i in items if i.kind == "video"]
     assert videos and all(i.params["resolution"] in ("720p", "480p") for i in videos)
-    assert any("англійського опису" in w for i in videos for w in i.warnings)     # part1_prompts_en.yaml ще немає
+    assert not any(i.warnings for i in items)                  # усі 77 шотів ч.1 мають англійський опис
+    assert not any("[UA" in i.prompt for i in items if i.kind != "voice")
+    monkeypatch.setattr(P, "overlay_file", lambda slug, part: tmp_path / "немає.yaml")
+    bare = [i for i in P.build(SLUG, "1", ["video"], out_root=tmp_path)]
+    assert all(any("англійського опису" in w for w in i.warnings) for i in bare)
 
 
 def test_unknown_set_and_item() -> None:

@@ -1,0 +1,505 @@
+# Англійські описи шотів ч.1 «El Reto» для промптів (стартовий кадр + відео). Зона A.
+# Ключ — id шоту з part1_shotlist.md. Поля: composition (стартовий кадр), action (рух у відео), camera, light,
+# variant (стан локації з prompt_en.yaml), people (перевизначити, кого описувати; {id, state: wet}), framing.
+# ♻ і монтаж тут не потрібні. Змінюєш опис → перегенеруй пакет: хеш промпту зміниться, golden зніметься.
+
+"1.01":
+  people: []
+  composition: >-
+    Night, 1994, seen through a camcorder: the dark mine entrance; seven young adults (1994 high-school graduates,
+    faces not visible) with flashlights squeeze through the rusty gate one by one.
+  action: >-
+    Flashlight beams bob as the silhouettes slip into the mine one by one; the one in front hushes the others with a
+    raised finger; the camera follows, shaking.
+  camera: handheld VHS camcorder, following
+"1.02":
+  variant: tunnel
+  people: [lupita, monica, ivan]
+  composition: >-
+    Inside the narrow mine tunnel, 1994: three graduates laugh into the camcorder light holding glass soda bottles;
+    another boy stands with his back to the camera, face never visible.
+  action: >-
+    They laugh and shove each other playfully, flashlight beams sweeping the wet walls; the curly-haired girl shouts
+    at the camera operator.
+  camera: handheld VHS camcorder at chest height
+"1.03":
+  variant: tunnel
+  people: [rosa_elena, beto]
+  composition: >-
+    The camcorder pans across faces lit by flashlights in the tunnel; in the background a boy in a blue-grey plaid
+    flannel shirt is out of focus, his face never sharp; a mine radio hangs on a timber beam.
+  action: >-
+    Slow pan from face to face; the radio hisses with static; the out-of-focus boy turns away from the lens.
+  camera: handheld VHS camcorder, slow pan
+"1.04":
+  variant: tunnel
+  people: []
+  composition: >-
+    Seven young adults in 1994 school uniforms stand in the narrow tunnel, frozen mid-laugh, looking up; fine dust
+    trickles from the ceiling in the flashlight beams.
+  action: A deep rumble from the mountain; dust pours from the ceiling; the laughter stops and every head turns upward.
+  camera: handheld VHS camcorder, slight shake
+"1.05":
+  variant: tunnel
+  people: []
+  composition: Darkness of the tunnel crossed by wildly swinging flashlight beams; nobody clearly visible.
+  action: >-
+    Flashlight beams swing in panic across the rock; the image glitches with VHS tracking noise; a voice calls a name
+    off-screen.
+  camera: handheld VHS camcorder, jerky
+"1.06":
+  variant: tunnel
+  people: []
+  composition: Pitch-black tunnel; a single flashlight beam on wet rock and old timber supports; dust in the beam; nobody in the frame.
+  action: >-
+    The beam slowly searches the tunnel, trembling with the operator's breathing; silence; it stops on a dark bend.
+  camera: handheld VHS camcorder, slow searching pan
+"1.07":
+  variant: tunnel
+  people: [{id: beto, state: wet}]
+  framing: Extreme close-up
+  composition: In the flashlight beam a soaked pale young man's face with mine dust is right in front of the lens, eyes wide open.
+  action: The face is suddenly there in the beam, completely still, water dripping; the camcorder jolts back.
+  camera: handheld VHS camcorder, a sharp jolt backwards
+"3.01":
+  people: []
+  composition: >-
+    Night: four small figures with flashlights climb the rocky slope toward the black mine entrance; one wears a
+    bright yellow windbreaker.
+  action: The four walk up toward the entrance, flashlight beams swaying.
+  camera: static wide shot
+"3.02":
+  people: [mateo]
+  composition: Mateo stands at the mine entrance, half in shadow, turning back toward the others, flashlight pointing down.
+  action: He turns to them with a calm half-smile and speaks, a faint challenge in his eyes.
+  camera: medium shot, static
+"3.03":
+  people: [vale]
+  composition: Vale at the mine entrance at night, flashlight in hand, jaw set.
+  action: She steps forward into the light, raises her flashlight and says two words.
+  camera: medium close-up, slight push-in
+"3.04":
+  people: [vale, mateo]
+  composition: >-
+    Smartphone video at night: Vale and Mateo at the mine entrance in the phone's light; Mateo's face is blurred as if
+    the camera cannot focus on him.
+  action: Vale walks toward the entrance; the phone keeps refocusing but Mateo's face stays blurred; the person filming laughs.
+  camera: handheld smartphone, autofocus hunting
+"3.05":
+  people: [sofia]
+  composition: Sofía stands back from the mine entrance at night, clutching her tote bag strap, staring into the darkness.
+  action: She hesitates, glances back down at the distant town lights, then forward into the dark.
+  camera: medium shot, static
+"3.06":
+  people: [diego, mateo]
+  composition: Two-shot at the mine entrance at night — Diego holds out an open bag of chips to Mateo.
+  action: Diego offers the chips with a grin; Mateo calmly shakes his head and answers; Diego shrugs and eats one.
+  camera: medium two-shot, static
+"3.07":
+  variant: tunnel
+  people: []
+  composition: >-
+    Inside the narrow tunnel, seen from behind: four flashlight beams; a young man in a blue-grey plaid flannel leads
+    confidently, three others follow.
+  action: They walk deeper, beams sweeping the wet walls; the leader never hesitates.
+  camera: wide shot from behind, slow follow
+"3.08":
+  variant: tunnel
+  people: []
+  composition: Shaky smartphone video in the tunnel — flashlight beams and the backs of three young adults ahead.
+  action: The phone shakes with every step; the person filming whispers a joke; beams flicker across the rock.
+  camera: handheld smartphone, walking
+"3.09":
+  variant: tunnel
+  people: [mateo]
+  composition: A fork in the tunnel; Mateo stands at it with his flashlight.
+  action: He stops for a second, points to the left passage without hesitation and walks on.
+  camera: medium shot
+"3.10":
+  variant: tunnel
+  people: []
+  framing: Close insert
+  composition: A flashlight beam on a wet rock wall.
+  action: Water slowly trickles down the glistening rock in the beam.
+  camera: static insert
+"3.11":
+  variant: tunnel
+  people: [los_cuatro]
+  composition: The four stand in the narrow tunnel with flashlights, looking up as dust starts to fall from the ceiling.
+  action: A deep rumble; dust pours from cracks in the ceiling; they freeze and look up.
+  camera: medium-wide, slight shake
+"3.12":
+  variant: tunnel
+  people: []
+  composition: The narrow tunnel shaking violently, flashlights in the hands of four shadowy figures.
+  action: Rocks rattle, the flashlights drop and roll, beams spin and go out one by one until darkness.
+  camera: wide, heavy shake
+"4.01":
+  variant: dawn
+  people: []
+  framing: Extreme wide
+  composition: Four young adults lie motionless near the mine entrance in low mist, seen from far away, peaceful.
+  action: Mist drifts slowly; nothing moves; the first sunlight touches the rocks.
+  camera: static extreme wide shot
+"4.02":
+  variant: dawn
+  people: [vale]
+  framing: Close-up, top-down
+  composition: Vale lies on the rocky ground at dawn, a thin trickle of blood from her nose; small pebbles hang in the air above her face.
+  action: Her eyes open slowly; she sees the pebbles floating above her and holds her breath.
+  camera: close-up, static, top-down angle
+"4.03":
+  variant: dawn
+  people: [los_cuatro]
+  composition: >-
+    The four young adults lie and sit on the rocky ground in front of the mine entrance, dazed, small trickles of
+    blood under their noses; hundreds of small grey pebbles hang motionless in the air around them.
+  action: >-
+    The hundreds of pebbles slowly drift and rotate in place, catching the warm sunrise light; fine dust glitters in
+    the beams; the four stay still, only breathing. Pebbles keep their exact shape and size; gravity does not affect them.
+  camera: slow steady push-in
+"4.04":
+  variant: dawn
+  people: [sofia]
+  composition: Sofía sits up on the rocks at dawn, glasses crooked, a trickle of blood under her nose.
+  action: She wipes her nose with her sleeve (medium shot, hand not in close-up), looks around in confusion and speaks.
+  camera: medium shot
+"4.05":
+  variant: dawn
+  people: [diego]
+  composition: Diego sits on the ground at dawn staring up in awe, mouth open, a few pebbles floating around him.
+  action: He stares up, then reaches into his windbreaker pocket for his phone without looking away.
+  camera: medium shot
+"4.06":
+  variant: dawn
+  people: [mateo]
+  composition: Mateo sits apart on a rock at dawn, calm, looking at the mountain; no blood on his face.
+  action: He sits perfectly still; only the mist moves around him.
+  camera: medium shot from the side
+"4.07":
+  variant: dawn
+  people: [vale]
+  framing: Close-up
+  composition: Vale on the ground at dawn, eyes wide.
+  action: She screams.
+  camera: close-up, static
+"4.08":
+  variant: dawn
+  people: [los_cuatro]
+  composition: Hundreds of pebbles hang in the air around the four young adults at dawn.
+  action: All the pebbles drop to the ground at once, raising a burst of dust.
+  camera: wide, static
+"4.09":
+  variant: dawn
+  people: [los_cuatro]
+  composition: The four young adults in settling dust at dawn, silent, looking at each other.
+  action: The dust settles slowly; nobody speaks.
+  camera: wide, static
+"5.01":
+  variant: living
+  light: daylight through the window
+  people: [vale]
+  composition: Vale stands in her modest living room by day; across the room a smartphone lies on the sofa.
+  action: The phone lifts off the sofa and flies across the room into her open hand (medium shot, hand not in close-up); she stares at it.
+  camera: medium-wide, static
+"5.02":
+  variant: living
+  light: daylight through the window
+  people: [vale, sofia]
+  composition: Smartphone video of the living room by day — Vale and Sofía stand amazed.
+  action: The phone shakes with the laughter of the person filming; Vale grins nervously; Sofía covers her mouth.
+  camera: handheld smartphone
+"5.03":
+  variant: living
+  light: daylight through the window
+  people: [sofia]
+  composition: Sofía sits at a wooden table by day staring at a glass of water.
+  action: The water rises out of the glass and gathers into a trembling sphere hovering above the table; Sofía stares, frozen.
+  camera: medium shot, slow push-in
+"5.04":
+  variant: living
+  light: daylight through the window
+  people: []
+  framing: Close insert
+  composition: Three spoons on a wooden table.
+  action: The spoons slowly slide across the table by themselves.
+  camera: static insert
+"5.05":
+  variant: living
+  light: daylight through the window
+  people: [mateo]
+  composition: Smartphone video — Mateo sits on the sofa; his face is blurred as if the camera cannot focus on him.
+  action: The phone tries to refocus; everything is sharp except Mateo's face.
+  camera: handheld smartphone, autofocus hunting
+"5.06":
+  variant: living
+  light: daylight through the window
+  people: [sofia]
+  composition: Sofía sits on the sofa with an open book on her lap.
+  action: The pages flip by themselves faster and faster; she watches, fascinated.
+  camera: medium shot
+"5.07":
+  variant: living
+  light: daylight through the window
+  people: [vale]
+  composition: Vale in the living room by day, a wooden chair in front of her.
+  action: The chair lifts a meter off the floor and hangs there; for the first time she smiles.
+  camera: medium shot
+"5.08":
+  variant: living
+  light: daylight through the window
+  people: [diego]
+  framing: Close-up selfie
+  composition: Selfie smartphone video — Diego's face close to the lens, small pebbles orbiting his head.
+  action: The pebbles circle his head slowly; he laughs into the camera.
+  camera: handheld selfie
+"5.09":
+  variant: street
+  people: [los_cuatro]
+  composition: The four young adults walk quickly along a narrow cobblestone street at night toward the plaza; nobody else around.
+  action: They walk talking and laughing, warm streetlights passing over them.
+  camera: wide tracking shot
+"5.10":
+  people: []
+  composition: The empty plaza at night with the stone clock tower.
+  action: Nothing moves; the clock hands read about ten past three.
+  camera: static wide shot
+"5.11":
+  people: [diego]
+  composition: Diego in the plaza at night looking at an old 1980s sedan parked by the curb, grinning.
+  action: He rolls his shoulders, grins wider and says one word.
+  camera: medium shot
+"5.12":
+  people: [vale]
+  composition: Vale in the plaza at night, serious, looking at Diego off-screen.
+  action: She shakes her head and warns him.
+  camera: medium shot
+"6.01":
+  people: [diego]
+  framing: Low-angle wide
+  composition: >-
+    The plaza at night: Diego stands with arms slightly raised (hands not in close-up); an old sedan hangs two meters
+    above the cobblestones in front of him.
+  action: The car rises and hovers; leaves and dust swirl beneath it; Diego shouts with joy.
+  camera: low angle wide shot, slow push-in
+"6.02":
+  people: []
+  composition: Smartphone video — an old sedan floating two meters above the plaza cobblestones at night.
+  action: The car hangs and slowly rotates a little; the phone shakes; someone gasps.
+  camera: handheld smartphone
+"6.03":
+  people: [diego]
+  framing: Close-up
+  composition: Diego's euphoric face at night, a thin trickle of blood starting from his nose.
+  action: He laughs, then notices the blood and his smile falters.
+  camera: close-up
+"6.04":
+  variant: clock_317
+  people: []
+  framing: Close-up
+  composition: The large white clock face on the tower, simple bar markers, no numerals.
+  action: The hands twitch and stop dead; both point almost exactly at the 3 (3:17).
+  camera: static close-up
+"6.05":
+  people: []
+  composition: The empty plaza at night with an old sedan hanging in the air above the cobblestones.
+  action: The car drops and crashes onto the cobblestones; nobody is near it.
+  camera: wide, static
+"6.06":
+  people: []
+  framing: Close insert
+  composition: A small analog wall clock in a dark shop window, simple bar markers, no numerals.
+  action: Its hands stand still at 3:17 — both almost exactly at the 3.
+  camera: static insert
+"6.07":
+  people: [los_cuatro]
+  composition: The four young adults stand frozen in the plaza at night, looking up at the clock tower.
+  action: Nobody moves; silence; a streetlight hums.
+  camera: medium-wide shot
+"7.01":
+  variant: exterior
+  people: []
+  composition: The old miner's adobe house at night, red and blue police lights flashing across the walls; no crowd.
+  action: The police lights flash; nothing else moves.
+  camera: static wide shot
+"7.02":
+  variant: ceiling
+  people: [renata]
+  composition: Renata stands in the doorway of the dark room with a flashlight.
+  action: She steps inside, the beam moving across the floor.
+  camera: medium shot
+"7.03":
+  variant: ceiling
+  people: [renata]
+  composition: >-
+    Renata stands in the doorway holding a flashlight, its beam on wet footprints on the floor; above her all the
+    furniture is stuck upside-down to the ceiling.
+  action: >-
+    She slowly steps into the room; the view tilts up from the footprints to the ceiling, revealing the furniture stuck
+    to it. A little dust and a few drops of water fall from the bed on the ceiling; the furniture creaks but stays attached.
+  camera: slow tilt up from the floor to the ceiling, following the flashlight beam
+"7.04":
+  variant: ceiling
+  people: []
+  framing: Insert
+  composition: Wet bare footprints on the dusty floor in a flashlight beam.
+  action: The beam follows the footprints from the door toward the middle of the room.
+  camera: insert, slow pan following the beam
+"7.05":
+  variant: ceiling
+  people: [renata]
+  composition: Renata stands under the bed that is stuck to the ceiling.
+  action: A drop of water falls from the bed onto her shoulder; she slowly looks up.
+  camera: medium shot
+"7.07":
+  variant: ceiling
+  people: [renata]
+  composition: Renata crouches, looking down at something just out of frame, her face grim.
+  action: She looks down for a long moment and speaks quietly.
+  camera: medium shot, what she looks at stays out of frame
+"7.08":
+  variant: ceiling
+  people: []
+  composition: A policeman in a navy uniform seen from behind holds a flashlight; the room's furniture is stuck to the ceiling above him.
+  action: He sweeps the flashlight beam across the ceiling and talks.
+  camera: medium shot from behind
+"7.09":
+  variant: ceiling
+  people: [renata]
+  framing: Medium close-up
+  composition: Renata in the dark room, the small silver oval locket at her neck catching the flashlight.
+  action: She touches the locket lightly (not a hand close-up), lost in thought.
+  camera: medium close-up
+"7.10":
+  variant: ceiling
+  people: [renata]
+  composition: Renata, stern, in the room under the furniture stuck to the ceiling.
+  action: She gives a short order to someone off-screen.
+  camera: medium shot
+"7.11":
+  variant: ceiling
+  people: [renata]
+  composition: Renata and a policeman seen from behind stand in the room, the furniture stuck to the ceiling above them.
+  action: A chair detaches from the ceiling and crashes down between them; both flinch.
+  camera: wide shot
+"7.12":
+  variant: ceiling
+  people: []
+  composition: A policeman seen from behind photographs the room with a flash camera.
+  action: Camera flashes light up the furniture on the ceiling in bursts.
+  camera: medium shot
+"7.13":
+  variant: ceiling
+  people: [renata]
+  composition: Renata at the nightstand holding an old yellowed newspaper clipping; the print is unreadable.
+  action: She looks at the clipping, then folds it carefully.
+  camera: medium shot
+"7.14":
+  variant: ceiling
+  people: []
+  framing: Point of view
+  composition: The wet footprints end in the middle of the room where the bed used to stand.
+  action: The flashlight beam stops on the last footprint.
+  camera: point of view, slow tilt down
+"7.15":
+  variant: patrol_car
+  people: [renata]
+  composition: Renata sits in her patrol car at night, the radio crackling.
+  action: She rubs her eyes, then looks up through the windshield at the mountain.
+  camera: medium shot through the side window
+"8.01":
+  variant: living
+  people: [vale]
+  composition: Vale comes into her dark living room at night, exhausted.
+  action: She drops her keys on the table and stands still in the dark.
+  camera: medium shot
+"8.02":
+  variant: kitchen
+  people: []
+  framing: Close insert
+  composition: A glass of water on the kitchen table at night.
+  action: The water's surface trembles as someone passes by off-screen.
+  camera: static insert
+"8.03":
+  variant: living
+  people: [vale]
+  composition: Vale sits alone at the table at night, a ceramic mug in front of her.
+  action: The mug lifts a few centimeters and trembles in the air; she watches it, scared.
+  camera: medium shot
+"8.04":
+  variant: living
+  people: [vale]
+  framing: Close-up
+  composition: Vale's frightened face at night.
+  action: She lets go; off-screen the mug falls and shatters; she flinches.
+  camera: close-up
+"8.05":
+  variant: living
+  people: [vale]
+  composition: Vale sits on the sofa at night, a trickle of blood from her nose.
+  action: She wipes her nose with the back of her wrist (medium shot) and looks at the blood.
+  camera: medium shot
+"8.06":
+  variant: living
+  people: [vale]
+  framing: Over the shoulder
+  composition: Over Vale's shoulder — the small TV shows night footage of a house with flashing police lights.
+  action: She watches the news in the dark; the TV light flickers on her face.
+  camera: over-the-shoulder, static
+"8.07":
+  variant: living
+  people: [vale]
+  composition: Vale from behind at the window at night, the dark mountain outside.
+  action: She stands still, looking at the mountain where the mine is.
+  camera: from behind, static
+"8.08":
+  people: [vale]
+  composition: Vale at the white sink in the small bathroom at night.
+  action: She splashes water on her face; a little blood swirls in the water (restrained, not gory).
+  camera: medium shot
+"8.09":
+  people: [vale]
+  framing: Over the shoulder into the mirror
+  composition: Vale looks into the old mirror, wiping blood from her upper lip.
+  action: She wipes her lip and studies her reflection.
+  camera: over-the-shoulder into the mirror
+"8.10":
+  people: []
+  framing: Close insert
+  composition: A single bare bulb in the bathroom ceiling.
+  action: The bulb flickers.
+  camera: static insert
+"8.11":
+  people: [vale, {id: beto, state: wet}]
+  framing: Over the shoulder into the mirror
+  composition: In the mirror behind Vale, barely visible in the shadow, a soaked boy in a 1990s school uniform.
+  action: Vale keeps looking at herself; behind her in the reflection the boy stands still, water dripping.
+  camera: over-the-shoulder into the mirror
+"8.12":
+  people: [vale]
+  framing: Close-up
+  composition: Vale frozen, eyes on the mirror.
+  action: She stops breathing and does not turn around.
+  camera: close-up
+"8.13":
+  people: [vale, {id: beto, state: wet}]
+  framing: Over the shoulder into the mirror
+  composition: In the mirror the soaked boy is closer behind Vale.
+  action: Water drips from his hair onto the floor; he does not move.
+  camera: over-the-shoulder into the mirror
+"8.14":
+  people: [vale]
+  composition: Vale in the small bathroom at night, turning away from the mirror.
+  action: She turns around slowly; the bathroom behind her is empty; only water on the tiles.
+  camera: medium shot
+"8.15":
+  people: [vale, {id: beto, state: wet}]
+  framing: Over the shoulder into the mirror
+  composition: In the mirror the soaked boy stands right behind Vale's shoulder.
+  action: She turns back to the mirror; he is right there, eyes on her.
+  camera: over-the-shoulder into the mirror
+"8.16":
+  people: [vale]
+  composition: Vale at the mirror in the small bathroom at night.
+  action: The bulb goes out; total darkness.
+  camera: medium shot
