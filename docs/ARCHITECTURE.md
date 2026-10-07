@@ -38,26 +38,41 @@ ElevenLabs (голос) · IMAGE API (референси) · Sync (lip-sync) · 
 - Журнал `output/fabrica.sqlite` — один на машину (SQLite, WAL, гроші в мікродоларах). Платні виклики — лише з Mac A.
 - `uv run fabrica costs <slug> <N>` — кошторис і ліміти; `docs/COSTS.md` — людський підсумок, оновлюється на `/handoff`.
 
-## Лабораторія промптів (режим до golden)
+## Лабораторія промптів (режим до golden) — рушій промптів v2
 
 ```
-prompts/templates/{image,video,voice}/*.yaml   шаблони з версіями (Jinja): ДНК + стиль + дія/камера/світло + правила
-series/<slug>/prompt_en.yaml                    англійський шар біблії (ДНК, локації, стиль, правила, negative)
-series/<slug>/lab/test_pack.yaml                тест-пак як дані;  part<N>_prompts_en.yaml — англійські описи шотів
-        │  uv run fabrica prompts <slug> <casting|test-pack|1–4>
+series/<slug>/bible.yaml, story.md          сюжет (укр.)
+series/<slug>/prompt_en.yaml                англійський шар: ДНК, теги для відео, стани, локації (час доби, варіанти),
+                                            стилі (фото / відео / VHS), правила кадру
+series/<slug>/part<N>_prompts_en.yaml       режисерська схема шотів (оверлей v2): перший кадр, дія + кінцевий стан, камера,
+                                            звук, ракурси людей, стан сцени, кліпи, handoff, вікно монтажу
+series/<slug>/lab/{sequences,overrides,lessons}.yaml   послідовності (first30 + бюджет), правки зі студії, уроки
+        │  fabrica/shotspec.py — ShotSpec (shots.json + оверлей + стан сцени + правки), кліпи за профілем генерації
         ▼
-prompts/out/<slug>/<набір>/  *.md + index.html (переглядач) + manifest.json        — не в Git, генерується
-        │  люди тестують руками → uv run fabrica lab log <id> …
+fabrica/compile.py — компілятори під модель: Nano Banana (порядкові референси), Seedance 2.5 (i2v / перший+останній
+        кадр / t2v, порядок блоків ByteDance), ElevenLabs v4 / Voice Design; уроки; маршрут обличчя
+        │  prompts/templates/** (версії, sha → golden) · prompts/providers.yaml (схеми API, ціни, профілі генерації)
+        │  prompts/lint.yaml (слова, що ламають генерацію)
         ▼
-lab/results.yaml (Git) + media/lab/ (не в Git)  →  uv run fabrica lab approve <шаблон|елемент>  →  prompts/golden.yaml
-        │  AUTOMATION_ENABLED=true (люди) + лише golden (lab.require_golden)
+Item: route + payload (тіло API, файли — «ref:<id>») + step (1–7) + needs  →  fabrica prompts (пакет + переглядач)
+                                                                         →  fabrica studio (локальний застосунок)
+        │  люди тестують руками → lab log → lab/results.yaml + media/lab/ → lab approve → prompts/golden.yaml
         ▼
-етапи refs / video / voice — ті самі промпти, сіди й референси, платні виклики через Ledger.charge()
+етапи video / voice — той самий payload (лише golden), платні виклики через Ledger.charge()
 ```
 
+- **Профіль генерації** (`prompts/providers.yaml → generation`): `lab-2.5` — лабораторія на одному платному акаунті
+  (Seedance 2.5, 720p, кліп = шот 4–10 с, dropshot); `replicate-2.5` — автоматика з тими самими моделлю й роздільністю.
+  `GENERATION_PROFILE` у `.env` перевизначає.
+- **Маршрут відео:** обличчя до камери (`face: clear`) → `cloudflare:bytedance/seedance-2.5` з `use_virtual_avatar`
+  (Seedance 2.x на Replicate відхиляє фотореальні обличчя, навіть згенеровані); решта → `replicate:bytedance/seedance-2.5`.
+- **Негативу немає** в жодному API Seedance / Nano Banana: заборони — сталими реченнями в самому промпті («No subtitles,
+  no on-screen text.», «No BGM; only ambience and action sounds.»), решта — позитивними формулюваннями.
+- **Студія** (`fabrica/studio.py` + `fabrica/studio_ui/`): лише 127.0.0.1; стан послідовності, прогрес
+  (`lab/progress.yaml`), запис результатів, бюджет, «Редагувати промпт» → `fabrica/rewrite.py` (Ollama; `REWRITE_BACKEND=
+  claude` — Claude API, необов'язкова залежність `uv sync --extra claude`) → overrides + уроки.
 - `AUTOMATION_ENABLED=false` за замовчуванням: `Ledger.reserve()` відмовляє будь-якому платному виклику.
-- Кожен результат прив'язаний до `id@версії` шаблону, sha шаблону і sha промпту. Сід — стабільний для елемента.
-- Провайдер відео — Replicate (клієнт — коли промпти golden). Фото — Gemini / Nano Banana, голос — ElevenLabs.
+- Кожен результат прив'язаний до `id@версії` шаблону, sha шаблону і sha промпту (payload + маршрут). Сід — стабільний.
 
 ## Дані
 
