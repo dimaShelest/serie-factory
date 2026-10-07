@@ -139,6 +139,7 @@ main:focus { outline: none; }
 .status-row .btn.st-done[aria-pressed="true"] { border-color: var(--ok); color: var(--ok); }
 .status-row .btn.st-in_work[aria-pressed="true"] { border-color: var(--work); color: var(--work); }
 .status-row .btn.gold { border-color: var(--accent); color: var(--accent); }
+.status-row .btn.gold.dim { opacity: .55; cursor: help; }
 .status-row .btn.reset { margin-left: auto; }
 
 .section { margin: 18px 0 0; }
@@ -181,6 +182,7 @@ details.box > summary .grow { flex: 1; }
 .s-ok .slot-state { color: var(--ok); }
 .s-golden .slot-state { color: var(--accent); }
 .s-missing .slot-state { color: var(--bad); }
+.s-weak .slot-state, .s-clip .slot-state, .s-nofile .slot-state { color: #e0bf4f; }
 .slot-file { color: var(--muted); font-size: 14px; margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .slot-file code { overflow-wrap: anywhere; }
 
@@ -194,6 +196,8 @@ figcaption { font-size: 14px; color: var(--muted); margin-top: 4px; overflow-wra
 .results { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
 .result { width: 260px; max-width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px; }
 .result.old { opacity: .7; }
+.result.last { border-color: var(--info); }
+.result .tag { font-size: 14px; font-weight: 700; color: var(--info); margin: 0 0 6px; }
 .result .meta { font-size: 15px; margin-top: 6px; }
 .result .meta b { font-size: 17px; }
 .result .notes { font-size: 15px; color: var(--muted); margin-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -244,6 +248,9 @@ input[type="text"], input[type="search"] { width: 100%; font-size: 17px; padding
 .or { font-size: 14px; color: var(--muted); text-align: center; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .backend-warn { color: var(--accent); font-size: 16px; }
+.big-hint { font-size: 17px; margin: 4px 0 0; }
+.last-toggle { border: 1px solid var(--line2); border-radius: 10px; padding: 8px 12px; align-items: flex-start; }
+.last-toggle input { flex: none; margin-top: 3px; }
 
 /* ---------- пропозиція переписувача ---------- */
 .proposal { border: 2px solid var(--info); border-radius: 14px; padding: 14px; background: #121a24; display: flex; flex-direction: column; gap: 12px; }

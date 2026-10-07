@@ -19,6 +19,17 @@ FILES = ("index.html", "app.js", "style.css")
 ENDPOINTS = ("/api/state", "/api/status", "/api/log", "/api/approve", "/api/rewrite", "/api/rewrite/apply",
              "/api/lessons", "/api/lessons/toggle", "/media")
 TOOLS = ("dropshot", "ai-studio", "gemini", "elevenlabs", "replicate", "cloudflare", "other")
+# DESIGN §16: точні ключі тіл POST (будують statusBody / logFields / … в app.js)
+BODIES = {
+    "status": ["item", "status", "story"],
+    "log": ["file", "item", "notes", "score", "story", "tool"],
+    "log_fields": ["item", "notes", "score", "story", "tool"],
+    "approve": ["item", "story"],
+    "rewrite": ["feedback", "item", "story"],
+    "apply": ["proposal", "rule", "save_lesson", "story"],
+    "apply_no_lesson": ["proposal", "save_lesson", "story"],
+    "toggle": ["active", "id", "story"],
+}
 NODE = shutil.which("node")
 
 
@@ -96,6 +107,10 @@ def test_app_sends_contract_fields():
                 "rule", "active"):
         assert re.search(rf"\b{key}\b", js), key
     assert "fd.append('upload'" in js
+    # тіла POST — лише через будівники (їхні ключі звіряє test_app_js_pure_functions), без літералів поруч
+    assert "body: {story" not in js and "body: {...fields" not in js
+    for fn in ("statusBody(", "logFields(", "logBody(", "approveBody(", "rewriteBody(", "applyBody(", "toggleBody("):
+        assert js.count(fn) >= 2, fn                            # оголошення + виклик
     # поля відповіді, які сторінка показує
     for key in ("progress", "next", "rewrite_backend", "profile", "sequences", "needs", "manual", "warnings",
                 "results", "last_frame", "stale", "golden", "prompt_old", "prompt_new", "warnings_new", "changes",
@@ -118,8 +133,10 @@ def test_ukrainian_ui_and_keys():
         assert text in js, text
     for text in ("Далі →", "Уроки", "Сховати готові"):
         assert text in page, text
-    for key in ("j", "k", "c"):
-        assert f"e.key === '{key}'" in js, key
+    # клавіші — через keyOf (фізична клавіша: українська розкладка дає «о / л / с / т»)
+    assert "const k = keyOf(e)" in js
+    for key in ("j", "k", "c", "n"):
+        assert f"k === '{key}'" in js and f"Key{key.upper()}: '{key}'" in js, key
 
 
 def test_app_element_ids_exist_in_index():
@@ -146,6 +163,11 @@ def test_app_js_syntax():
 def test_app_js_pure_functions():
     out = json.loads(_node(r"""
 const m = require(process.argv[1]);
+const WEAK = {ref: 'p1.1.02.frame', state: 'missing', item: 'p1-1.02-frame', score: 3,
+              label: 'лише 3/5 — переробити: крок 5 · p1-1.02-frame'};
+const CLIP = {ref: 'p1.1.02.c1.last', state: 'missing', item: 'p1-1.02-video', score: null,
+              label: 'кліп є (4/5), останнього кадру ще немає — uv run fabrica lab log p1-1.02-video-last --story x'};
+const MISSING = {ref: 'mina.plate', state: 'missing', item: 'loc-mina', label: 'ще немає — спершу крок 3 · loc-mina'};
 const res = {
   diff: m.diffWords('the old red car stops', 'the new blue car stops'),
   same: m.diffWords('a b', 'a b'),
@@ -174,7 +196,41 @@ const res = {
   how: m.howParts('Відкрий сторінку.\n\n  curl -X POST $URL\n\nГотово.'),
   qs: m.qs({story: 'la-garganta', seq: 'part:1', x: null}),
   media: m.mediaUrl('media/lab/la garganta/a#1.png'),
+  keys: [{key: 'о', code: 'KeyJ'}, {key: 'л', code: 'KeyK'}, {key: 'с', code: 'KeyC'}, {key: 'т', code: 'KeyN'},
+         {key: 'j', code: 'KeyJ'}, {key: 'h', code: 'KeyJ'}, {key: 'Escape', code: 'Escape'},
+         {key: 'О', code: 'KeyJ', shiftKey: true}].map(m.keyOf),
+  weak: [m.needState(WEAK), m.slotState(WEAK)],
+  clipSlot: [m.needState(CLIP), m.slotState(CLIP)],
+  missingSlot: [m.needState(MISSING), m.needState({state: 'weak'}), m.needState({state: 'clip'}), m.needState({})],
+  over: [m.isOverridden({source: {overridden: []}}), m.isOverridden({source: {overridden: ['action']}}),
+         m.isOverridden({overridden: true}), m.isOverridden({extra: {overridden: []}}), m.isOverridden({}),
+         m.overriddenFields({source: {overridden: ['action', 'camera']}, extra: {overridden: ['action']}})],
+  approve: [m.canApprove({id: 'a', results: []}),
+            m.canApprove({id: 'a', results: [{item: 'a', current: true, score: 4}]}),
+            m.canApprove({id: 'a', results: [{item: 'a', current: true, score: 3}]}),
+            m.canApprove({id: 'a', results: [{item: 'a', current: false, score: 5}]}),
+            m.canApprove({id: 'a', results: [{item: 'a-last', current: true, score: 5}]}),
+            m.canApprove({id: 'a', golden: true, results: []}),
+            m.canApprove({id: 'a', status: 'approved'})],
+  rewritable: [m.rewritable({source: {kind: 'test', editable: []}}), m.rewritable({source: {editable: ['action']}}),
+               m.rewritable({})],
+  urls: [m.safeUrl('https://aistudio.dropshot.io/'), m.safeUrl('HTTP://x.y'), m.safeUrl('javascript:alert(1)'),
+         m.safeUrl('aistudio.dropshot.io'), m.safeUrl(null)],
+  lastRow: [m.isLastRow({item: 'p1-1.02-video-last'}), m.isLastRow({item: 'p1-1.02-video'})],
+  lastWarn: [m.lastFrameWarning('немає ffmpeg — останній кадр не витягнуто; запиши кадр руками: …'),
+             m.lastFrameWarning('ffmpeg не витягнув останній кадр з a.mp4: x'), m.lastFrameWarning('інше')],
+  bodies: {
+    status: m.statusBody('s', 'i', 'done'),
+    log: m.logBody(m.logFields('s', 'i', 'dropshot', 4, ''), ''),
+    log_fields: m.logFields('s', 'i-last', 'other', 5, 'n'),
+    approve: m.approveBody('s', 'i'),
+    rewrite: m.rewriteBody('s', 'i', 'ліхтарик'),
+    apply: m.applyBody('s', 'rw-1', true, 'Keep the beam on the ceiling.'),
+    apply_no_lesson: m.applyBody('s', 'rw-1', false, 'ignored'),
+    toggle: m.toggleBody('s', 'L1', false),
+  },
 };
+res.bodyKeys = Object.fromEntries(Object.entries(res.bodies).map(([k, v]) => [k, Object.keys(v).sort()]));
 console.log(JSON.stringify(res));
 """))
     assert out["diff"] == [["=", "the "], ["-", "old red"], ["+", "new blue"], ["=", " car stops"]]
@@ -195,3 +251,25 @@ console.log(JSON.stringify(res));
     assert out["how"] == [[False, "Відкрий сторінку."], [True, "curl -X POST $URL"], [False, "Готово."]]
     assert out["qs"] == "?story=la-garganta&seq=part%3A1"
     assert out["media"] == "/media?path=media%2Flab%2Fla%20garganta%2Fa%231.png"
+    # клавіші: українська розкладка → та сама фізична клавіша; латиниця (і Dvorak) — як є; Shift — не скорочення
+    assert out["keys"] == ["j", "k", "c", "n", "j", "h", "Escape", "О"]
+    # сервер згортає weak / clip у missing — справжній стан видно з needs[].label
+    assert out["weak"] == ["weak", ["лише 3/5 — переробити", ": ", {"item": "p1-1.02-frame"}]]
+    assert out["clipSlot"][0] == "clip"
+    assert out["clipSlot"][1][0].startswith("кліп є (4/5), останнього кадру ще немає")
+    assert {"item": "p1-1.02-video"} in out["clipSlot"][1] and "uv run" not in json.dumps(out["clipSlot"])
+    assert out["missingSlot"] == ["missing", "weak", "clip", "missing"]
+    # «змінено через студію»: [] — ні, ['action'] — так
+    assert out["over"] == [False, True, True, False, False, ["action", "camera"]]
+    assert out["approve"] == [False, True, False, False, False, True, True]
+    assert out["rewritable"] == [False, True, True]
+    assert out["urls"] == ["https://aistudio.dropshot.io/", "HTTP://x.y", None, None, None]
+    assert out["lastRow"] == [True, False]
+    assert out["lastWarn"] == [True, True, False]
+    assert out["bodyKeys"] == BODIES
+    b = out["bodies"]
+    assert b["status"] == {"story": "s", "item": "i", "status": "done"}
+    assert b["log"]["file"] is None and b["log"]["score"] == 4
+    assert b["log_fields"]["item"] == "i-last"
+    assert b["apply"]["save_lesson"] is True and b["apply_no_lesson"]["save_lesson"] is False
+    assert b["toggle"] == {"story": "s", "id": "L1", "active": False}

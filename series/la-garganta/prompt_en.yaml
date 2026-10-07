@@ -568,12 +568,19 @@ locations:
         ref: null
         framing: close-up of the clock
         time: night
+  # База — спальня Vale (ч.1 8.05, 8.08–8.16; ч.2 біт 1): вузьке ліжко під лівою стіною, дзеркало над умивальником —
+  # на дальній стіні, двері — позаду праворуч, коли стоїш обличчям до дзеркала. Вітальня й кухня — окремі варіанти.
   casa_vale:
-    base: a small cramped bathroom in a modest Mexican house, an old mirror with worn silvering above a white sink, tiled wall
-    light: night, a single bare bulb
+    base: >-
+      a small bedroom in a modest Mexican house: a narrow bed with a plain blanket against the left wall, plain
+      plaster walls, a tiled floor, and on the far wall an old mirror with worn silvering hanging above a small white
+      washbasin with an old tap
+    light: night, a single bare bulb hanging from the ceiling on a short cord
     mood: loneliness, a threat behind your back
     time: night
-    framing: medium wide shot from the doorway, the mirror seen at an angle
+    framing: >-
+      medium wide shot from the doorway: the narrow bed along the left wall, the mirror above the washbasin on the far
+      wall seen at an angle
     variants:
       living:
         replace: true
@@ -612,22 +619,23 @@ locations:
         ref: casa_vale.kitchen
         framing: medium wide shot of the kitchen
         time: day
-      # 8.09–8.15 (дзеркало): окремі плити «прямо в дзеркало» і «від дзеркала до дверей»; базова — з порога, під кутом.
+      # 8.09–8.15 (дзеркало в спальні): окремі плити «прямо в дзеркало» і «від дзеркала до дверей»; базова — з порога,
+      # під кутом.
       mirror:
         replace: true
         desc: >-
-          the same small bathroom seen straight into the old mirror with worn silvering above the white sink; the
-          mirror shows the bathroom behind the camera, with the open dark doorway reflected on the right
-        light: night, a single bare bulb above the mirror
+          the same small bedroom seen straight into the old mirror with worn silvering above the small white
+          washbasin; the mirror shows the bedroom behind the camera, with the open dark doorway reflected on the right
+        light: night, a single bare bulb hanging from the ceiling
         ref: casa_vale.plate
         framing: medium close-up straight into the mirror
         time: night
       mirror_side:
         replace: true
         desc: >-
-          the same small bathroom seen from beside the mirror toward the door: the edge of the white sink in the lower
-          foreground, the tiled wall, the open dark doorway on the left
-        light: night, a single bare bulb above the mirror
+          the same small bedroom seen from beside the mirror toward the door: the edge of the small white washbasin in
+          the lower foreground, the narrow bed along the wall on the right, the open dark doorway on the left
+        light: night, a single bare bulb hanging from the ceiling
         ref: casa_vale.plate
         framing: medium wide shot from the mirror toward the doorway
         time: night

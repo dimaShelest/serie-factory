@@ -3,7 +3,7 @@
   "story": "la-garganta",
   "part": 1,
   "title_es": "El Reto",
-  "target_seconds": 420,
+  "target_seconds": 417,
   "scenes": [
     {
       "id": "s01",
@@ -113,7 +113,7 @@
       ],
       "wow": true,
       "vfx": "Сотні камінців висять у повітрі навколо четвірки й падають, щойно Vale скрикує.",
-      "action": "Світанок. Четверо прокидаються біля входу в шахту, у всіх кров з носа.",
+      "action": "Світанок. Четверо прокидаються біля входу в шахту: у трьох кров з носа, Mateo непомітно витирає чистий ніс.",
       "lines": [
         {
           "id": "l05",
@@ -121,7 +121,12 @@
           "text_es": "¿Cuánto tiempo estuvimos ahí adentro?",
           "emotion": "desconcierto"
         }
-      ]
+      ],
+      "clues": {
+        "planted": [
+          "C15"
+        ]
+      }
     },
     {
       "id": "s05",
@@ -243,7 +248,7 @@
     {
       "id": "s08",
       "approx_start_s": 320,
-      "approx_end_s": 410,
+      "approx_end_s": 407,
       "location_id": "casa_vale",
       "characters": [
         "vale",
@@ -275,8 +280,8 @@
     {
       "id": "s09",
       "segment": "end_card",
-      "approx_start_s": 410,
-      "approx_end_s": 420,
+      "approx_start_s": 407,
+      "approx_end_s": 417,
       "action": "Заставка «Continuará…» (накладаємо в монтажі).",
       "overlay_text": "Continuará…"
     }

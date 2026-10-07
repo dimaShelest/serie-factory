@@ -35,7 +35,8 @@
 # Підлога тунелю суха й матова в кожному шоті з Mateo: він не відображається (bible: mateo_is_tomas).
 # ===== c45 =====
 # Оверлей v2 · ч.1 «El Reto» · сцени 4–5 (шоти 4.01–4.09, 5.01–5.12): світанок після обвалу (камінці в повітрі, кров
-# з носа — у всіх, крім Mateo: тиха підказка 4.06), денний монтаж сили й відео Diego, нічна вулиця й площа.
+# з носа — у трьох; Mateo без крові, але непомітно витирає чистий ніс, як інші: тиха підказка 4.06, +C15), денний
+# монтаж сили й відео Diego, нічна вулиця й площа.
 # frame — статична перша мить (Nano Banana; імена → референси); action / end_state / clips — рух для Seedance (люди —
 # лише тегами з prompt_en.yaml, без віку); camera — один рух із ціллю й кінцевою точкою; звук — без музики.
 #
@@ -46,7 +47,8 @@
 # Камінці висять над трьома з 4.02 до 4.08 (падають від крику Vale 4.07); у 4.01 їх здалеку не видно.
 # Стан сцени 4: Vale, Diego — кров з носа (nosebleed). Sofía — без стану: у 4.03 / 4.08 / 4.09 спиною або здалеку
 # (кров не видно, а кожен стан — +~110 символів відео-промпту, ліміт 2000); у 4.04 кров — текстом кадру, бо вона її
-# витирає. Mateo — без крові (shotlist 4.06 «тиха підказка» — єдина; стану dusty немає ні в кого: друга підказка зайва).
+# витирає. Mateo — без крові: у 4.06 він непомітно витирає ЧИСТИЙ ніс, повторюючи жест інших, щоб не виділятися
+# (рішення dimaShelest 2026-10-07, +C15); стану dusty немає ні в кого: друга підказка зайва.
 # 4.09 продовжує 4.08 (handoff continue): той самий сетап, вікно 4.08 закінчується на 5,0 с.
 #
 # Сцена 5 · вітальня вдень (casa_vale.living_day): диван під правою стіною, вікно на задній стіні ліворуч (денне світло
@@ -84,26 +86,31 @@
 #
 # Режисура сцени 8 (план підлоги):
 #   Вітальня (casa_vale.living): вхідні двері — в глибині; дерев'яний стіл — між дверима й камерою 8.01 (Vale іде
-#   до нього на камеру й лишається в центрі); диван і малий ТБ — праворуч; вікно на гору — у задній стіні ліворуч. 8.01 — лампи вимкнені (лише місячне світло з
-#   вікна); 8.03–8.05 — увімкнена одна тепла лампа; 8.06–8.07 — лампа знову вимкнена, світить лише екран ТБ.
+#   до нього на камеру й лишається в центрі); диван і малий ТБ — праворуч; вікно на гору — у задній стіні ліворуч.
+#   8.01 — лампи вимкнені (лише місячне світло з вікна); 8.03–8.04 — увімкнена одна тепла лампа; 8.06–8.07 — лампа
+#   знову вимкнена, світить лише екран ТБ.
 #   Кухня (kitchen) — лише вставка 8.02 (тінь Vale проходить, вода в склянці тремтить).
-#   Ванна (плита casa_vale): дзеркало й раковина — на «північній» стіні; Vale стоїть обличчям до дзеркала; двері —
-#   позаду неї праворуч (з її боку). Дві позиції камери, обидві по один бік осі Vale ↔ дзеркало:
+#   Спальня Vale (базова плита casa_vale; рішення dimaShelest 2026-10-07: ліжко й дзеркало — одна кімната): дзеркало
+#   над маленьким білим умивальником — на «північній» стіні; вузьке ліжко — під «західною» (ліворуч, якщо стояти
+#   обличчям до дзеркала); двері — позаду праворуч. Світло — одна гола лампочка на короткому шнурі під стелею.
+#   8.05 — сидить на краю ліжка (база); 8.08 — вмивається над умивальником під дзеркалом; 8.09–8.16 — дзеркало.
+#   Vale стоїть обличчям до дзеркала. Дві позиції камери, обидві по один бік осі Vale ↔ дзеркало:
 #     A «у дзеркало» (8.09, 8.11, 8.13, 8.15): камера одразу за ЛІВИМ плечем Vale, дивиться прямо в дзеркало;
 #       дзеркало займає майже весь кадр, реальне — лише розмитий край її плеча й хвоста внизу ліворуч. Відчинені
-#       двері ванної у відображенні — праворуч від її відображення. Beto (мокрий) — ЛИШЕ у відображенні:
+#       двері спальні у відображенні — праворуч від її відображення. Beto (мокрий) — ЛИШЕ у відображенні:
 #       8.11 у темному дверному отворі (силует, розфокус → перевід фокуса), 8.13 — за крок від її правого плеча
 #       (верх обличчя в тіні), 8.15 — просто за її правим плечем (обличчя повністю — лише тут). Реальна кімната перед
 #       дзеркалом поза кадром — там нікого.
 #     B «з боку дзеркала» (8.12 крупний, 8.14 середньо-загальний): камера там, де дзеркало, дивиться на Vale; двері —
-#       в глибині ліворуч у кадрі (її праворуч), темні й порожні; у 8.14 на плитці — мокрі сліди від дверей до маленької
-#       калюжі за крок позаду неї, там, де в 8.13 стояв Beto (C02 — мокрі сліди, як у 7.04).
-#   Кров з носа (одна тонка цівка, без ран): 8.05 — з'являється й витирається (кінець — nosebleed_wiped); 8.08 —
+#       в глибині ліворуч у кадрі (її праворуч), темні й порожні; ліжко — праворуч у кадрі; у 8.14 на плитці підлоги —
+#       мокрі сліди від дверей до маленької калюжі за крок позаду неї, там, де в 8.13 стояв Beto (C02 — мокрі сліди,
+#       як у 7.04).
+#   Кров з носа (одна тонка цівка, без ран): 8.05 — з'являється й витирається (кінець — слід над губою); 8.08 —
 #   знову тонка лінія, у воді блідо-рожевий відтінок; 8.09 — витирає, лінія з'являється знову (кров лише в тексті
 #   кадру, без state, бо LOCK «кров лишається» суперечив би витиранню); 8.11–8.15 — лишається.
 #   Обличчя у відображенні = обличчя в кадрі → у шотах A face: clear (маршрут з обличчям), хоча Vale спиною.
 #   Мокрий Beto: {id: beto, state: [wet]} → референс beto.wet (wet-текст стану компілятор не дублює).
-#   Кліпи профілю manual-5s: шот 6 с = кліп 1 (5 с) + перша 1 с кліпу 2; 8 с = 5 + 3; 10 с = 5 + 5.
+#   Кліпи профілю manual-5s: 8.03–8.05 — по 5 с, один кліп (рішення 2026-10-07); 8 с = 5 + 3; 10 с = 5 + 5.
 #   Дія / камера шоту з кліпами = кліп 1 (якорі YAML); end_state шоту = кінець останнього кліпу.
 #   Відео-тексти: люди лише тегами, без віку, без заперечень, без «flicker / glow / fast»; звук — без музики.
 
@@ -136,8 +143,9 @@ scenes:
     light: >-
       dawn: low golden sunrise light from the left through thin low mist, long soft shadows, cool blue shade in the
       hollows between the rocks
-    state:
+    state:                     # кров з носа в трьох; у Mateo — ні (C15: він лише витирає чистий ніс, 4.06)
       vale: [nosebleed]
+      sofia: [nosebleed]
       diego: [nosebleed]
     continuity:
       - thin low mist lies over the rocky ground in front of the mine entrance
@@ -1270,10 +1278,12 @@ shots:
       the left, far away and out of focus in the mist, the pebbles hanging over the others are tiny dark specks.
     action: >-
       The pale man in the open blue-grey plaid flannel shirt sits upright and still on the rock, gazing up at the
-      mountainside on the right. Thin low mist drifts slowly past him from left to right; at about 2 seconds he blinks
-      once, slowly; his damp hair stays flat against his head.
+      mountainside on the right; thin low mist drifts slowly past him from left to right. At about 1 second he glances
+      briefly to the left, then quietly raises the back of his right wrist and wipes it once under his nose in a small,
+      unhurried motion, his hand at medium distance from the lens; his upper lip and wrist stay clean. He lowers his
+      hand back to his knee and turns his gaze to the mountain again; his damp hair stays flat against his head.
     end_state: >-
-      He sits in the same calm pose, his gaze on the mountain, his pale face clean.
+      He sits in the same calm pose, his hand back on his knee, his gaze on the mountain, his pale face clean.
     camera:
       size: medium
       move: push_in
@@ -1284,17 +1294,23 @@ shots:
       lens_mm: 85
     sound:
       sfx:
+        - the faint brush of his sleeve under his nose at about 1.5 seconds
         - a single bird call far down the slope at about 3 seconds
     continuity:
       - his pale face is clean
     success:
-      - "тиха підказка (одна, за shotlist): у Mateo немає крові з носа; спокійний, нерухомий, але кадр живий (туман,
-        одне повільне кліпання)"
+      - "тиха підказка +C15 (рішення dimaShelest 2026-10-07): у Mateo немає крові з носа, але він непомітно, одним
+        рухом витирає чистий ніс тильним боком зап'ястя — повторює жест інших, щоб не виділятися; губа й зап'ястя
+        чисті, крові ніде немає"
+      - "жест буденний і короткий (не позує, не дивиться на зап'ястя); рука середнім планом; далі знову спокійно дивиться
+        на гору; туман рухається весь шот"
       - волосся вологе, проділ посередині; фланель відкрита поверх білої футболки
     notes:
       - "finding mateo-nosebleed: «чисте обличчя» — позитивно (v1 «no blood on his face» підказувало моделі кров)"
-      - "лише одна підказка — без крові; «чистий одяг» / «чисте повітря» прибрано (bible core_twist: не підказувати
-        прямо)"
+      - "C15: розкриття — ч.4 · 1 («Me llamo Tomás Ochoa»). Жест — без крові, без погляду на руку: глядач має помітити
+        лише при перегляді. Інші підказки тут не додаємо («чистий одяг» / «чисте повітря» прибрано — bible core_twist:
+        не підказувати прямо)"
+      - "4 с у монтаж з кліпу 5 с: кліп від стартового кадру, жест ≈ 1–2,5 с — у вікні 0–4 с"
 
   "4.07":
     beat: reaction
@@ -1344,9 +1360,8 @@ shots:
       rock beside the entrance timber, in profile facing the mountainside.
     action: >-
       The pebbles hang in the air and tremble slightly. At about 3 seconds all of them drop at the same instant and
-      hit the rocks, and a burst of grey dust rises to waist height around the three on the ground. The three flinch
-      hard, hunching and raising their arms over their heads. At the right, the pale man in the open blue-grey plaid
-      flannel shirt stays still on his rock and slowly turns his head toward them.
+      hit the rocks; grey dust bursts up to waist height around the three on the ground, who flinch hard and cover
+      their heads. At the right, the pale man in the plaid flannel stays still and slowly turns his head toward them.
     end_state: >-
       Pebbles lie scattered on the rocks; grey dust hangs at waist height around the three, who crouch with their arms
       over their heads; the pale man sits still on his rock, looking at them.
@@ -2725,15 +2740,15 @@ shots:
       across the table in a three-quarter view, leaning forward on her forearms, both hands resting flat on the table
       well apart from the mug. A plain white ceramic mug with no pattern stands on the bare wood in the lower centre of
       the frame, between her and the lens, a few bread crumbs beside it. Her eyes are fixed on the mug, her brows drawn together, her jaw set.
-    action: &a803 >-
+    action: >-
       The woman in the black denim jacket stares hard at the white mug, jaw tight, holding her breath. The mug rattles
       faintly on the wood, then slowly rises a few centimetres off the table and hangs in the air, trembling and turning
       slowly; a few crumbs beside it lift and hover. Her eyes widen slightly and her lips part; her hands stay flat on
       the table.
-    end_state: &e803b >-
-      the mug hangs trembling a few centimetres above the table, turning slowly; she leans toward it, eyes locked on it,
+    end_state: >-
+      the mug hangs trembling a few centimetres above the table, turning slowly; she stares at it, eyes locked on it,
       breath held
-    camera: &c803a
+    camera:
       size: medium
       move: push_in
       speed: very slow
@@ -2744,24 +2759,12 @@ shots:
       sfx:
         - the mug rattles faintly on the wood
         - a low hum slowly rises in the room
-    clips:
-      - action: *a803
-        end_state: the mug hangs trembling a few centimetres above the table; she stares at it, breath held
-        camera: *c803a
-      - action: >-
-          The mug keeps hanging in the air, trembling and turning slowly. She leans a little closer to it, her eyes
-          locked on it, her breathing shallow; the crumbs keep hovering beside it.
-        end_state: *e803b
-        camera:
-          size: medium close-up
-          move: static
-          angle: eye level
     success:
       - "чашка біла, без написів; піднімається повільно на кілька сантиметрів і висить, тремтить, повільно обертається"
       - "руки Vale лежать на столі (без жестів і світла з рук); на обличчі — зосередження й подив, ще без страху"
     notes:
       - "Рев'ю: у 8.03 — свідома спроба (зосередження), страх належить 8.04."
-      - "Монтаж: кліп 1 цілий + 0–1 с кліпу 2."
+      - "Шот 5 с (рішення 2026-10-07) = один кліп 5 с, у монтаж цілий; другого кліпу немає."
 
   "8.04":
     beat: reaction
@@ -2772,14 +2775,14 @@ shots:
       A close-up of Vale's face at night in the living room, in a three-quarter view, lit from the side by the warm
       lamp. Her eyes are fixed on something just below the frame, her brows drawn together in hard concentration, her
       jaw tight. The dark room behind her is soft and out of focus.
-    action: &a804 >-
+    action: >-
       The woman in the black denim jacket stares down hard, jaw tight. A low hum rises and the lamp light trembles
       across her face. Then her eyes widen, her breath catches, and she jerks her head back in one sharp motion; at the
       crash of the mug below the frame she flinches, her shoulders jumping.
-    end_state: &e804b >-
+    end_state: >-
       she stares down at the floor below the frame, eyes wide, her lips pressed together, breathing in short shaky
       breaths
-    camera: &c804a
+    camera:
       size: close-up
       move: static
       angle: eye level
@@ -2789,40 +2792,32 @@ shots:
         - a low hum rises and swells
         - the mug clatters onto the table, rolls off the edge and shatters on the tiled floor below the frame
         - her sharp gasp
-    clips:
-      - action: *a804
-        end_state: she stares down at the floor below the frame, eyes wide, breathing in short shaky breaths
-        camera: *c804a
-      - action: >-
-          She keeps staring down at the floor, frozen, her breath shaky; her lips press together and her chin
-          trembles slightly.
-        end_state: *e804b
-        camera: *c804a
     success:
       - "спершу зосередження → гул і тремтіння світла → очі розширюються, вдих перехоплює, ривок головою назад"
       - "чашку не видно — лише звук: падає на стіл, скочується й розбивається на підлозі за кадром; Vale здригається на звук"
     notes:
       - "Рев'ю: зміна емоції всередині шоту (зосередження → страх себе); без «she lets go» (руки не потрібні)."
-      - "Монтаж: кліп 1 цілий + 0–1 с кліпу 2."
+      - "Шот 5 с (рішення 2026-10-07) = один кліп 5 с, у монтаж цілий; другого кліпу немає."
 
   "8.05":
     beat: reaction
-    variant: living
     people:
       - {id: vale, view: face, screen: center, state: [exhausted]}
     frame: >-
-      Night in the living room under the single warm lamp. Vale sits hunched on the edge of the old sofa, seen from the
-      front at eye level, her elbows on her knees and her hands hanging loosely between them, her head bowed so her face
-      is tilted down but readable, her shoulders sunk. The wooden table and the lamp are soft and out of focus behind
-      her.
-    action: &a805 >-
-      The woman in the black denim jacket sits hunched on the edge of the sofa, breathing heavily. A thin dark-red line
-      of blood slowly runs from her left nostril down to her upper lip. She feels it, slowly raises the back of her
-      right wrist and wipes under her nose in one stroke, then holds her wrist in front of her chest and stares at the
+      Night in Vale's small bedroom under the single bare bulb. Vale sits hunched on the edge of the narrow bed, seen
+      from the front at eye level, her elbows on her knees and her hands hanging loosely between them, her head bowed so
+      her face is tilted down but readable, her shoulders sunk. The plain plaster wall behind her is soft and out of
+      focus; at the right edge of the frame, soft and seen at a steep angle, the small white washbasin with the bottom
+      corner of the old mirror above it.
+    action: >-
+      The woman in the black denim jacket sits hunched on the edge of the narrow bed, breathing heavily. A thin dark-red
+      line of blood slowly runs from her left nostril down to her upper lip. She feels it, slowly raises the back of her
+      right wrist and wipes under her nose in one stroke, then lowers her wrist onto her knee and stares at the
       dark-red smear on it.
-    end_state: &e805b >-
-      she sits hunched and still, her wrist resting on her knee, a faint smear of blood above her upper lip
-    camera: &c805a
+    end_state: >-
+      she sits hunched and still on the edge of the bed, her wrist resting on her knee, her eyes on the smear, a faint
+      smear of blood above her upper lip
+    camera:
       size: medium
       move: push_in
       speed: very slow
@@ -2831,29 +2826,18 @@ shots:
       angle: eye level
     sound:
       sfx:
+        - the old bed creaks softly under her
         - her heavy breathing
         - a soft sniff as the blood reaches her lip
-    continuity:
-      - white ceramic shards of the broken mug lie on the floor beside the table in the background
-    clips:
-      - action: *a805
-        end_state: she stares at the dark-red smear on the back of her wrist; a faint smear of blood stays above her lip
-        camera: *c805a
-      - action: >-
-          She lowers her wrist onto her knee; her shoulders sink with one long breath out, her eyes still on the
-          smear.
-        end_state: *e805b
-        camera:
-          size: medium close-up
-          move: static
-          angle: eye level
     success:
+      - "спальня (базова плита casa_vale): вузьке ліжко, гола лампочка; той самий умивальник і дзеркало, що в 8.08–8.16"
       - "тонка цівка крові з лівої ніздрі (без ран і калюж), витирає тильним боком зап'ястя одним рухом"
-      - "кисті — середнім планом, без крупних планів рук; за спиною — уламки чашки на підлозі"
+      - "кисті — середнім планом, без крупних планів рук"
     notes:
-      - "Шотлист каже «на ліжко», але в casa_vale немає спальні — диван у вітальні (запит: варіант bedroom або правка шотлиста)."
+      - "Рішення dimaShelest 2026-10-07: ліжко — у спальні Vale, це та сама кімната, що дзеркало (базова плита
+        casa_vale, без variant). Уламки чашки лишилися у вітальні — у кадрі їх немає."
       - "Сідання — еліпсис між 8.04 і 8.05: шот починається, коли вона вже сидить (дія кліпу — кров і витирання)."
-      - "Монтаж: кліп 1 цілий + 0–1 с кліпу 2."
+      - "Шот 5 с (рішення 2026-10-07) = один кліп 5 с, у монтаж цілий; другого кліпу немає."
 
   "8.06":
     beat: dread_hold
@@ -2962,7 +2946,7 @@ shots:
     people:
       - {id: vale, view: profile, screen: center, state: [nosebleed]}
     frame: >-
-      Night in the small bathroom under the single bare bulb. Vale stands at the white sink, seen in profile from the
+      Night in Vale's small bedroom under the single bare bulb. Vale stands at the small white washbasin under the mirror, seen in profile from the
       side at eye level, bent over the basin with both hands resting on its edge; a thin stream of water falls from the
       old tap into the basin. Her face is pale and drained. The old mirror above the sink is seen at a steep angle and
       reflects only the dark tiled wall opposite.
@@ -3009,12 +2993,12 @@ shots:
     people:
       - {id: vale, view: back, screen: left, facing: facing the mirror}
     frame: >-
-      Night in the small bathroom, seen from just behind Vale's left shoulder, looking straight into the old mirror
-      above the white sink. The mirror fills most of the frame; the dark, blurred edge of Vale's real shoulder and
+      Night in Vale's small bedroom, seen from just behind Vale's left shoulder, looking straight into the old mirror
+      above the small white washbasin. The mirror fills most of the frame; the dark, blurred edge of Vale's real shoulder and
       ponytail sits at the lower left. In the mirror, Vale's reflection faces the lens: her face wet from washing, water
       drops on her chin, a thin dark-red line of blood running from her left nostril to her upper lip, her eyes studying
       her own face. Behind her reflection the mirror shows the tiled wall and, on the right, the dark open doorway of the
-      bathroom, empty. The worn silvering clouds the edges of the glass.
+      bedroom, empty. The worn silvering clouds the edges of the glass.
     action: >-
       In the mirror, the woman in the black denim jacket studies her wet face. She slowly raises the back of her right
       wrist, wipes the blood from her upper lip in one stroke and lowers her hand. A moment later a new thin line of
@@ -3044,11 +3028,11 @@ shots:
     light: night, a single bare bulb on a short cord is the only light
     people: []
     frame: >-
-      A close-up from below of a single bare light bulb hanging from a short twisted cord on the bathroom ceiling, the
+      A close-up from below of a single bare light bulb hanging from a short twisted cord on the bedroom ceiling, the
       filament burning steadily, the cracked white ceiling paint around it and the top edge of the tiled wall at the
       bottom of the frame.
     action: >-
-      The bare bulb buzzes and blinks off and on three times at uneven intervals; each time the bathroom drops into
+      The bare bulb buzzes and blinks off and on three times at uneven intervals; each time the bedroom drops into
       darkness for an instant. Then the bulb burns steadily again, its cord swaying slightly.
     end_state: the bulb burns steadily again, the cord swaying slightly
     camera:
@@ -3078,10 +3062,10 @@ shots:
         facing: facing Vale's back from the dark doorway inside the mirror
         state: [wet]
     frame: >-
-      Night in the small bathroom, seen from just behind Vale's left shoulder into the old mirror above the white sink:
+      Night in Vale's small bedroom, seen from just behind Vale's left shoulder into the old mirror above the small white washbasin:
       the mirror fills most of the frame, the blurred edge of her real shoulder and ponytail at the lower left. Her
       reflection is sharp in the centre-left of the mirror: wet face, eyes on her own face. Deep in the mirror, behind
-      her reflection on the right, is the dark open doorway of the bathroom; inside it, soft and out of focus, half lost
+      her reflection on the right, is the dark open doorway of the bedroom; inside it, soft and out of focus, half lost
       in shadow, stands Beto, soaked and motionless, only a pale patch of his wet face and the white of his collar
       catching a little light. He exists only in the reflection; the real room around Vale holds only her.
     action: >-
@@ -3114,9 +3098,9 @@ shots:
     people:
       - {id: vale, view: face, screen: center, state: [nosebleed]}
     frame: >-
-      A close-up of Vale's face at night in the small bathroom, seen from the position of the mirror: she faces the
+      A close-up of Vale's face at night in the small bedroom, seen from the position of the mirror: she faces the
       lens, frozen, her eyes wide and fixed on the lens, her lips slightly parted, her face and hairline wet. The bare
-      bulb above lights her from above; behind her the bathroom falls away into a dark, completely blurred background.
+      bulb above lights her from above; behind her the bedroom falls away into a dark, completely blurred background.
     action: >-
       The woman in the black denim jacket stays frozen, staring straight into the lens. Her breath stops; her eyes, not
       her head, slide slowly toward the left of the frame; a drop of water runs from her hairline down her cheek and her
@@ -3152,7 +3136,7 @@ shots:
       - {id: vale, view: back, screen: left, facing: facing the mirror, state: [nosebleed]}
       - {id: beto, view: face, screen: right, facing: looking into the mirror at Vale's reflected eyes, state: [wet]}
     frame: >-
-      Night in the small bathroom, seen from just behind Vale's left shoulder into the old mirror above the white sink:
+      Night in Vale's small bedroom, seen from just behind Vale's left shoulder into the old mirror above the small white washbasin:
       the mirror fills most of the frame, the blurred edge of her real shoulder and ponytail at the lower left. Her
       reflection: frozen, eyes wide, her wet face pale. In the mirror, Beto now stands much closer, about one step
       behind her right shoulder at the edge of the bulb light: soaked, his skin pale grey-blue, the upper half of his
@@ -3189,9 +3173,9 @@ shots:
     people:
       - {id: vale, view: face, screen: center, state: [nosebleed]}
     frame: >-
-      Night in the small bathroom, a medium wide shot from the mirror's side of the sink: Vale stands frozen at the
-      white sink facing the mirror and the lens, her hands on the edge of the sink, her face wet. Behind her the small
-      tiled bathroom falls into shadow under the single bare bulb; on the left behind her, the open doorway is a dark
+      Night in the small bedroom, a medium wide shot from the mirror's side of the washbasin: Vale stands frozen at the
+      white sink facing the mirror and the lens, her hands on the edge of the washbasin, her face wet. Behind her the small
+      tiled bedroom falls into shadow under the single bare bulb; on the left behind her, the open doorway is a dark
       rectangle, and on the floor tiles a trail of wet footprints leads from the doorway to a small puddle of water one
       step behind her.
     action: >-
@@ -3234,7 +3218,7 @@ shots:
         state: [nosebleed]
       - {id: beto, view: face, screen: right, facing: looking into the mirror at Vale, state: [wet]}
     frame: >-
-      Night in the small bathroom, seen from just behind Vale's left shoulder into the old mirror above the white sink:
+      Night in Vale's small bedroom, seen from just behind Vale's left shoulder into the old mirror above the small white washbasin:
       the mirror fills most of the frame, the blurred edge of her real shoulder and ponytail at the lower left. Her body
       faces the mirror, but her head is turned to her right, looking back over her right shoulder and down at the wet
       footprints on the floor behind her, so the mirror shows her face in profile, wet and pale. In the mirror, right
@@ -3271,12 +3255,12 @@ shots:
     light: night, a single bare bulb on a short cord is the only light
     people: []
     frame: >-
-      An extreme close-up of the single bare light bulb on its short twisted cord under the bathroom ceiling, seen from
+      An extreme close-up of the single bare light bulb on its short twisted cord under the bedroom ceiling, seen from
       the side, its filament burning a little weakly; the cracked ceiling and the dark corners of the room fall away
       into deep shadow at the edges of the frame.
     action: >-
       For about one second the bare bulb buzzes louder and blinks once. Then it flares brighter for an instant and goes
-      out; the bathroom drops into total darkness, the thin orange line of the filament fades slowly in the black, and
+      out; the bedroom drops into total darkness, the thin orange line of the filament fades slowly in the black, and
       the bulb stays dark until the end of the clip.
     end_state: complete darkness
     camera:

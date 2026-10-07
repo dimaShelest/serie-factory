@@ -17,7 +17,7 @@ const API = {
 };
 const TOOLS = ['dropshot', 'ai-studio', 'gemini', 'elevenlabs', 'replicate', 'cloudflare', 'other'];
 const TOOL_UA = {
-  dropshot: 'dropshot', 'ai-studio': 'AI Studio', gemini: 'Gemini', elevenlabs: 'ElevenLabs',
+  dropshot: 'dropshot', 'ai-studio': 'Google AI Studio', gemini: 'Gemini', elevenlabs: 'ElevenLabs',
   replicate: 'Replicate', cloudflare: 'Cloudflare', other: 'інше',
 };
 // підрядок у назві поверхні → інструмент журналу (береться той, що стоїть у назві найраніше)
@@ -35,6 +35,10 @@ const IMAGE = /\.(png|jpe?g|webp|gif|avif)$/i;
 const VIDEO = /\.(mp4|mov|webm|m4v)$/i;
 const AUDIO = /\.(mp3|wav|m4a|ogg|flac)$/i;
 const NO_LOCAL = "файлу немає на цьому комп'ютері";
+const LAST = '-last';           // «<кліп>-last» — останній кадр кліпу, записаний руками (lab.LAST)
+const PASS = 4;                 // оцінка ≥ 4 — «готово» (lab.PASS_SCORE)
+// фізична клавіша → літера: з українською розкладкою j / k / c / n дають «о / л / с / т»
+const KEY_CODES = {KeyJ: 'j', KeyK: 'k', KeyC: 'c', KeyN: 'n'};
 const OFFLINE = 'Немає зв’язку зі студією. Вона запущена? (uv run fabrica studio)';
 
 // ---------------------------------------------------------------- чисті функції (тестуються в node)
@@ -134,15 +138,33 @@ function slotLabel(n, i) {
   return SLOT_UA[s.toLowerCase()] || s || `Image ${i + 1}`;
 }
 
+/** Справжній стан референсу. Сервер може згортати weak / clip у missing — тоді їх видно з підпису (needs[].label):
+ *  «лише 3/5 — переробити: …» → weak, «кліп є (4/5), останнього кадру ще немає — …» → clip. */
+function needState(n) {
+  const st = String((n && n.state) || 'missing');
+  if (st !== 'missing') return st;
+  const label = String((n && n.label) || '');
+  if (label.startsWith('лише ')) return 'weak';
+  if (label.startsWith('кліп є')) return 'clip';
+  return st;
+}
+
 /** Стан референсу → частини тексту; {item} — посилання на картку, яку зробити спершу. */
 function slotState(n) {
   const sc = n.score != null ? ` (${n.score}/5)` : '';
-  switch (n.state) {
+  switch (needState(n)) {
     case 'golden': return ['★ golden' + sc];
     case 'ok': return ['✓ є' + sc];
     case 'nofile': return [n.file ? `✓ є${sc}, але ${NO_LOCAL}` : `оцінка${sc} є, але без файлу — запиши результат із файлом`];
-    case 'weak': return [`лише ${n.score ?? '?'}/5 — переробити`, ...(n.item ? [': ', {item: n.item}] : [])];
-    case 'clip': return ['кліп є, останнього кадру ще немає', ...(n.item ? [' — ', {item: n.item}] : [])];
+    case 'weak': {
+      const s = n.score ?? (String(n.label || '').match(/^лише (\d)\/5/) || [])[1] ?? '?';
+      return [`лише ${s}/5 — переробити`, ...(n.item ? [': ', {item: n.item}] : [])];
+    }
+    case 'clip': {
+      const m = String(n.label || '').match(/^кліп є \((\d)\/5\)/);
+      const head = `кліп є${m ? ` (${m[1]}/5)` : ''}, останнього кадру ще немає`;
+      return n.item ? [`${head} — запиши його на картці `, {item: n.item}, ' (галочка «останній кадр»)'] : [head];
+    }
     default: return n.item ? ['ще немає — спершу ', {item: n.item}] : ['ще немає — джерела в цьому списку немає'];
   }
 }
@@ -279,8 +301,88 @@ function scopeParts(scope) {
   return out;
 }
 
+/** «змінено через студію»: true або непорожній список полів (порожній список [] — нічого не змінено). */
+function overriddenFields(it) {
+  const out = [];
+  let on = false;
+  for (const v of [it && it.overridden, it && it.source && it.source.overridden, it && it.extra && it.extra.overridden]) {
+    if (v === true) on = true;
+    else if (Array.isArray(v) && v.length) v.forEach(f => { if (!out.includes(String(f))) out.push(String(f)); });
+  }
+  return out.length || on ? out : null;
+}
+
 function isOverridden(it) {
-  return !!(it.overridden || (it.source && it.source.overridden) || (it.extra && it.extra.overridden));
+  return overriddenFields(it) !== null;
+}
+
+/** Затвердити golden можна, лише коли для поточної версії промпту є результат самого елемента з оцінкою ≥ 4
+ *  (lab.approve; рядки «<кліп>-last» не рахуються) — або він уже затверджений. */
+function canApprove(it) {
+  if (!it) return false;
+  if (it.golden || it.status === 'approved') return true;
+  return (Array.isArray(it.results) ? it.results : [])
+    .some(r => r && r.current !== false && (r.item ?? it.id) === it.id && Number(r.score) >= PASS);
+}
+
+/** Переписувач може змінити елемент: source.editable не порожній (тест-пак і невідоме джерело — ні). */
+function rewritable(it) {
+  const src = it && it.source;
+  return !(src && Array.isArray(src.editable) && !src.editable.length);
+}
+
+/** Посилання з YAML — лише http(s): інші схеми (javascript:, file:) показуємо текстом. */
+function safeUrl(u) {
+  const s = String(u ?? '').trim();
+  return /^https?:/i.test(s) ? s : null;
+}
+
+/** Рядок журналу — останній кадр кліпу, записаний руками («<кліп>-last»). */
+function isLastRow(r) {
+  return !!r && String(r.item || '').endsWith(LAST);
+}
+
+/** Попередження lab.log про те, що ffmpeg не витяг останній кадр (тоді кадр записують руками). */
+function lastFrameWarning(w) {
+  return /ffmpeg|-last\b/i.test(String(w ?? ''));
+}
+
+/** Клавіша → j / k / c / n незалежно від розкладки: латинська літера як є, інакше — за фізичною клавішею. */
+function keyOf(e) {
+  const k = String((e && e.key) || '');
+  if (!e || e.shiftKey || /^[a-z]$/.test(k)) return k;
+  return KEY_CODES[e.code] || k;
+}
+
+// тіла POST — точно за DESIGN §16 (тест звіряє ключі)
+function statusBody(story, item, status) {
+  return {story, item, status};
+}
+
+function logFields(story, item, tool, score, notes) {
+  return {story, item, tool, score, notes};
+}
+
+function logBody(fields, file) {
+  return {...fields, file: file || null};
+}
+
+function approveBody(story, item) {
+  return {story, item};
+}
+
+function rewriteBody(story, item, feedback) {
+  return {story, item, feedback};
+}
+
+function applyBody(story, proposal, save, rule) {
+  const b = {story, proposal, save_lesson: !!save};
+  if (save && rule) b.rule = rule;
+  return b;
+}
+
+function toggleBody(story, id, active) {
+  return {story, id, active: !!active};
 }
 
 function searchText(it) {
@@ -309,6 +411,9 @@ const S = {
   lessonsLoaded: false,
   topH: 0,
   lastRefresh: 0,
+  reqN: 0,                // номер останнього запиту /api/state
+  shownN: 0,              // номер показаної відповіді
+  quiet: null,            // тихе оновлення в дорозі (Promise)
   offline: false,
   lastFocus: null,
 };
@@ -415,7 +520,7 @@ async function copyText(text, btn) {
     a.remove();
   }
   if (btn) flash(btn, ok ? 'Скопійовано ✓' : 'Не вдалося');
-  if (!ok) toast('Не вдалося скопіювати — виділи текст і натисни Cmd+C', 'error');
+  if (!ok) toast('Не вдалося скопіювати — виділи текст і натисни Cmd+C (Windows — Ctrl+C)', 'error');
   return ok;
 }
 
@@ -492,34 +597,58 @@ async function api(path, {method = 'GET', body, form, timeout = 30000} = {}) {
   }
   let data = null;
   try { data = text ? JSON.parse(text) : {}; } catch (e) { data = null; }
-  if (!res.ok) throw new Error((data && data.error) || `Помилка студії (HTTP ${res.status})`);
+  if (!res.ok) {
+    const err = new Error((data && data.error) || `Помилка студії (HTTP ${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
   if (data === null) throw new Error('Студія відповіла не JSON — онови сторінку.');
   if (data && data.error) throw new Error(data.error);
   return data;
 }
 
-function fetchState() {
-  return api(API.state + qs({story: S.story, seq: S.seq}));
+/** /api/state з номером запиту: {n, d}. Номер потрібен, щоб стара відповідь не затерла новішу (див. fresh). */
+async function fetchState() {
+  const n = ++S.reqN;
+  const d = await api(API.state + qs({story: S.story, seq: S.seq}));
+  return {n, d};
+}
+
+/** Відповідь не старша за вже показану? Запити йдуть паралельно (focus + visibilitychange, тихе оновлення поруч
+ *  із кліком статусу), а приходять у будь-якому порядку — старшу відкидаємо. */
+function fresh(r) {
+  if (r.n < S.shownN) return false;
+  S.shownN = r.n;
+  return true;
 }
 
 async function refresh(forceId) {
   try {
-    applyState(await fetchState(), false, forceId);
+    const r = await fetchState();
+    if (fresh(r)) applyState(r.d, false, forceId);
+    else if (forceId && S.items.has(forceId)) replaceCard(S.items.get(forceId));   // новіший стан уже показано
     S.offline = false;
   } catch (e) {
     toast(e.message, 'error');
   }
 }
 
-async function quietRefresh() {
-  if (!S.data || Date.now() - S.lastRefresh < 3000) return;
-  try {
-    applyState(await fetchState(), false);
-    S.offline = false;
-  } catch (e) {
-    if (!S.offline) toast(e.message, 'error');
-    S.offline = true;
-  }
+/** Тихе оновлення, коли вікно знову активне. Один запит за раз: focus і visibilitychange приходять разом. */
+function quietRefresh() {
+  if (!S.data || S.quiet || Date.now() - S.lastRefresh < 3000) return S.quiet;
+  S.quiet = (async () => {
+    try {
+      const r = await fetchState();
+      if (fresh(r)) applyState(r.d, false);
+      S.offline = false;
+    } catch (e) {
+      if (!S.offline) toast(e.message, 'error');
+      S.offline = true;
+    } finally {
+      S.quiet = null;
+    }
+  })();
+  return S.quiet;
 }
 
 async function loadLessons(quiet) {
@@ -541,7 +670,7 @@ async function loadLessons(quiet) {
 async function setStatus(it, status, btn) {
   setBusy(btn, true);
   try {
-    await api(API.status, {method: 'POST', body: {story: S.story, item: it.id, status}});
+    await api(API.status, {method: 'POST', body: statusBody(S.story, it.id, status)});
     toast(`${it.id}: ${STATUS_UA[status] || status}`);
     await refresh(it.id);
   } catch (e) {
@@ -555,7 +684,7 @@ async function approve(it, btn) {
   if (!window.confirm(`Затвердити «${it.id}» як golden?\nАвтоматика братиме саме найкращий записаний результат.`)) return;
   setBusy(btn, true, 'Затверджую…');
   try {
-    const d = await api(API.approve, {method: 'POST', body: {story: S.story, item: it.id}});
+    const d = await api(API.approve, {method: 'POST', body: approveBody(S.story, it.id)});
     toast(d.message || `«${it.id}» затверджено ★`);
     await refresh(it.id);
   } catch (e) {
@@ -576,9 +705,15 @@ async function submitLog(it, f, btn) {
     toast('Постав оцінку 1–5', 'error');
     return;
   }
+  // «<кліп>-last»: останній кадр кліпу, коли студія не витягла його сама (немає ffmpeg) — lab.log приймає такий id
+  const last = it.kind === 'video' && !!(f.last && f.last.checked);
   const file = f.upload.files && f.upload.files[0];
   const path = f.path.value.trim().replace(/^["']+|["']+$/g, '');
-  const fields = {story: S.story, item: it.id, tool: f.tool.value, score: fs.score, notes: f.notes.value.trim()};
+  if (last && !file && !path) {
+    toast('Для останнього кадру потрібен файл — картинка (png / jpg)', 'error');
+    return;
+  }
+  const fields = logFields(S.story, last ? it.id + LAST : it.id, f.tool.value, fs.score, f.notes.value.trim());
   let opts;
   if (file) {
     const fd = new FormData();
@@ -586,18 +721,28 @@ async function submitLog(it, f, btn) {
     fd.append('upload', file, file.name);
     opts = {method: 'POST', form: fd, timeout: 600000};
   } else {
-    opts = {method: 'POST', body: {...fields, file: path || null}, timeout: 120000};
+    opts = {method: 'POST', body: logBody(fields, path), timeout: 120000};
   }
   setBusy(btn, true, file ? 'Завантажую…' : 'Записую…');
   try {
     const d = await api(API.log, opts);
     const en = d.entry || {};
-    toast(`Записано: ${it.id} · ${en.score ?? fs.score}/5` + (en.id != null ? ` (#${en.id})` : '')
-      + ((en.score ?? fs.score) >= 4 ? ' → готово ✓' : ''));
-    for (const w of d.warnings || []) toast(String(w), 'warn');
+    const sc = en.score ?? fs.score;
+    toast((last ? `Записано останній кадр: ${it.id}` : `Записано: ${it.id}`) + ` · ${sc}/5`
+      + (en.id != null ? ` (#${en.id})` : '') + (!last && sc >= PASS ? ' → готово ✓' : ''));
+    const warns = (d.warnings || []).map(String);
+    // ffmpeg не витяг кадр: замість команди для терміналу — галочка «останній кадр» у цій самій формі
+    const needLast = !last && it.kind === 'video' && warns.some(lastFrameWarning);
+    for (const w of warns) toast(lastFrameWarning(w) ? w.split('; запиши кадр руками')[0] : w, 'warn');
     S.form.delete(it.id);
     store.del('notes:' + it.id);
     f.upload.value = '';
+    if (needLast) {
+      S.form.set(it.id, {last: true, score: sc, tool: f.tool.value});
+      S.open.set(`${it.id}|log`, true);
+      toast('Останній кадр кліпу не витягнувся сам. Збережи останній кадр відео як картинку (png / jpg) і запиши '
+        + 'його тут же — галочка «Це останній кадр кліпу» вже стоїть. З нього стартує наступний кліп.', 'warn', 20000);
+    }
     await refresh(it.id);
   } catch (e) {
     toast(e.message, 'error');
@@ -615,7 +760,7 @@ async function askRewrite(it, ta, btn, out) {
   }
   setBusy(btn, true, 'Думаю… (до хвилини)');
   try {
-    const d = await api(API.rewrite, {method: 'POST', body: {story: S.story, item: it.id, feedback}, timeout: 300000});
+    const d = await api(API.rewrite, {method: 'POST', body: rewriteBody(S.story, it.id, feedback), timeout: 300000});
     if (!d.proposal) throw new Error('Студія не повернула пропозицію — спробуй ще раз.');
     S.proposals.set(it.id, d.proposal);
     if (out.isConnected) {
@@ -632,8 +777,7 @@ async function askRewrite(it, ta, btn, out) {
 }
 
 async function applyProposal(it, p, opts, btn) {
-  const body = {story: S.story, proposal: p.id, save_lesson: !!opts.save};
-  if (opts.save && opts.rule) body.rule = opts.rule;
+  const body = applyBody(S.story, p.id, opts.save, opts.rule);
   setBusy(btn, true, 'Застосовую…');
   try {
     const d = await api(API.apply, {method: 'POST', body, timeout: 120000});
@@ -657,7 +801,7 @@ async function applyProposal(it, p, opts, btn) {
 async function toggleLesson(l, sw, el) {
   sw.disabled = true;
   try {
-    await api(API.toggle, {method: 'POST', body: {story: S.story, id: l.id, active: sw.checked}});
+    await api(API.toggle, {method: 'POST', body: toggleBody(S.story, l.id, sw.checked)});
     l.active = sw.checked;
     el.classList.toggle('off', !sw.checked);
     toast(`Урок ${l.id}: ${sw.checked ? 'увімкнено' : 'вимкнено'}`);
@@ -693,7 +837,12 @@ function cardHead(it, st) {
   if (it.golden) badges.push(h('span', {class: 'badge golden'}, '★ golden'));
   const ls = lessonIds(ex.lessons);
   if (ls.length) badges.push(h('span', {class: 'badge lessons', title: ls.join(', ')}, `враховано уроків: ${ls.length}`));
-  if (isOverridden(it)) badges.push(h('span', {class: 'badge override'}, 'змінено через студію'));
+  const ov = overriddenFields(it);
+  if (ov) {
+    badges.push(h('span', {class: 'badge override',
+      title: ov.length ? `змінені поля (lab/overrides.yaml): ${ov.join(', ')}` : 'змінено в lab/overrides.yaml'},
+    'змінено через студію'));
+  }
   const apiWarn = groupWarnings(it.warnings).api.length;
   if (apiWarn) badges.push(h('span', {class: 'badge bad'}, `⚠ API: ${apiWarn}`));
   if (it.prompt_sha) badges.push(h('span', {class: 'badge', title: 'версія промпту'}, `промпт ${String(it.prompt_sha).slice(0, 8)}`));
@@ -712,10 +861,15 @@ function statusRow(it, st) {
     title: st === status ? 'Натисни ще раз, щоб скинути' : null,
     onclick: e => setStatus(it, st === status ? 'todo' : status, e.currentTarget),
   }, label);
+  // без результату ≥ 4 для поточного промпту lab.approve відмовить (і порадить команду терміналу) — пояснюємо самі
+  const can = canApprove(it);
   return h('div', {class: 'status-row', role: 'group', 'aria-label': 'Статус'},
     mk('in_work', 'В роботі'), mk('done', 'Готово ✓'), mk('skip', 'Пропустити'),
-    h('button', {type: 'button', class: 'btn gold', 'aria-pressed': String(st === 'approved'),
-      onclick: e => approve(it, e.currentTarget)}, '★ Затвердити golden'));
+    h('button', {type: 'button', class: 'btn gold' + (can ? '' : ' dim'), 'aria-pressed': String(st === 'approved'),
+      'aria-disabled': can ? null : 'true', title: can ? null : 'Спершу запиши результат з оцінкою ≥ 4',
+      onclick: e => (can ? approve(it, e.currentTarget)
+        : toast('Спершу запиши результат з оцінкою ≥ 4 (для цієї версії промпту) — тоді можна затвердити golden', 'warn')),
+    }, '★ Затвердити golden'));
 }
 
 function promptBlock(it) {
@@ -739,7 +893,7 @@ function stateBlock(title, v) {
 }
 
 function slotEl(n, i) {
-  const state = n.state || 'missing';
+  const state = needState(n);
   const file = n.file && n.url !== null && (state === 'ok' || state === 'golden' || state === 'weak' || state === 'clip');
   return h('li', {class: `slot s-${state}`},
     h('div', {class: 'slot-head'}, h('b', {}, slotLabel(n, i)), ' = ', h('code', {}, n.ref || '?')),
@@ -763,11 +917,15 @@ function needsBlock(it) {
 function manualOne(it, m, j) {
   const head = [m.surface, m.title].filter(Boolean).join(' — ') || 'Інструкція';
   const body = [];
-  if (m.url) body.push(h('p', {class: 'url'}, h('a', {href: m.url, target: '_blank', rel: 'noopener'}, m.url)));
-  for (const [cmd, chunk] of howParts(m.how)) body.push(cmd ? copyBlock('Команда', chunk) : h('p', {class: 'how'}, chunk));
-  if (present(m.text)) body.push(copyBlock('Текст', asText(m.text), true));
+  const href = safeUrl(m.url);
+  if (href) body.push(h('p', {class: 'url'}, h('a', {href, target: '_blank', rel: 'noopener'}, href)));
+  else if (present(m.url)) body.push(h('p', {class: 'url'}, h('code', {}, asText(m.url))));
+  // сирий how (якщо сервер його дає) — підписи «macOS / zsh:» стоять біля своїх команд; text / cmd — його ж частини
+  const how = howParts(m.how);
+  for (const [cmd, chunk] of how) body.push(cmd ? copyBlock('Команда', chunk) : h('p', {class: 'how'}, chunk));
+  if (!how.length && present(m.text)) body.push(copyBlock('Текст', asText(m.text), true));
   if (present(m.endpoint)) body.push(copyBlock('Endpoint', asText(m.endpoint)));
-  if (present(m.cmd)) body.push(copyBlock('Команда', asText(m.cmd)));
+  if (present(m.cmd) && !how.some(([cmd]) => cmd)) body.push(copyBlock('Команда', asText(m.cmd)));
   if (present(m.body)) body.push(copyBlock('Тіло запиту (JSON)', asText(m.body)));
   if (present(m.json)) body.push(copyBlock('JSON', asText(m.json)));
   for (const [cmd, chunk] of howParts(typeof m.note === 'string' ? m.note : m.note ? asText(m.note) : '')) {
@@ -831,7 +989,9 @@ function lessonsBlock(it) {
 function resultEl(r) {
   const sc = Number(r.score);
   const old = r.current === false;
-  return h('div', {class: 'result' + (old ? ' old' : '')},
+  const manualLast = isLastRow(r);
+  return h('div', {class: 'result' + (old ? ' old' : '') + (manualLast ? ' last' : '')},
+    manualLast ? h('div', {class: 'tag'}, 'останній кадр (вручну)') : null,
     r.file ? mediaEl(r.file, '', r.url) : h('div', {class: 'nofile'}, 'без файлу'),
     r.last_frame ? h('div', {style: 'margin-top:6px'}, mediaEl(r.last_frame, 'останній кадр', r.last_url)) : null,
     h('div', {class: 'meta'},
@@ -862,14 +1022,14 @@ function logBlock(it) {
     store.set('tool:' + it.kind, toolSel.value);
   });
   const hint = h('span', {class: 'hint'}, fs.score ? SCORE_HINT[fs.score] : '≥ 4 — елемент стає «готово»');
+  const setScore = n => {
+    formState(it.id).score = n;
+    scoreBtns.forEach((b, i) => b.setAttribute('aria-pressed', String(i + 1 === n)));
+    hint.textContent = SCORE_HINT[n];
+  };
   const scoreBtns = [1, 2, 3, 4, 5].map(n => h('button', {
     type: 'button', class: 'score-btn' + (n <= 2 ? ' lo' : n >= 4 ? ' hi' : ''), 'aria-pressed': String(fs.score === n),
-    title: SCORE_HINT[n], 'aria-label': `Оцінка ${n} — ${SCORE_HINT[n]}`,
-    onclick: () => {
-      formState(it.id).score = n;
-      scoreBtns.forEach((b, i) => b.setAttribute('aria-pressed', String(i + 1 === n)));
-      hint.textContent = SCORE_HINT[n];
-    },
+    title: SCORE_HINT[n], 'aria-label': `Оцінка ${n} — ${SCORE_HINT[n]}`, onclick: () => setScore(n),
   }, String(n)));
   const notes = h('textarea', {name: 'notes', placeholder: 'Що вийшло, що не так (необов’язково)'});
   notes.value = store.get('notes:' + it.id, '') || '';
@@ -891,22 +1051,51 @@ function logBlock(it) {
     if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
       upload.files = e.dataTransfer.files;
       toast(`Файл: ${e.dataTransfer.files[0].name}`);
+    } else {
+      // напр. відео перетягли просто з вкладки dropshot — це посилання, а не файл
+      toast('Це не файл. Спершу скачай файл, потім перетягни його з Finder / «Завантажень»', 'warn');
     }
   });
   const submit = h('button', {type: 'submit', class: 'btn primary big'}, 'Записати результат');
+  // відео: останній кадр кліпу руками — коли студія не витягла його сама (немає ffmpeg); з нього стартує наступний кліп
+  let lastRow = null;
+  if (it.kind === 'video') {
+    const box = h('input', {type: 'checkbox', name: 'last'});
+    box.checked = !!fs.last;
+    const sync = () => {
+      upload.accept = box.checked ? 'image/*' : 'image/*,video/*,audio/*';
+      path.placeholder = box.checked ? 'або шлях до картинки: ~/Downloads/last.png' : 'або шлях до файлу: ~/Downloads/result.mp4';
+      submit.textContent = box.checked ? 'Записати останній кадр' : 'Записати результат';
+      if (!formState(it.id).score) hint.textContent = box.checked ? 'оцінка — як у самого кліпу' : '≥ 4 — елемент стає «готово»';
+    };
+    box.addEventListener('change', () => {
+      formState(it.id).last = box.checked;
+      if (box.checked && !formState(it.id).score) {
+        // оцінка кадру = оцінка кліпу (кадр з оцінкою < 4 наступний кліп не розблокує)
+        const best = (it.results || []).filter(r => !isLastRow(r) && r.current !== false).map(r => Number(r.score))
+          .filter(n => n >= 1 && n <= 5);
+        if (best.length) setScore(Math.max(...best));
+      }
+      sync();
+    });
+    sync();
+    lastRow = h('label', {class: 'toggle last-toggle'}, box,
+      'Це останній кадр кліпу (якщо студія не витягла його сама) — картинка png / jpg');
+  }
   const form = h('form', {class: 'log', novalidate: true},
     h('div', {class: 'row'},
       h('label', {}, h('span', {class: 'field-label'}, 'Інструмент'), toolSel),
       h('div', {class: 'grow'}, h('span', {class: 'field-label'}, 'Оцінка'),
         h('div', {class: 'scores', role: 'group', 'aria-label': 'Оцінка 1–5'}, scoreBtns), hint)),
     h('label', {}, h('span', {class: 'field-label'}, 'Нотатки'), notes),
+    lastRow,
     drop,
     h('div', {class: 'actions'}, submit));
   form.addEventListener('submit', e => {
     e.preventDefault();
     submitLog(it, form.elements, submit);
   });
-  return h('div', {class: 'section'}, details(it.id, 'log', it.status === 'in_work' || !!fs.score,
+  return h('div', {class: 'section'}, details(it.id, 'log', it.status === 'in_work' || !!fs.score || !!fs.last,
     h('summary', {}, '＋ Записати результат'), form));
 }
 
@@ -974,6 +1163,15 @@ function proposalView(it, p) {
 }
 
 function rewriteBlock(it) {
+  if (!rewritable(it)) {
+    // rewrite.propose відмовляє, коли source.editable порожній — форму не показуємо, лише пояснення
+    const test = it.source && it.source.kind === 'test';
+    return h('div', {class: 'section'}, details(it.id, 'rewrite', false, h('summary', {}, '✎ Редагувати промпт'),
+      h('p', {class: 'hint big-hint'}, test
+        ? `Цей елемент студія не переписує (тест-пак — у series/${S.story || '<slug>'}/lab/test_pack.yaml).`
+        : 'Цей елемент студія не переписує: невідомо, з чого він компілюється.'
+          + (it.source && it.source.error ? ` (${it.source.error})` : ''))));
+  }
   const p = S.proposals.get(it.id);
   const be = (S.data && S.data.rewrite_backend) || {};
   const ta = h('textarea', {placeholder: 'Напр.: «ліхтарик світить у камеру, а має — на стелю; хлопець дивиться в об’єктив»'});
@@ -1390,10 +1588,11 @@ function onKey(e) {
     if (e.key === 'Escape') t.blur();
     return;
   }
-  if (e.key === 'j') move(1);
-  else if (e.key === 'k') move(-1);
-  else if (e.key === 'c') copyCurrent();
-  else if (e.key === 'n') goNext();
+  const k = keyOf(e);                   // українська розкладка: «о / л / с / т» — ті самі клавіші
+  if (k === 'j') move(1);
+  else if (k === 'k') move(-1);
+  else if (k === 'c') copyCurrent();
+  else if (k === 'n') goNext();
   else return;
   e.preventDefault();
 }
@@ -1409,7 +1608,8 @@ function bindStatic() {
     S.current = null;
     S.proposals.clear();
     try {
-      applyState(await fetchState(), true);
+      const r = await fetchState();
+      if (fresh(r)) applyState(r.d, true);
       window.scrollTo({top: 0});
     } catch (err) {
       S.seq = prev;
@@ -1447,15 +1647,26 @@ function fatal(e) {
 
 async function boot() {
   $('#main').replaceChildren(h('p', {class: 'loading'}, 'Завантажую…'));
-  let d;
+  let r;
   try {
-    d = await fetchState();
+    r = await fetchState();
   } catch (e) {
+    // ?story= / ?seq= з адресного рядка застаріли (послідовність перейменували чи прибрали) — сервер відповів 4xx:
+    // кажемо про це й відкриваємо типову послідовність, інакше «Спробувати ще раз» повторював би ту саму помилку
+    if ((S.seq || S.story) && e.status >= 400 && e.status < 500) {
+      toast(`${e.message} — відкриваю типову послідовність`, 'error');
+      S.seq = null;
+      S.story = null;
+      try { history.replaceState(null, '', location.pathname); } catch (_) { /* не критично */ }
+      return boot();
+    }
     fatal(e);
     return;
   }
+  const d = r.d;
   S.story = d.story || S.story;
   await loadLessons(true);
+  S.shownN = Math.max(S.shownN, r.n);
   applyState(d, true);
   updateLessonsBtn();
 }
@@ -1471,8 +1682,9 @@ function init() {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     API, TOOLS, num, present, asText, qs, mediaUrl, basename, groupWarnings, profileLabel, backendLabel, clipParts,
-    slotLabel, slotState, defaultTool, sortManual, howParts, tokens, diffWords, diffStat, lessonIds, scopeParts,
-    searchText,
+    slotLabel, needState, slotState, defaultTool, sortManual, howParts, tokens, diffWords, diffStat, lessonIds,
+    scopeParts, searchText, overriddenFields, isOverridden, canApprove, rewritable, safeUrl, isLastRow,
+    lastFrameWarning, keyOf, statusBody, logFields, logBody, approveBody, rewriteBody, applyBody, toggleBody,
   };
 } else if (typeof document !== 'undefined') {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
