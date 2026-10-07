@@ -2,18 +2,20 @@
 # Зона A. id ті самі, що в bible.yaml; кількість ознак ДНК — та сама, що в bible.yaml (перевіряє tests/test_prompts.py).
 # Змінюєш тут → перегенеруй пакет (`uv run fabrica prompts la-garganta <набір>`): версія промпту зміниться.
 #
-# v2 (DESIGN §6, docs/research/2026-10-07-generators.md §2, §4, §7.2). Старі ключі (style.photo / video / footage,
-# rules, negative, uniform_1994, wet_ghost) ще читає поточний компілятор — не видаляти до переходу на v2.
-#   style.image / image_footage — Nano Banana (фото-стиль, кадр VHS / телефона); style.video_v2 / video_footage —
+# v2 (DESIGN §6, docs/research/2026-10-07-generators.md §2, §4, §7.2). Старі ключі (style.photo / footage /
+# era_1994 / portrait, rules, negative, uniform_1994, wet_ghost) ще читає поточний компілятор — не видаляти до
+# переходу на v2. style.video — уже v2-текст (v1-шаблон відео читає той самий ключ).
+#   style.image / image_footage — Nano Banana (фото-стиль, кадр VHS / телефона); style.video / video_footage —
 #   Seedance (без «photorealistic», дефекти камери словами); style.low_light — чиста темрява (image / video).
 #   image_rules — сталі позитивні правила кадру; video_constants — сталі речення в кінці відео-промпту (whitelist лінту).
 #   states — стани людини (кров з носа, мокрий, пил …): image — опис у кадрі, video — рядок «стан лишається».
-#   characters / members: tag — хто це у відео (роль + 2 найпомітніші ознаки, без віку й імен, унікальний);
-#   adult — явна доросла фраза для зображень; voice_design — опис голосу у форматі ElevenLabs (дорослий вік).
-#   Вік у фразі adult — 19 для всіх молодих (запас від межі 18, §7.2); канонічний вік — у bible.yaml.
-#   members: look — обличчя, волосся, прикраси й фірмова річ (без виразу й без «школи»); mood — вираз для портрета
-#   1994; wardrobe_1994 — решта одягу (білий + темно-синій, без шкільної форми); wet — мокрий привид (дорослий,
-#   сумний, без гору; світло дає сцена, не портрет).
+#   characters / members / supporting: who — єдина доросла фраза для зображень і голосу («an adult …, 19»; окремого
+#   adult немає); tag — хто це у відео (роль + 2 найпомітніші ознаки, без віку й імен, унікальний);
+#   voice_design — опис голосу у форматі ElevenLabs (дорослий вік; Persona — 2–5 слів).
+#   Вік у who — 19 для всіх молодих (запас від межі 18, §7.2); канонічний вік — у bible.yaml.
+#   members: look — обличчя, волосся, прикраси й фірмова річ (без виразу, без «школи», без посилань на референс —
+#   «Image 1 …» пише компілятор); mood — вираз для портрета 1994; wardrobe — решта одягу 1994 (білий + темно-синій,
+#   без шкільної форми); wet — мокрий привид (дорослий, сумний, без гору й без слова про смерть; світло дає сцена).
 #   locations: time (night | day | dawn | dusk) і framing плити; variants — {desc, replace, ref, framing, time,
 #   light, mood}: replace false = той самий кадр місця (база + стан, ref — плита), replace true = окремий кадр
 #   (опис самодостатній; ref — батьківська плита для узгодженості або null).
@@ -24,9 +26,6 @@ style:
     Photorealistic cinematic still, shot on 35mm film, natural skin texture with visible pores, soft directional key
     light, muted desaturated palette with deep teal shadows and warm practical highlights, shallow depth of field,
     Mexican gothic horror film aesthetic.
-  video: >-
-    Photorealistic, cinematic, 35mm film look, muted desaturated palette with deep teal shadows and warm practical
-    highlights, natural motion, Mexican gothic horror atmosphere.
   portrait: >-
     Head-and-shoulders portrait, front-facing, eyes to camera, neutral dark grey studio background, soft even light.
   sheet_background: plain light-grey seamless studio backdrop, soft even key light from camera left with gentle fill
@@ -44,13 +43,15 @@ style:
     pores, true-to-life textures and materials, muted desaturated palette with deep teal shadows and warm practical
     highlights, gentle shallow depth of field, clean low-noise image.
   image_footage:
+    # Кадр чіткий: старіння (зерно, розмиття) — один раз у монтажі (§3 #15, §4.5.5).
     vhs: >-
-      A single frame from a 1994 home-video camcorder recording: handheld framing slightly off-level, wide lens, soft
-      focus, soft washed-out early-1990s colors; a clean image with no date stamp and no overlays.
+      A single frame from a 1994 home-video camcorder recording: handheld framing slightly off-level, harsh on-camera
+      light, soft early-1990s colors; a clean, sharp image with no date stamp and no overlays.
     phone: >-
       A single frame from a smartphone video: handheld framing, phone-camera wide lens, natural available light; a
       clean image with no interface, no recording icon and no timestamp.
-  video_v2: >-
+  # v1 і v2 читають цей ключ; «photorealistic» у Seedance заборонено (лінт banned_video).
+  video: >-
     Live-action horror film look, natural motion, natural skin texture, muted desaturated palette with deep teal
     shadows and warm practical highlights.
   video_footage:
@@ -82,7 +83,7 @@ negative:
 # v2: позитивні правила кадру для Nano Banana (негативного поля немає). Формулювання з «no …» — у whitelist лінту.
 image_rules:
   - a clean frame with unmarked walls and surfaces, no lettering, signs or logos anywhere
-  - every object is plain and unbranded, with blank surfaces
+  - every object is plain and unbranded
   - people's hands relaxed at medium distance, natural, five fingers
   - every person is an adult
   - only the people described appear in the frame
@@ -121,8 +122,7 @@ states:
 
 characters:
   vale:
-    who: a 19-year-old Mexican young woman (adult)
-    adult: an adult Mexican woman, 19, with the grown features of a woman in her early twenties
+    who: an adult Mexican woman, 19, with the grown features of a woman in her early twenties
     tag: the woman in the oversized black denim jacket with a high black ponytail
     dna:
       - black straight hair pulled into a high messy ponytail with loose strands
@@ -138,13 +138,12 @@ characters:
     voice: low, husky young female voice; fast and sharp when angry; Mexican Spanish accent
     voice_design: >-
       Native Spanish (Mexico City), central Mexican accent with no Castilian features. Female, early 20s. Perfect
-      quality. Persona: guarded, defiant leader of her friends. Emotion: tense, sharp, restrained. Low, slightly husky
+      quality. Persona: guarded, defiant group leader. Emotion: tense, sharp, restrained. Low, slightly husky
       voice with a dry edge; short quiet phrases that turn fast and clipped when she is angry; close-mic, dry room, no
       background noise or reverb.
     preview_es: "No me digas que me calme. Ya sé lo que vi en esa mina, y no estoy loca. Si nadie más va a buscar la verdad, la voy a buscar yo."
   diego:
-    who: a 19-year-old Mexican young man (adult)
-    adult: an adult Mexican man, 19, with the grown features of a man in his early twenties
+    who: an adult Mexican man, 19, with the grown features of a man in his early twenties
     tag: the man in the bright yellow windbreaker and backwards red cap
     dna:
       - a red baseball cap worn backwards
@@ -165,8 +164,7 @@ characters:
       background noise or reverb.
     preview_es: "¡No manches! ¿Estás grabando esto? Esto va directo a mis historias… bueno, ya, ya me calmo, pero neta, mira eso."
   sofia:
-    who: an 18-year-old Mexican young woman (adult)
-    adult: an adult Mexican woman, 19, with the grown features of a woman in her early twenties
+    who: an adult Mexican woman, 19, with the grown features of a woman in her early twenties
     tag: the woman with round metal glasses and a burgundy cardigan
     dna:
       - round thin metal-frame glasses
@@ -188,8 +186,7 @@ characters:
       background noise or reverb.
     preview_es: "Esto no es una coincidencia. Siete nombres, una sola noche, y la misma hora en todos los relojes del pueblo. Alguien sabe qué pasó."
   mateo:
-    who: an 18-year-old Mexican young man (adult)
-    adult: an adult Mexican man, 19, with the grown features of a man in his early twenties
+    who: an adult Mexican man, 19, with the grown features of a man in his early twenties
     tag: the pale man in the open blue-grey plaid flannel shirt
     dna:
       - short dark hair parted in the middle in a 1990s style, always slightly damp
@@ -208,8 +205,7 @@ characters:
       voice; slow, even pacing with a short pause before each answer; close-mic, no background noise or reverb.
     preview_es: "Yo me sé el camino. No tengan miedo, la montaña no muerde… casi nunca. Vamos, antes de que se haga más tarde."
   renata:
-    who: a 44-year-old Mexican woman, small-town police officer
-    adult: an adult Mexican woman, 44
+    who: an adult Mexican woman, 44, a small-town police officer
     tag: the policewoman in the navy-blue uniform shirt with a tight low bun
     tag_off_duty: the woman with a tight low bun and a grey streak, in a dark jacket
     dna:
@@ -234,8 +230,7 @@ characters:
       with a slight roughness; steady, unhurried pace and short sentences; close-mic, no background noise or reverb.
     preview_es: "No toquen nada. Llevo treinta y dos años esperando una respuesta, y esta vez nadie me va a decir que fue un accidente."
   saldivar:
-    who: a 62-year-old Mexican man, beloved small-town mayor
-    adult: an adult Mexican man, 62
+    who: an adult Mexican man, 62, a beloved small-town mayor
     tag: the man in the cream guayabera and light straw cowboy hat
     dna:
       - thick grey hair combed back and a full grey mustache
@@ -255,104 +250,98 @@ characters:
       calm, persuasive pace and a hard, cold edge under the warmth; close-mic, no background noise or reverb.
     preview_es: "Renata, mija, deja descansar a los muertos. Este pueblo ya sufrió bastante, y yo nomás quiero que vuelva a tener trabajo."
 
-# Сімка 1994 (supporting.los_siete.members). Обличчя Tomás = Mateo.
-# v1 будує «{who}: {look}; school uniform: {uniform_1994}»; v2 — adult + look + wardrobe_1994 (+ mood | wet).
+# Сімка 1994 (supporting.los_siete.members). Обличчя Tomás = Mateo: референс mateo.front додає компілятор
+# (тому якір Tomás — крок 2, не 1); у look про референс ні слова.
+# v1 будує «{who}: {look}; school uniform: {uniform_1994}»; v2 — who + look + wardrobe (+ mood | wet).
 members:
   tomas:
-    who: an 18-year-old Mexican prepa graduate in 1994 (adult)
-    adult: an adult Mexican man, 19, with the grown features of a man in his early twenties
-    tag: the man in the open blue-grey plaid flannel shirt over a white shirt
-    look: >-
-      the same face as the Mateo reference, alive and healthy: natural warm skin tone, short dark hair parted in the
-      middle, a blue-grey plaid flannel shirt worn open
+    who: an adult Mexican man, 19, a 1994 graduate with the grown features of a man in his early twenties
+    # Тег веде одяг 1994 (біла сорочка, темні штани) — фланель і проділ однакові з Mateo (§3 #4).
+    tag: the man in a white button-up shirt under an open plaid flannel, dark trousers
+    look: short dark hair parted in the middle, natural warm skin tone, a blue-grey plaid flannel shirt worn open
     mood: smiling at a friend off camera
-    wardrobe_1994: a white button-up shirt under the open flannel, dark trousers, worn white sneakers
+    wardrobe: a white button-up shirt under the open flannel, dark trousers, worn white sneakers
     wet: >-
-      the same adult man drowned in the flooded mine: middle-parted hair plastered flat and dripping, the flannel and
-      white shirt soaked dark and clinging, skin pale with a grey-blue tint, fine grey mine dust on his face, normal
-      human eyes, a quiet sorrowful expression with the mouth closed
+      the same adult man, soaked through: middle-parted hair plastered flat and dripping, the flannel and white shirt
+      soaked dark and clinging, skin pale with a grey-blue tint, fine grey mine dust on his face, normal human eyes, a
+      quiet sorrowful expression with the mouth closed
   lupita:
-    who: an 18-year-old Mexican prepa graduate in 1994 (adult)
-    adult: an adult Mexican woman, 19, with the grown features of a woman in her early twenties
+    who: an adult Mexican woman, 19, a 1994 graduate with the grown features of a woman in her early twenties
     tag: the woman with curly bangs and large round hoop earrings
-    look: curly dark hair with full early-1990s bangs, large round gold hoop earrings, a round cheerful face
+    look: curly dark hair with full early-1990s bangs, large round gold hoop earrings, a round face
     mood: laughing, lively
-    wardrobe_1994: a white blouse, a navy V-neck sweater, high-waisted dark jeans, white sneakers
+    wardrobe: a white blouse, a navy V-neck sweater, high-waisted dark jeans, white sneakers
     wet: >-
-      the same adult woman drowned in the flooded mine: her curls and bangs soaked flat and dripping, the white blouse
-      and navy sweater dark and heavy with water, skin pale with a grey-blue tint, fine grey mine dust on her face,
-      normal human eyes, a quiet sorrowful expression with the mouth closed
+      the same adult woman, soaked through: her curls and bangs soaked flat and dripping, the white blouse and navy
+      sweater dark and heavy with water, skin pale with a grey-blue tint, fine grey mine dust on her face, normal human
+      eyes, a quiet sorrowful expression with the mouth closed
     voice_design: >-
       Native Spanish (Mexico City), central Mexican accent with no Castilian features. Female, early 20s. Perfect
-      quality. Persona: lively joker of her group of friends. Emotion: playful, giddy, loud. Bright, ringing voice
-      full of laughter, quick pace, rises easily into a cheerful shout; close-mic, no background noise or reverb.
+      quality. Persona: lively group joker. Emotion: playful, giddy, loud. Bright, ringing voice full of laughter,
+      quick pace, rises easily into a cheerful shout; close-mic, no background noise or reverb.
     preview_es: "¡Chuy, graba, graba! Esto va para el anuario. Ándale, no seas miedoso, nadie nos va a cachar aquí adentro… ¿verdad que no?"
   chuy:
-    who: an 18-year-old Mexican prepa graduate in 1994 (adult)
-    adult: an adult Mexican man, 19, with the grown features of a man in his early twenties
+    who: an adult Mexican man, 19, a 1994 graduate with the grown features of a man in his early twenties
     tag: the man in thick-framed glasses with a camcorder on his shoulder
     look: >-
-      thick-framed glasses, a thin wispy mustache, short neat hair, a plain 1990s shoulder camcorder with blank
-      unmarked surfaces
+      thick-framed glasses, a thin, neatly trimmed mustache, short neat hair, a plain 1990s shoulder camcorder with
+      blank unmarked surfaces
     mood: a relaxed half-smile
-    wardrobe_1994: a white button-up shirt with rolled sleeves, a navy sweater vest, dark trousers
+    wardrobe: a white button-up shirt with rolled sleeves, a navy sweater vest, dark trousers
     wet: >-
-      the same adult man drowned in the flooded mine: hair soaked and dripping, water running down his thick-framed
-      glasses, the white shirt and navy vest dark and heavy with water, skin pale with a grey-blue tint, fine grey mine
-      dust on his face, normal human eyes, a quiet sorrowful expression with the mouth closed
+      the same adult man, soaked through: hair soaked and dripping, water running down his thick-framed glasses, the
+      white shirt and navy vest dark and heavy with water, skin pale with a grey-blue tint, fine grey mine dust on his
+      face, normal human eyes, a quiet sorrowful expression with the mouth closed
   monica:
-    who: an 18-year-old Mexican prepa graduate in 1994 (adult)
-    adult: an adult Mexican woman, 19, with the grown features of a woman in her early twenties
+    who: an adult Mexican woman, 19, a 1994 graduate with the grown features of a woman in her early twenties
     tag: the woman with a wide black headband and dark lipstick
     look: >-
       straight dark shoulder-length hair held back with a wide black headband, dark early-1990s lipstick, a tall slim
       build
     mood: confident, chin up
-    wardrobe_1994: a white blouse with a wide collar, a fitted navy cardigan, dark slacks, black loafers
+    wardrobe: a white blouse with a wide collar, a fitted navy cardigan, dark slacks, black loafers
     wet: >-
-      the same adult woman drowned in the flooded mine: straight hair soaked and dripping under the black headband,
-      the white blouse and navy cardigan dark and heavy with water, skin pale with a grey-blue tint, fine grey mine
-      dust on her face, normal human eyes, a quiet sorrowful expression with the mouth closed
+      the same adult woman, soaked through: straight hair soaked and dripping under the black headband, the white
+      blouse and navy cardigan dark and heavy with water, skin pale with a grey-blue tint, fine grey mine dust on her
+      face, normal human eyes, a quiet sorrowful expression with the mouth closed
     voice_design: >-
       Native Spanish (Mexico City), central Mexican accent with no Castilian features. Female, early 20s. Perfect
-      quality. Persona: confident, wary one of the group. Emotion: alert, uneasy, firm. Slightly low, steady voice
-      that drops to a tense near-whisper when she hears something; close-mic, no background noise or reverb.
+      quality. Persona: wary, confident friend. Emotion: alert, uneasy, firm. Slightly low, steady voice that drops to
+      a tense near-whisper when she hears something; close-mic, no background noise or reverb.
     preview_es: "¿Oyeron eso? Cállense tantito. Les dije que no era buena idea meternos aquí de noche. Algo se movió allá atrás, se los juro."
   beto:
-    who: an 18-year-old Mexican prepa graduate in 1994 (adult)
-    adult: an adult Mexican man, 19, with the grown features of a man in his early twenties
+    who: an adult Mexican man, 19, a 1994 graduate with the grown features of a man in his early twenties
     tag: the broad-shouldered man with a buzz cut
     look: a buzz cut, broad shoulders, a small pale scar on his chin
     mood: grinning
-    wardrobe_1994: a white button-up shirt with the sleeves pushed up, a navy V-neck sweater, dark trousers
+    wardrobe: a white button-up shirt with the sleeves pushed up, a navy V-neck sweater, dark trousers
     wet: >-
-      the same adult man drowned in the flooded mine: his buzz cut and face wet, the white shirt and navy sweater
-      soaked dark and dripping, skin pale with a grey-blue tint, fine grey mine dust on his face, normal human eyes, a
-      quiet sorrowful expression with the mouth closed
+      the same adult man, soaked through: his buzz cut and face wet, the white shirt and navy sweater soaked dark and
+      dripping, skin pale with a grey-blue tint, fine grey mine dust on his face, normal human eyes, a quiet sorrowful
+      expression with the mouth closed
+  # Коси + «м'яке кругле обличчя» + «сором'язлива» + блуза під горло — шкільний набір (§7.2): прибрано.
   rosa_elena:
-    who: an 18-year-old Mexican prepa graduate in 1994 (adult)
-    adult: an adult Mexican woman, 19, with the grown features of a woman in her early twenties
+    who: an adult Mexican woman, 19, a 1994 graduate with the grown features of a woman in her early twenties
     tag: the woman with two long dark braids and a small gold cross
-    look: two long dark braids, a small gold cross on a thin chain, a soft round face
-    mood: a shy gentle smile
-    wardrobe_1994: a white blouse buttoned to the collar, a long navy cardigan, dark slacks, flat black shoes
+    look: two long dark braids, a small gold cross on a thin chain, small gold stud earrings
+    mood: a calm, warm smile
+    wardrobe: a white blouse with the top button open, a long navy cardigan, dark slacks, flat black shoes
     wet: >-
-      the same adult woman drowned in the flooded mine: both braids soaked and dripping, the white blouse and long
-      navy cardigan dark and heavy with water, skin pale with a grey-blue tint, fine grey mine dust on her face, normal
-      human eyes, a quiet sorrowful expression with the mouth closed
+      the same adult woman, soaked through: both braids soaked and dripping, the white blouse and long navy cardigan
+      dark and heavy with water, skin pale with a grey-blue tint, fine grey mine dust on her face, normal human eyes, a
+      quiet sorrowful expression with the mouth closed
   ivan:
-    who: an 18-year-old Mexican prepa graduate in 1994 (adult)
-    adult: an adult Mexican man, 19, with the grown features of a man in his early twenties
+    who: an adult Mexican man, 19, a 1994 graduate with the grown features of a man in his early twenties
     tag: the man with shoulder-length hair in a faded denim jacket
     look: shoulder-length messy grunge hair, light stubble, a faded denim jacket
     mood: relaxed, half-lidded eyes
-    wardrobe_1994: a white button-up shirt untucked under the denim jacket, dark jeans, worn boots
+    wardrobe: a white button-up shirt untucked under the denim jacket, dark jeans, worn boots
     wet: >-
-      the same adult man drowned in the flooded mine: shoulder-length hair soaked into dark strands and dripping, the
-      denim jacket and white shirt soaked dark and heavy, skin pale with a grey-blue tint, fine grey mine dust on his
-      face, normal human eyes, a quiet sorrowful expression with the mouth closed
+      the same adult man, soaked through: shoulder-length hair soaked into dark strands and dripping, the denim jacket
+      and white shirt soaked dark and heavy, skin pale with a grey-blue tint, fine grey mine dust on his face, normal
+      human eyes, a quiet sorrowful expression with the mouth closed
 
-# v1: одяг сімки (компілятор v1 додає до кожного). Спідниці для чоловіків прибрано; v2 — members.*.wardrobe_1994.
+# v1: одяг сімки (компілятор v1 додає до кожного). Спідниці для чоловіків прибрано; v2 — members.*.wardrobe.
 uniform_1994: white button-up shirt or blouse, navy V-neck sweater, dark trousers or slacks, early-1990s hairstyle
 # v1: мокрий вигляд без фону й світла (світло дає сцена) і без слів «gore / wounds» (лінт); v2 — members.*.wet.
 wet_ghost: >-
@@ -361,9 +350,10 @@ wet_ghost: >-
 
 # Другорядні з bible.yaml supporting (без refs): напарник Renata — лише спина й голос; ведуча — лише голос.
 # Компілятор v1 їх не читає; v2 — за потреби (одна фіксована зовнішність напарника в 7.08 / 7.11 / 7.12, ч.2 6.07–6.08).
+# Ключі ті самі, що в characters (who / tag / look / wardrobe / voice_design / preview_es).
 supporting:
   policia_companero:
-    adult: an adult Mexican man, 48
+    who: an adult Mexican man, 48, a small-town policeman
     tag: the heavy-set policeman with short greying hair
     look: heavy-set, broad back and thick neck, short greying hair
     wardrobe: >-
@@ -439,7 +429,7 @@ locations:
         framing: extreme wide shot
         time: night
   plaza_reloj:
-    # Авто прибрано з бази (воно і стоїть, і висить, і падає) — тепер це стани sedan / sedan_crashed.
+    # Авто прибрано з бази (воно і стоїть, і висить, і падає) — стани sedan / sedan_lifted / sedan_crashed.
     base: >-
       a small Mexican colonial mining-town plaza: cobblestones, colorful facades with dark windows, a parish church,
       a stone clock tower with a large white analog clock face with simple bar markers and no numerals
@@ -462,12 +452,28 @@ locations:
         ref: plaza_reloj.plate
         framing: wide establishing shot
         time: night
-      sedan_crashed:
+      # 6.02, 6.05 (старт падіння): авто висить. Окремий опис; ref — стоянка, щоб модель і колір авто збігалися.
+      sedan_lifted:
+        replace: true
         desc: >-
-          the same old boxy 1980s maroon sedan lying crookedly on the cobblestones near the clock tower after a
-          two-metre fall: the roof dented, the windows shattered, small pieces of glass scattered around it, a thin haze
-          of dust in the air, the only car in the plaza
-        ref: plaza_reloj.plate
+          a small Mexican colonial mining-town plaza: cobblestones, colorful facades with dark windows, a parish church,
+          a stone clock tower with a large white analog clock face with simple bar markers and no numerals; an old boxy
+          1980s four-door sedan with faded maroon paint and plain unbadged bodywork hanging motionless about two metres
+          above the cobblestones near the clock tower, dust and a few dry leaves suspended in the air around it, the
+          only car in the plaza
+        ref: plaza_reloj.sedan
+        framing: wide establishing shot
+        time: night
+      # 6.07 (і ♻ 6.08): після падіння. Окремий опис, ref — стоянка (те саме авто).
+      sedan_crashed:
+        replace: true
+        desc: >-
+          a small Mexican colonial mining-town plaza: cobblestones, colorful facades with dark windows, a parish church,
+          a stone clock tower with a large white analog clock face with simple bar markers and no numerals; an old boxy
+          1980s four-door sedan with faded maroon paint and plain unbadged bodywork lying crookedly on the cobblestones
+          near the clock tower: the roof dented, the windows shattered, small pieces of glass scattered around it, a
+          thin haze of dust in the air, the only car in the plaza
+        ref: plaza_reloj.sedan
         framing: wide establishing shot
         time: night
       # 6.04 (MIDPOINT), 7.16, ч.2 4.04: окремий крупний план; плита площі — лише щоб циферблат був той самий.
@@ -499,8 +505,8 @@ locations:
         time: night
   casa_minero:
     base: >-
-      a humble old miner's one-room house: whitewashed adobe walls, a single metal bed, wooden table and chairs, an oil
-      lamp, a crucifix, a framed old group photograph on the wall
+      a humble old miner's one-room house: whitewashed adobe walls, a small window, a single metal bed, a small wooden
+      nightstand, a wooden table with two chairs, an oil lamp, a crucifix, a framed old group photograph on the wall
     light: night, cold flashlight light, red-blue police lights flickering through the small window
     mood: wrongness, silence
     time: night
@@ -530,21 +536,23 @@ locations:
         replace: true
         desc: >-
           a humble old miner's one-room house with whitewashed adobe walls, a small window, a crucifix and a framed old
-          group photograph on the wall; all of its furniture — a single metal bed, a wooden table, two chairs and an
-          oil lamp — is stuck upside-down to the low ceiling, defying gravity, while the dusty floor below is
-          completely bare; wet bare footprints lead across the floor from the door to the empty spot under the bed;
+          group photograph on the wall; all of its furniture — a single metal bed, a small wooden nightstand, a wooden
+          table with two chairs and an oil lamp — is stuck upside-down to the low ceiling, defying gravity, while the
+          dusty floor below is completely bare, with paler rectangles of cleaner floor where each piece of furniture
+          used to stand; wet bare footprints lead across the floor from the door to the pale rectangle under the bed;
           drops of water hang from the bed frame on the ceiling
         ref: casa_minero.plate
         framing: wide shot of the room from the doorway, the ceiling and the bare floor both in frame
         time: night
-      # 7.02, 7.04, 7.13, 7.14 — до розкриття 7.03: стеля поза кадром, підлога вже порожня (меблі нагорі).
+      # 7.02, 7.04, 7.13, 7.14 — до розкриття 7.03: стеля поза кадром, підлога вже порожня (усі меблі нагорі, і
+      # тумбочка: 7.13 — біля її світлого прямокутника). Підлога та сама, що в ceiling.
       room_before:
         replace: true
         desc: >-
           a humble old miner's one-room house seen at eye level with its ceiling out of frame: whitewashed adobe walls,
-          a small window, a crucifix and a framed old group photograph on the wall, a completely bare dusty floor, wet
-          bare footprints leading across the floor from the door to an empty rectangle of cleaner floor where the bed
-          used to stand
+          a small window, a crucifix and a framed old group photograph on the wall, a completely bare dusty floor with
+          paler rectangles of cleaner floor where each piece of furniture used to stand, wet bare footprints leading
+          across the floor from the door to the largest pale rectangle, where the bed used to stand
         ref: casa_minero.ceiling
         framing: medium wide shot at eye level, the ceiling out of frame
         time: night
@@ -633,7 +641,7 @@ locations:
         framing: wide shot of the café interior
         time: day
   cuarto_diego:
-    base: the bedroom of a 19-year-old, posters with no readable text, an unmade bed, a laptop on a desk, a low plaster ceiling with a ceiling lamp
+    base: a small cluttered bedroom, posters with no readable text, an unmade bed, a laptop on a desk, a low plaster ceiling with a ceiling lamp
     light: night, cold blue light from the laptop screen
     mood: alone with something on the screen
     time: night

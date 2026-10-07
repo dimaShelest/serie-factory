@@ -114,13 +114,18 @@ class Item:
     params: dict
     refs: list[str] = field(default_factory=list)      # id референсів (mateo.front, mina.dawn, tp.T1.frame …)
     produces: str | None = None                        # який референс дає цей елемент
-    extra: dict = field(default_factory=dict)          # прев'ю голосу, критерії успіху, налаштування …
-    warnings: list[str] = field(default_factory=list)
+    extra: dict = field(default_factory=dict)          # прев'ю голосу, критерії успіху, інструкції, вікно монтажу …
+    warnings: list[str] = field(default_factory=list)  # дані + «lint: …» + «API: …»
+    step: int = 0                                      # порядок виробництва (STEPS)
+    route: str = ""                                    # «<провайдер>:<модель>» з prompts/providers.yaml
+    payload: dict = field(default_factory=dict)        # тіло запиту до API; файли — «ref:<id референсу>»
+    needs: list[str] = field(default_factory=list)     # референси, без яких елемент не зробити
 
     @property
     def prompt_sha(self) -> str:
         payload = {"prompt": self.prompt, "negative": self.negative, "params": self.params, "refs": self.refs,
-                   "template": self.template.ref, "extra": {k: v for k, v in self.extra.items() if k != "success"}}
+                   "template": self.template.ref, "route": self.route, "payload": self.payload,
+                   "extra": {k: v for k, v in self.extra.items() if k not in ("success", "manual")}}
         return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()[:12]
 
 

@@ -35,8 +35,8 @@ def terms(kind: str, text: str, **kw) -> list[str]:
     return [re.match(r"lint: «([^»]+)»", m).group(1) for m in L.lint(kind, text, **kw)]
 
 
-def labels(kind: str, text: str) -> list[str]:
-    return [re.match(r"lint: «[^»]+» \(([^)]+)\)", m).group(1) for m in L.lint(kind, text)]
+def labels(kind: str, text: str, **kw) -> list[str]:
+    return [re.match(r"lint: «[^»]+» \(([^)]+)\)", m).group(1) for m in L.lint(kind, text, **kw)]
 
 
 # ---------------------------------------------------------------- каталог
@@ -44,8 +44,9 @@ def labels(kind: str, text: str) -> list[str]:
 
 def test_catalog_loads_with_all_lists() -> None:
     data = L.load()
-    assert list(data["lists"]) == ["age_words", "banned_video", "soft_video", "homographs", "violence_raw",
-                                   "param_leak", "negations", "emotion_words", "text_magnets", "multi_camera"]
+    assert list(data["lists"]) == ["age_words", "banned_video", "banned_footage", "soft_video", "homographs",
+                                   "violence_raw", "param_leak", "negations", "emotion_words", "text_magnets",
+                                   "multi_camera"]
     for name, spec in data["lists"].items():
         assert set(spec["kinds"]) <= set(L.KINDS), name
         assert spec["label"].strip(), name
@@ -93,19 +94,31 @@ def test_fast_hits(text: str) -> None:
     assert terms("video", text) == ["fast"]
 
 
-@pytest.mark.parametrize("text", ["her nose bleeds", "none of them moves", "a slow nod", "a notebook",
-                                  "a knot of rope", "the north wall", "nevertheless", "nobody's notes",
-                                  "a nonsense rhyme", "innocent eyes", "anyone"])
+@pytest.mark.parametrize("text", ["her nose bleeds", "a slow nod", "a notebook", "a knot of rope", "the north wall",
+                                  "nevertheless", "nonetheless", "a nonsense rhyme", "innocent eyes", "anyone",
+                                  "Norway", "a donut", "nothingness"])
 def test_negation_false_positives(text: str) -> None:
     assert L.lint("video", text) == []
 
 
-@pytest.mark.parametrize(("text", "hit"), [("No one is there.", "no"), ("She does NOT cry.", "not"),
-                                           ("he never blinks", "never"), ("without a sound", "without"),
-                                           ("Don't look.", "don't"), ("Don’t look.", "don't"),
-                                           ("she doesn’t move her lips", "doesn't"), ("he cannot see", "cannot")])
+@pytest.mark.parametrize(("text", "hit"), [("No one is there.", "no one"), ("no-one moves", "no one"),
+                                           ("She does NOT cry.", "not"), ("he never blinks", "never"),
+                                           ("without a sound", "without"), ("Don't look.", "don't"),
+                                           ("Don’t look.", "don't"), ("she doesn’t move her lips", "doesn't"),
+                                           ("he cannot see", "cannot"), ("she couldn't move", "couldn't"),
+                                           ("it wasn't there", "wasn't"), ("Nobody moves.", "nobody"),
+                                           ("Nothing else moves.", "nothing"), ("none of them moves", "none"),
+                                           ("nowhere to run", "nowhere"), ("neither one", "neither")])
 def test_negation_hits(text: str, hit: str) -> None:
     assert terms("video", text) == [hit]
+
+
+def test_nobody_moves_freezes_frame() -> None:
+    """§3 №10: «Nobody moves» заморожує кадр — окрема підказка (мікроподія), а не загальна."""
+    out = L.lint("video", "The police lights flash; nothing else moves. Nobody speaks.")
+    assert [re.match(r"lint: «([^»]+)»", m).group(1) for m in out] == ["nothing", "nobody"]
+    assert all("мікроподія" in m for m in out)
+    assert "мікроподія" not in L.lint("video", "she does not move")[0]
 
 
 @pytest.mark.parametrize("text", ["a cowboy hat", "her girlfriend", "fifteen candles", "a minority", "kidney",
@@ -119,7 +132,8 @@ def test_multiword_phrases_hyphen_space_and_case() -> None:
     assert terms("image", "a SCHOOL  UNIFORM") == ["school uniform"]
     assert terms("video", "the room is pitch-black") == ["pitch black"]
     assert terms("video", "a real person close-up") == ["real person"]
-    assert terms("video", "a 6 seconds long clip with audio") == ["seconds long", "with audio"]
+    assert terms("video", "a 6 seconds long clip with audio") == ["6 seconds long", "with audio"]
+    assert terms("video", "a few seconds long") == ["seconds long"]
     assert terms("image", "a blood pool on the floor") == ["blood pool"]
 
 
@@ -155,6 +169,8 @@ def test_banned_and_soft_video() -> None:
 
 def test_homograph_and_violence_both_report_shoot() -> None:
     assert labels("video", "they shoot") == ["омонім", "насильство"]
+    assert labels("video", "officers with guns drawn at the crime scene") == ["насильство", "насильство"]
+    assert terms("image", "a knife and a pistol") == ["knife", "pistol"]
     assert labels("image", "they shoot") == ["насильство"]           # омоніми — лише відео
 
 
@@ -164,10 +180,18 @@ def test_violence_and_wounds() -> None:
 
 
 def test_param_leak() -> None:
-    assert terms("video", "16:9 frame, 720p, 24fps, 24 fps") == ["16:9", "720p", "24fps", "fps"]
-    assert terms("video", "a 5-second clip --ar 16:9 --duration 5") == ["second clip", "--ar", "16:9", "--duration"]
+    assert terms("video", "16:9 frame, 720p, 24fps, 24 fps") == ["16:9", "720p", "24fps", "24 fps"]
+    assert terms("video", "a 1:1 crop at 30fps, fps") == ["1:1", "30fps", "fps"]
+    assert terms("video", "a 5-second clip --ar 16:9 --duration 5") == ["5-second clip", "--ar", "16:9", "--duration"]
+    assert terms("video", "a 6s shot, a 10 sec take") == ["6s shot", "10 sec take"]
     assert L.lint("video", "the clock shows 3:17; it reads 21:90") == []
     assert L.lint("video", "a long hallway — slowly") == []
+
+
+@pytest.mark.parametrize("text", ["the second clip", "a second video", "at the 5-second mark",
+                                  "0-3 seconds: she walks", "11:11 on the clock"])
+def test_param_leak_false_positives(text: str) -> None:
+    assert L.lint("video", text) == []
 
 
 def test_emotion_words_point_to_body() -> None:
@@ -182,15 +206,43 @@ def test_text_magnets_and_list_allow() -> None:
     assert terms("video", "a news ticker and chyron") == ["news ticker", "chyron"]
     assert L.lint("image", "a label-less bottle on a brand new table, a logo-free cap") == []
     assert L.lint("image", "a design on the cushion, she resigns, a signal lamp") == []
+    assert terms("video", "She makes the sign of the cross under a neon sign.") == ["sign"]
 
 
-def test_voice_kind_has_no_lists() -> None:
-    assert L.lint("voice", "[whispering] No, no. ¡El niño! A boy runs fast.") == []
+def test_quoted_text_in_image_is_lettering() -> None:
+    """У картинці діалогу нема: лапки не маскуються, а самі лапки — магніт напису (Nano Banana малює текст)."""
+    assert terms("image", 'a jacket printed with "PREPA 1994"') == ['"prepa 1994"']
+    assert terms("image", 'the “schoolgirl” look') == ["schoolgirl", "“schoolgirl”"]
+    assert labels("image", 'the "schoolgirl" look') == ["вік", "текст у кадрі"]
+    assert L.lint("video", 'She says "No, schoolgirl." and turns.') == []      # у відео — репліка
+
+
+def test_voice_age_words() -> None:
+    """Voice Design відхиляє дитячий голос (§7.1): вік у описі голосу — лише дорослий («Male, early 20s»)."""
+    assert terms("voice", "Female, teenage girl voice. Persona: a schoolgirl.") == ["teenage", "girl", "schoolgirl"]
+    assert terms("voice", "Female, 17–19. Persona: a student.") == ["female, 17–19", "student"]
+    assert "early 20s" in L.lint("voice", "a boy")[0]
+    assert L.lint("voice", "Native Spanish. Male, early 20s. Persona: recién egresado. "
+                           "Bright, slightly raspy young adult voice.") == []
+    assert L.lint("voice", "[whispering] No, no. ¡El niño! Corre rápido, fast.") == []    # інші списки — не для голосу
 
 
 def test_unknown_kind_raises() -> None:
     with pytest.raises(L.LintError, match="kind"):
         L.lint("audio", "text")
+
+
+def test_found_footage_only_with_footage() -> None:
+    """«cinematic» у found footage — ніколи (§6.7, §6.11); у звичайному шоті — можна; стала фраза — у whitelist."""
+    text = "A cinematic look, sharp focus. No stabilization, no gimbal, no cinematic lighting."
+    assert L.lint("video", text) == []
+    assert L.lint("video", text, footage="camera") == []
+    assert terms("video", text, footage="vhs") == ["cinematic", "sharp focus"]
+    assert labels("video", "cinematography", footage="phone") == ["found footage"]
+    assert terms("video", "a sharp jolt", footage="vhs") == []
+    assert L.lint("image", "a cinematic frame", footage="vhs") == []
+    with pytest.raises(L.LintError, match="footage"):
+        L.lint("video", "x", footage=True)    # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------- whitelist і маски
@@ -208,7 +260,7 @@ def test_whitelist_without_final_period_and_mixed_case() -> None:
 
 
 def test_negation_next_to_whitelist_still_flagged() -> None:
-    assert terms("video", "No BGM. No one moves.") == ["no"]
+    assert terms("video", "No BGM. No one moves.") == ["no one"]
     assert terms("video", "No subtitles, no on-screen text. She does not cry.") == ["not"]
 
 
@@ -218,6 +270,22 @@ def test_quoted_dialogue_is_ignored() -> None:
     assert terms("video", 'She says "No." and does not move her hands.') == ["not"]
 
 
+@pytest.mark.parametrize("text", ["an adult woman, 17, in a white blouse", "a 16-year-old", "aged 15",
+                                  "a seventeen-year-old", "a 9 y/o"])
+def test_age_numbers_under_18(text: str) -> None:
+    assert labels("image", text) == ["вік"]
+    assert labels("video", text) == ["вік"]
+
+
+def test_age_numbers_adult() -> None:
+    """Картинці потрібен явний вік ≥ 18; у відео — жодного віку (§7.2), навіть «adult»."""
+    for text in ("an adult woman, 19, in 1994 graduation-day clothes", "an 18-year-old prepa graduate (adult)",
+                 "adult man, 1994 graduate", "fifteen candles", "a woman, 5 metres away"):
+        assert L.lint("image", text) == [], text
+    assert terms("video", "the 19-year-old woman, an adult") == ["19-year-old", "adult"]
+    assert terms("video", "in her early 20s, a twenty-one-year-old") == ["early 20s", "twenty-one-year-old"]
+
+
 def test_extra_allow_from_compiler() -> None:
     rule = "a clean frame with unmarked walls, no lettering, signs or logos anywhere"
     assert L.lint("image", rule) == []                             # стоїть у whitelist YAML
@@ -225,6 +293,14 @@ def test_extra_allow_from_compiler() -> None:
     assert terms("image", custom) == ["signs", "labels"]
     assert L.lint("image", custom, allow=[custom]) == []
     assert L.lint("image", custom + ". A boy.", allow=(custom,)) == L.lint("image", "A boy.")
+    assert L.lint("image", custom, allow=custom) == []                     # один рядок = одна фраза
+
+
+@pytest.mark.parametrize("bad", [{"vhs": "VHS look", "phone": "phone"}, [{"a": 1}], 5, ["ok", None]])
+def test_allow_rejects_non_strings(bad) -> None:
+    """Словник style.video_footage не має тихо дати whitelist своїм ключам («vhs», «phone»)."""
+    with pytest.raises(L.LintError, match="allow"):
+        L.lint("video", "VHS look, phone in hand", allow=bad)
 
 
 def test_image_negations_are_allowed() -> None:
@@ -244,9 +320,15 @@ def test_image_negations_are_allowed() -> None:
     "Camera: slow tilt up from the floor to the ceiling, following the flashlight beam.",
     "Camera: wide tracking shot.",
     "Camera: static.",
-    "The camera pans left and tilts up while it zooms. Camera: static locked-off on a tripod.",
+    "Camera: static locked-off on a tripod.",
+    "Static locked-off camera on a tripod; the frame does not move.",
     "Camera: slow push in. The beam pans across the wall and follows the dust.",
     "Camera: push in. Lighting: lamp. Camera: pan left.",
+    "Camera: very slow push in along the rusted rail tracks toward the tilted mine cart.",
+    "Camera: slow pan across the arc of the timber supports.",
+    "A camera on a dolly pushes in slowly.",
+    "The woman lowers the flashlight, eyes fixed past the camera on the dark doorway.",
+    "She stays screen-left facing right; the camera stays on the sink side.",
 ])
 def test_multi_camera_single_move(text: str) -> None:
     assert "кілька рухів камери" not in labels("video", text)
@@ -259,6 +341,20 @@ def test_multi_camera_warns_in_camera_sentence() -> None:
     assert terms("video", "Camera: Crane up, orbiting the well.") == ["crane + orbit"]
     assert terms("video", "camera: zoom in and dolly in") == ["zoom + push in"]
     assert terms("video", "Camera: follows her, then pans left.") == ["track + pan"]
+
+
+@pytest.mark.parametrize(("text", "moves"), [
+    ("The camera very slowly pushes in, then pans left.", "push in + pan"),
+    ("The camera pans left and tilts up while it zooms. Camera: static locked-off on a tripod.", "pan + tilt + zoom"),
+    ("Then the camera whip-pans to the door and tilts down.", "whip pan + tilt"),
+    ("Camera: slow push toward her face, then pan left.", "push in + pan"),
+    ("Camera: slow push in, then rack focus to the doorway.", "push in + rack focus"),
+    ("Camera: static wide shot, then slow pan left.", "static + pan"),
+    ("Camera: dives into the shaft, then orbits the cart.", "dive + orbit"),
+])
+def test_multi_camera_in_any_camera_sentence(text: str, moves: str) -> None:
+    """Речення про камеру — і «Camera: …», і проза (§2.2 A, E3 для 2.0); голий push, rack focus, static — теж рухи."""
+    assert terms("video", text) == [moves]
 
 
 def test_multi_camera_each_sentence_separately_and_video_only() -> None:
@@ -312,6 +408,7 @@ def _yaml(tmp_path: Path, body: str) -> Path:
     ("lists:\n  a: {label: x, kinds: [video], terms: [{term: y, kinds: [image]}]}\n", "kinds терміна"),
     ("lists:\n  a: {label: x, kinds: [video], terms: [y], hint: {audio: z}}\n", "hint"),
     ("lists:\n  a: {label: x, kinds: [video], terms: [y], sentence: Camera}\n", "sentence"),
+    ("lists:\n  a: {label: x, kinds: [video], terms: [y], footage: true}\n", "footage"),
     ("whitelist: {patterns: ['(']}\nlists:\n  a: {label: x, kinds: [video], terms: [y]}\n", "регулярний вираз"),
     ("lists: [\n", "YAML"),
 ])

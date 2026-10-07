@@ -4,7 +4,9 @@
 #   terms — рядок | [рядки] | {term: рядок або [рядки], hint?, kinds?} | {re: регулярний вираз, show?, hint?, kinds?}
 #   (show — як показати збіг re; без нього — сам збіг),
 #   allow — фрази, які цей список не чіпає («label-less» — це якраз порада, а не магніт тексту).
-# Список із moves замість terms — «один рух камери в реченні <sentence>: …» (за замовчуванням Camera).
+#   footage — список вмикається лише для lint(…, footage=<одне з них>) (found footage: vhs / phone).
+# Список із moves замість terms — «один рух камери на речення»: перевіряється кожне речення, де є слово
+#   <sentence> (за замовчуванням camera): і «Camera: …», і проза «the camera very slowly pushes in…».
 # Збіг — ціле слово / фраза без урахування регістру («fast» ≠ «breakfast», «no» ≠ «nose»); пробіл і дефіс
 # у фразі взаємозамінні («pitch black» = «pitch-black»). Форми слова (boy / boys) пиши явно.
 # Порядок списків = порядок повідомлень; у списку — за першою появою в тексті.
@@ -12,7 +14,8 @@ version: 1
 
 # Сталі фрази, які компілятор вставляє сам (DESIGN §7, prompt_en.video_constants / style / image_rules).
 # Маскуються перед УСІМА перевірками (і запереченнями, і «logo» в «No logo, no watermark.»).
-# Крапку в кінці можна не писати. Репліки в лапках ("…", “…”, {…}) маскуються завжди: іспанське «No» — не заперечення.
+# Крапку в кінці можна не писати. У відео репліки в лапках ("…", “…”, {…}) маскуються: іспанське «No» — не заперечення.
+# У картинці лапки не маскуються: діалогу там нема, а Nano Banana малює текст у лапках як напис (text_magnets).
 whitelist:
   phrases:
     - "Single continuous shot, no cuts."
@@ -43,10 +46,11 @@ whitelist:
 lists:
   age_words:
     label: вік
-    kinds: [image, video]
+    kinds: [image, video, voice]                     # voice — опис Voice Design (англ.); репліки іспанською не чіпає
     hint:
       image: "явний дорослий вік: «adult man, 19» / «adult woman, 19»"
       video: "без віку: роль + гардероб («the woman in the white blouse»)"
+      voice: "«Male, early 20s» / «young adult»; дитячий голос Voice Design відхиляє (§7.1)"
     terms:
       - [child, children, kid, kids, teen, teens, teenage, teenager, teenagers, preteen, adolescent, adolescents]
       - [boy, boys, girl, girls, minor, minors, underage, youngster, youngsters]
@@ -59,7 +63,12 @@ lists:
         hint:
           image: "«an adult woman, 19, in 1994 graduation-day clothes»"
           video: "роль + гардероб: «the woman in the white blouse»"
-      - term: [young, younger, youth, youths]
+      - term: [young, younger, youth, youths, youthful, adult, adults]
+        kinds: [video]                               # у відео — жодних слів про вік (§7.2), навіть «adult»
+      # числом: < 18 — усюди («adult woman, 17», «a 16-year-old», «aged 15», голос «Female, 17–19»)
+      - re: '(?:1[0-7]|[1-9]|thirteen|fourteen|fifteen|sixteen|seventeen)[\s-]*(?:years?[\s-]*old|y/?o)|aged\s+(?:1[0-7]|[1-9])|(?:adult\s+(?:man|woman)|male|female),\s*(?:1[0-7]|[1-9])(?:\s*[–-]\s*\d+)?'
+      # у відео — будь-який вік («the 19-year-old woman», «in her early 20s»): точний вік корелює з E005 (§7.2)
+      - re: '(?:1[89]|[2-9]\d|eighteen|nineteen|twenty|twenty[\s-][a-z]+)[\s-]*(?:years?[\s-]*old|y/?o)|aged\s+(?:1[89]|[2-9]\d)|(?:early|mid|late)[\s-]+(?:20s|twenties)|in\s+(?:her|his|their)\s+(?:20s|twenties)'
         kinds: [video]
 
   banned_video:
@@ -80,6 +89,13 @@ lists:
         hint: "назви джерело світла, напрям і спад («the flashlight beam is the only light»)"
       - term: fast
         hint: "«fast» дає тремтіння: опиши фізику й ступінь («in one sudden motion», «sharply»)"
+
+  banned_footage:
+    label: found footage
+    kinds: [video]
+    footage: [vhs, phone]
+    hint: "у found footage ніколи «cinematic, sharp» (§6.7): лише дефекти камери (style.video_footage)"
+    terms: [cinematic, cinematically, cinematography, sharp focus, tack sharp, razor sharp]
 
   soft_video:
     label: м'яко, не блок
@@ -113,14 +129,17 @@ lists:
       - [kill, kills, killed, killing, murder, murders, murdered, stab, stabs, stabbed, stabbing]
       - [gore, gory, attack, attacks, attacked, attacking, shoot, shoots, shooting]
       - [torture, tortured, mutilate, mutilated, mutilation, blood pool, pool of blood, wound, wounds, wounded]
+      - term: [gun, guns, pistol, pistols, rifle, rifles, knife, knives, weapon, weapons, crime scene, crime scenes]
+        hint: "без зброї й «crime scene» (§7.2): «two uniformed officers sweep flashlights across the tunnel mouth»"
 
   param_leak:
     label: параметр у тексті
     kinds: [video]
     hint: "прибери: це поле payload (aspect_ratio / resolution / duration / generate_audio)"
     terms:
-      - ["16:9", "9:16", "4:3", "3:4", "21:9", "9:21", "720p", "480p", "1080p", "24fps", fps]
-      - [seconds long, second clip, second video, with audio]
+      - ["16:9", "9:16", "4:3", "3:4", "21:9", "9:21", "1:1", "720p", "480p", "1080p", seconds long, with audio]
+      - re: '(?:\d+\s*)?fps'                         # 24fps, 30 fps, fps
+      - re: '\d+[\s-]*(?:s|sec|secs|seconds?)[\s-]+(?:long|clip|video|shot|take)'   # «a 5-second shot»; «the second clip» — ні
       - re: '--[a-z][\w-]*'
         hint: "прапорці (--ar, --duration …) у промпті не працюють — лише поля payload"
 
@@ -128,7 +147,11 @@ lists:
     label: заперечення
     kinds: [video]
     hint: "опиши позитивно («the doorway stays empty and black»); заперечення — лише фрази з whitelist"
-    terms: [not, "no", never, without, "don't", "doesn't", "didn't", "isn't", "aren't", "won't", "can't", cannot]
+    terms:
+      - [not, "no", never, without, cannot, "nor", neither]
+      - re: "[a-z]+n't"                              # don't, couldn't, wasn't … (’ уже зведено до ')
+      - term: [nobody, nothing, none, nowhere, no one]
+        hint: "«nobody moves» заморожує кадр (§3 №10): назви, що лишається («the doorway stays empty and black») + одна мікроподія кожні 1–2 с"
 
   emotion_words:
     label: емоція словом
@@ -152,28 +175,38 @@ lists:
     label: текст у кадрі
     kinds: [image, video]
     hint: "без написів: «label-less» / «blank», текст — у пості"
-    allow: [label-less, logo-free, brand new]
+    allow: [label-less, logo-free, brand new, sign of the cross, signs of the cross]
     terms:
       - [newspaper headline, newspaper headlines, sign, signs, signage, label, labels, logo, logos, brand, brands]
       - [poster text, caption, captions, subtitle, subtitles, news ticker, chyron, chyrons]
       - [soda bottle, soda bottles, chips bag, chips bags]
+      - re: '"[^"\n]+"|“[^”\n]+”'
+        kinds: [image]
+        hint: "текст у лапках Nano Banana малює як напис — прибери, текст у пості"
 
   multi_camera:
     label: кілька рухів камери
     kinds: [video]
     hint: "один основний рух на шот (+ хіба «slightly handheld»); решту — окремим шотом"
-    sentence: Camera
-    moves:                       # форми одного руху; довші фрази збігаються першими («dolly zoom» ≠ dolly + zoom)
+    # іменники локації, не рухи: «along the rusted rail tracks» (prompt_en mina), «a camera on a dolly»
+    allow: [rail track, rail tracks, cart track, cart tracks, train tracks, along the track, along the tracks, on a dolly]
+    sentence: camera
+    # форми одного руху; довші фрази збігаються першими («dolly zoom» ≠ dolly + zoom). Лише теперішній час:
+    # «the tilted mine cart», «the arc of the timber supports» — не рухи
+    moves:
       dolly zoom: [dolly zoom]
       whip pan: [whip pan, whip pans, whip panning, whip]
-      push in: [push in, pushes in, pushing in, dolly in, dollies in, dollying in]
+      rack focus: [rack focus, racks focus, focus pull, pull focus, pulls focus]   # не змішувати з іншими (§2.4)
+      push in: [push in, pushes in, pushing in, push, pushes, pushing, dolly in, dollies in, dollying in]
       pull out: [pull out, pulls out, pulling out, pull back, pulls back, pulling back,
                  dolly out, dollies out, dolly back]
-      pan: [pan, pans, panning, panned]
-      tilt: [tilt, tilts, tilting, tilted]
+      pan: [pan, pans, panning]
+      tilt: [tilt, tilts, tilting]
       # track = follow (один рух); «following …» — ціль іншого руху («slow pan following the beam»), не рух
-      track: [track, tracks, tracking, tracked, follow, follows, follow shot]
-      orbit: [orbit, orbits, orbiting, arc, arcs, arcing]
-      crane: [crane, cranes, craning, craned]
+      track: [track, tracks, tracking, follow, follows, follow shot]
+      orbit: [orbit, orbits, orbiting, arc around, arcs around, arcing]
+      crane: [crane, cranes, craning]
+      dive: [dive, dives, diving]
       dolly: [dolly, dollies, dollying]
-      zoom: [zoom, zooms, zooming, zoomed]
+      zoom: [zoom, zooms, zooming]
+      static: [static, locked-off]                   # «static wide shot, then slow pan» — суперечність

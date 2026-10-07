@@ -1,9 +1,11 @@
 """Лінт промптів: слова, що ламають генератор або чіпляють фільтри (docs/research/2026-10-07-generators.md §6.11).
 
-Списки — дані в prompts/lint.yaml (вік, заборонене у відео, омоніми, насильство, параметри в тексті, заперечення,
-емоції словом, магніти тексту, кілька рухів камери). Кожен список діє лише для своїх kinds (image / video / voice).
+Списки — дані в prompts/lint.yaml (вік, заборонене у відео, found footage, омоніми, насильство, параметри в тексті,
+заперечення, емоції словом, магніти тексту, кілька рухів камери). Кожен список діє лише для своїх kinds
+(image / video / voice); список із footage — лише для lint(…, footage="vhs" | "phone").
 Збіг — ціле слово / фраза без урахування регістру; пробіл і дефіс у фразі взаємозамінні. Перед перевіркою
-маскуються репліки в лапках і whitelist (сталі речення компілятора), тож «No subtitles, no on-screen text.» чисте.
+маскуються whitelist (сталі речення компілятора), тож «No subtitles, no on-screen text.» чисте, а у відео — ще
+й репліки в лапках. Рухи камери рахуються в кожному реченні зі словом camera.
 
     lint("video", "A boy runs fast.")  →  ["lint: «boy» (вік) → без віку: …", "lint: «fast» (заборонено у відео) → …"]
 """
@@ -25,7 +27,8 @@ KINDS = ("image", "video", "voice")
 _QUOTED = re.compile(r'"[^"\n]*"|“[^”\n]*”|\{[^{}\n]*\}')       # репліки: "…" (типово), “…”, {…} (A/B)
 _NORM = str.maketrans({"\u2019": "'", "\u2018": "'", "\u02bc": "'",            # ’ ‘ ʼ → '
                        "\u00a0": " ", "\u2010": "-", "\u2011": "-"})           # NBSP, дефіси
-_LIST_KEYS = {"label", "kinds", "hint", "terms", "allow", "moves", "sentence"}
+_LIST_KEYS = {"label", "kinds", "hint", "terms", "allow", "moves", "sentence", "footage"}
+_SENT = re.compile(r"(?<=[.!?])\s+|\n")                                       # межі речень
 _TERM_KEYS = {"term", "re", "show", "hint", "kinds"}
 
 
@@ -43,7 +46,8 @@ class _Rule:
     hints: tuple[object, ...]                       # підказка терміна (None → підказка списку)
     rx: dict[str, re.Pattern]                       # kind → усі терміни разом, довші першими, групи t<i>
     allow: re.Pattern | None
-    sentence: re.Pattern | None = None              # multi_camera: речення «Camera: …»
+    sentence: re.Pattern | None = None              # multi_camera: слово, що позначає речення про камеру
+    footage: frozenset[str] | None = None           # лише для цих footage (vhs / phone); None — завжди
 
 
 def _phrase(s: str) -> str:
@@ -105,6 +109,7 @@ def _rule(name: str, spec, where: str) -> _Rule:
     if "sentence" in spec and "moves" not in spec:
         raise LintError(f"{where}: sentence — лише для списку з moves")
     hint = _check_hint(spec.get("hint"), f"{where}.hint")
+    footage = frozenset(_strs(spec["footage"], f"{where}.footage")) if "footage" in spec else None
     allow = _mask_rx(_strs(spec["allow"], f"{where}.allow")) if "allow" in spec else None
     # терміни: (показ, вираз, підказка, kinds)
     terms: list[tuple[str, str, object, frozenset[str]]] = []
@@ -141,12 +146,12 @@ def _rule(name: str, spec, where: str) -> _Rule:
     rx = {k: _union([(f"t{i}", terms[i][1]) for i in order if k in terms[i][3]]) for k in kinds}
     sentence = None
     if "moves" in spec:
-        word = spec.get("sentence", "Camera")
+        word = spec.get("sentence", "camera")
         if not isinstance(word, str) or not word.strip():
-            raise LintError(f"{where}.sentence: слово-мітка речення («Camera»)")
-        sentence = re.compile(rf"(?<!\w){re.escape(word.strip())}\s*:(.*?)(?=[.!?](?:\s|$)|\n|$)", re.I | re.S)
+            raise LintError(f"{where}.sentence: слово, що позначає речення про камеру («camera»)")
+        sentence = re.compile(_word(_phrase(word)), re.I)
     return _Rule(name, label, frozenset(kinds), hint, tuple(t[0] for t in terms), tuple(t[2] for t in terms),
-                 rx, allow, sentence)
+                 rx, allow, sentence, footage)
 
 
 def _parse(data, path: Path) -> tuple[re.Pattern | None, list[_Rule]]:
@@ -198,7 +203,19 @@ def _mask(text: str, rx: re.Pattern | None) -> str:
 
 @lru_cache(maxsize=64)
 def _allow_rx(allow: tuple[str, ...]) -> re.Pattern | None:
-    return _mask_rx([a for a in allow if isinstance(a, str)])
+    return _mask_rx(allow)
+
+
+def _allow(allow) -> tuple[str, ...]:
+    """allow → кортеж рядків; словник (style.video_footage …) чи не-рядки — LintError, а не тихий whitelist ключів."""
+    if allow is None:
+        return ()
+    if isinstance(allow, str):
+        return (allow,)
+    items = () if isinstance(allow, dict) or not isinstance(allow, Iterable) else tuple(allow)
+    if isinstance(allow, dict) or not isinstance(allow, Iterable) or not all(isinstance(a, str) for a in items):
+        raise LintError("allow — список сталих фраз (рядків), не словник і не інші типи")
+    return items
 
 
 def _hint(rule: _Rule, i: int, kind: str) -> str:
@@ -222,26 +239,36 @@ def _terms(rule: _Rule, kind: str, text: str) -> list[str]:
 
 
 def _camera(rule: _Rule, kind: str, text: str) -> list[str]:
+    """Кожне речення зі словом camera («Camera: …» і проза «the camera pushes in…») — не більше одного руху."""
     out = []
-    for s in rule.sentence.finditer(_mask(text, rule.allow)):
-        moves = dict.fromkeys(rule.shows[int(m.lastgroup[1:])] for m in rule.rx[kind].finditer(s.group(1)))
-        if len(moves) > 1:
-            out.append(_msg(" + ".join(moves), rule.label, _hint(rule, -1, kind)))
+    for s in _SENT.split(_mask(text, rule.allow)):
+        if rule.sentence.search(s):
+            moves = dict.fromkeys(rule.shows[int(m.lastgroup[1:])] for m in rule.rx[kind].finditer(s))
+            if len(moves) > 1:
+                out.append(_msg(" + ".join(moves), rule.label, _hint(rule, -1, kind)))
     return out
 
 
-def lint(kind: str, text: str, *, allow: Iterable[str] = (), path: Path = LINT) -> list[str]:
+def lint(kind: str, text: str, *, allow: Iterable[str] = (), footage: str | None = None,
+         path: Path = LINT) -> list[str]:
     """Попередження «lint: «слово» (список) → підказка» для промпту kind; без повторів, у порядку списків YAML.
 
-    allow — додаткові сталі фрази (напр. image_rules / video_constants із prompt_en.yaml), які не перевіряються.
+    allow — додаткові сталі фрази компілятора, які не перевіряються: лише image_rules / video_constants із
+    prompt_en.yaml, НІКОЛИ не style (це зміст, який теж лінтуємо; сталі style-фрази вже у whitelist YAML).
+    footage — "vhs" / "phone" для found footage (вмикає списки з footage, напр. «cinematic»); None — звичайний шот.
     """
     if kind not in KINDS:
         raise LintError(f"невідомий kind «{kind}» — має бути один із {list(KINDS)}")
+    if footage is not None and not isinstance(footage, str):
+        raise LintError(f"footage — рядок (vhs / phone) або None, а не {footage!r}")
+    allow_rx = _allow_rx(_allow(allow))
     _, white, rules = _loaded(path)
-    text = _mask(_mask(_QUOTED.sub(lambda m: " " * len(m.group()), (text or "").translate(_NORM)), white),
-                 _allow_rx(tuple(allow)))
+    text = (text or "").translate(_NORM)
+    if kind == "video":                     # у картинці лапки — напис у кадрі, а не репліка: не ховаємо
+        text = _QUOTED.sub(lambda m: " " * len(m.group()), text)
+    text = _mask(_mask(text, white), allow_rx)
     out: list[str] = []
     for rule in rules:
-        if kind in rule.kinds:
+        if kind in rule.kinds and (rule.footage is None or footage in rule.footage):
             out += (_camera if rule.sentence else _terms)(rule, kind, text)
     return list(dict.fromkeys(out))

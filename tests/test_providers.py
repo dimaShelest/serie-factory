@@ -69,7 +69,8 @@ def test_catalog_has_design_routes() -> None:
 
 
 def test_catalog_cached_and_reloaded_on_change(tmp_path: Path) -> None:
-    assert PR.load() is PR.load()
+    assert PR._catalog(None)[0] is PR._catalog(None)[0]                # кеш спільний …
+    assert PR.load() is not PR.load() and PR.load() == PR.load()          # … а назовні — копії
     path = tmp_path / "providers.yaml"
     path.write_text((ROOT / "prompts" / "providers.yaml").read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
     first = PR.load(path)
@@ -88,6 +89,11 @@ def test_manual_per_route_in_ukrainian() -> None:
     cf = PR.route(CF25).manual
     assert "$CLOUDFLARE_ACCOUNT_ID" in cf["how"] and "$CLOUDFLARE_API_TOKEN" in cf["how"]
     assert "/ai/run/bytedance/seedance-2.5" in cf["endpoint"] and "UNVERIFIED" in cf["how"] + cf["endpoint"]
+    cmds = [line.strip() for line in cf["how"].splitlines() if line.strip().startswith("curl")]
+    assert len(cmds) == 2 and cmds[1].startswith("curl.exe ")             # zsh + PowerShell — окремими рядками
+    assert all(c.endswith('--data-binary "@payload.json"') for c in cmds)  # @ без лапок у PowerShell — splatting
+    assert "$env:CLOUDFLARE_ACCOUNT_ID" in cmds[1] and "$env:CLOUDFLARE_API_TOKEN" in cmds[1]
+    assert "$env:" not in cmds[0] and not re.search(r"(?<!\")@payload", cf["how"])
     assert "Replicate playground" in PR.route(SD25).manual["surface"]
     assert "ElevenLabs" in PR.route(EL4).manual["surface"] and "{voice_id}" in PR.route(EL4).manual["endpoint"]
     text = (ROOT / "prompts" / "providers.yaml").read_text(encoding="utf-8")
@@ -166,6 +172,9 @@ def test_unknown_keys() -> None:
     assert has(v(NB21, seed=1), "невідоме поле «seed»")
     assert has(v(EL4, voice_settings={"stability": 0.5, "similarity_boost": 0.7, "style": 0.3}),
                "«voice_settings.style»", "лише stability і similarity_boost")
+    for key, extra in ((SD25, {"style": "noir"}), (NBPRO, {"speed": 1}), (EL4, {"style": 0.3})):
+        msgs = PR.validate(key, {**SAMPLES[key], **extra})                 # вкладена підказка не для верхнього рівня
+        assert has(msgs, "прибери його") and not has(msgs, "voice_settings"), key
 
 
 def test_required_and_none_is_absent() -> None:
@@ -173,8 +182,22 @@ def test_required_and_none_is_absent() -> None:
     assert has(v(NBPRO, prompt=""), "бракує обов'язкового поля «prompt»")
     assert has(v(EL4, text=None), "«text»") and has(v(EL4, model_id=None), "«model_id»")
     assert has(v(SYNC, audio=None), "«audio»")
-    assert PR.validate(SD25, {**I2V, "seed": None}) == []           # nullable: None = поле не надіслано
+    assert PR.validate(SD25, {**I2V, "seed": None}) == []           # nullable у схемі Replicate: null дозволено
+    assert PR.validate(SD25, {**I2V, "image": None, "aspect_ratio": "16:9", "last_frame_image": None}) == []
+    assert PR.validate(SD20, {**SAMPLES[SD20], "seed": None}) == []
     assert PR.validate(SD25, {}) == []                               # у 2.5 обов'язкових полів немає
+
+
+def test_none_where_api_takes_no_null() -> None:
+    """None = JSON null: payload — рівно те, що отримає API, тож непотрібне поле прибирають, а не обнуляють."""
+    for name in ("duration", "resolution", "aspect_ratio", "generate_audio", "prompt"):
+        assert has(PR.validate(SD25, {**I2V, name: None}), f"«{name}»=None — API отримає null"), name
+    assert has(PR.validate(CF25, {**SAMPLES[CF25], "seed": None}), "«seed»=None")     # Cloudflare: суворі типи
+    assert has(PR.validate(NBPRO, {**SAMPLES[NBPRO], "allow_fallback_model": None}), "«allow_fallback_model»=None")
+    assert has(PR.validate(EL4, {**SAMPLES[EL4], "voice_settings": {"stability": None, "similarity_boost": 0.7}}),
+               "«voice_settings.stability»=None")
+    assert has(PR.validate(CF25, {**SAMPLES[CF25], "fps": None}), "«fps» не надсилаємо")
+    assert PR.validate(NBPRO, {**SAMPLES[NBPRO], "prompt": None}) == ["API: бракує обов'язкового поля «prompt»"]
 
 
 def test_types() -> None:
@@ -226,6 +249,7 @@ def test_string_lengths_and_pattern() -> None:
     assert has(v(TTV, voice_description="Male voice"), "«voice_description»: 10 символів, мінімум 20")
     assert has(v(TTV, voice_description="x" * 1001), "«voice_description»: 1001 символів, максимум 1000")
     assert has(v(EL4, language_code="esp"), "«language_code»=«esp»") and has(v(EL4, language_code="ES"), "шаблону")
+    assert has(v(EL4, voice_id=""), "«voice_id»: 0 символів, мінімум 1")
 
 
 def test_prompt_length() -> None:
@@ -250,11 +274,11 @@ def test_ref_strings_accepted() -> None:
 
 
 def test_avoid_and_policy() -> None:
-    assert has(v(CF25, fps=24), "«fps» не надсилаємо")
+    assert v(CF25, fps=24) == ["API: «fps» не надсилаємо: Seedance завжди дає 24 к/с"]
     assert has(v(CF25, camera_fixed=False), "«camera_fixed» не надсилаємо", "Static locked-off")
     assert has(v(NBPRO, allow_fallback_model=True), "«allow_fallback_model»=True — тримаємо False", "seedream")
     assert has(v(NB21, google_search=True), "«google_search»") and has(v(NB21, image_search=True), "«image_search»")
-    assert v(NBPRO, allow_fallback_model=None) == []                  # не надіслано — API візьме false
+    assert v(NBPRO, allow_fallback_model=None) == []                  # ключа немає — API візьме false
 
 
 # ---------------------------------------------------------------- іменовані правила
@@ -300,6 +324,14 @@ def test_rule_match_input_needs_image() -> None:
     assert v(NB21, aspect_ratio="match_input_image") == []
 
 
+def test_rule_text_or_auto_text() -> None:
+    assert has(v(TTV, text=None), "бракує text (100–1000 символів) або auto_generate_text: true")
+    assert has(v(TTV, text=None, auto_generate_text=False), "бракує text")
+    assert v(TTV, text=None, auto_generate_text=True) == []
+    assert has(v(TTV, text=""), "бракує text")
+    assert PR.route(TTV).rules == ("text_or_auto_text",)
+
+
 # ---------------------------------------------------------------- ціни
 
 
@@ -338,6 +370,70 @@ def test_split_path_query_body() -> None:
     assert parts["path"] == {"voice_id": "abc123"} and parts["query"] == {"output_format": "mp3_44100_192"}
     assert "voice_id" not in parts["body"] and parts["body"]["model_id"] == "eleven_v4"
     assert PR.split(SD25, I2V) == {"path": {}, "query": {}, "body": I2V}
+    for bad in ({"voice_id": None}, {"voice_id": ""}, {"voice_id": "  "}, {}):
+        payload = {k: x for k, x in SAMPLES[EL4].items() if k != "voice_id"} | bad
+        with pytest.raises(PR.ProviderError, match="бракує «voice_id» для шляху запиту .*bible.yaml"):
+            PR.split(EL4, payload)
+
+
+def test_cache_not_mutable_from_outside() -> None:
+    r = PR.route(SD25)
+    r.fields["resolution"]["values"].append("1080p")
+    r.manual["how"] = "зіпсовано"
+    r.price["values"]["1080p"] = 9.0
+    assert has(v(SD25, resolution="1080p"), "«resolution»=«1080p»") and PR.price(SD25, {"resolution": "1080p"}) is None
+    assert PR.route(SD25).manual["how"] != "зіпсовано"
+    PR.load()[SD25].manual["surface"] = "x"
+    assert PR.route(SD25).manual["surface"] == "Replicate playground"
+    g = PR.generation()
+    g["clip_s"].append(10)
+    assert PR.generation()["clip_s"] == [5]
+
+
+# ---------------------------------------------------------------- профіль генерації
+
+
+@pytest.fixture
+def no_env_profile(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> pytest.MonkeyPatch:
+    monkeypatch.delenv("GENERATION_PROFILE", raising=False)
+    monkeypatch.setenv("FABRICA_ENV_FILE", str(tmp_path / "no.env"))     # справжній .env не впливає
+    return monkeypatch
+
+
+def test_generation_default_profile(no_env_profile: pytest.MonkeyPatch) -> None:
+    g = PR.generation()
+    assert g["name"] == "manual-5s" and g["clip_s"] == [5] and g["resolution"] == "720p"
+    assert "dropshot" in g["surface"] and g["url"].startswith("https://") and "5 с" in g["note"]
+
+
+def test_generation_env_override(no_env_profile: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    no_env_profile.setenv("GENERATION_PROFILE", "replicate-2.5")
+    g = PR.generation()
+    assert g == {"name": "replicate-2.5", "clip_min_s": 4, "clip_max_s": 30,
+                 "resolution_by_tier": {"hero": "720p", "secondary": "480p", "found_footage": "480p"}}
+    no_env_profile.delenv("GENERATION_PROFILE")
+    env = tmp_path / "with.env"
+    env.write_text("\ufeffGENERATION_PROFILE=replicate-2.5\n", encoding="utf-8", newline="\n")
+    no_env_profile.setenv("FABRICA_ENV_FILE", str(env))
+    assert PR.generation()["name"] == "replicate-2.5"                     # і з .env (BOM теж)
+
+
+def test_generation_unknown_profile(no_env_profile: pytest.MonkeyPatch) -> None:
+    no_env_profile.setenv("GENERATION_PROFILE", "dropshot-10s")
+    with pytest.raises(PR.ProviderError, match="профіль генерації «dropshot-10s» невідомий .*manual-5s"):
+        PR.generation()
+
+
+def test_generation_profiles_match_video_routes() -> None:
+    res = set(PR.route(SD25).fields["resolution"]["values"])
+    gen = yaml.safe_load((ROOT / "prompts" / "providers.yaml").read_text(encoding="utf-8"))["generation"]
+    for name, p in gen["profiles"].items():
+        assert {p.get("resolution"), *p.get("resolution_by_tier", {}).values()} - {None} <= res, name
+        lo, hi = PR.route(SD25).fields["duration"]["min"], PR.route(SD25).fields["duration"]["max"]
+        assert all(lo <= s <= hi for s in p.get("clip_s", [p.get("clip_min_s"), p.get("clip_max_s")])), name
+
+
+# ---------------------------------------------------------------- ціни
 
 
 # ---------------------------------------------------------------- зламаний каталог
@@ -383,6 +479,8 @@ def test_minimal_catalog_with_bom_and_hints(tmp_path: Path) -> None:
     ({"fields": {**ROUTE["fields"], "x": {"type": "float"}}}, "type «float»"),
     ({"fields": {**ROUTE["fields"], "x": {"type": "uri_list", "max_item": 3}}}, "невідомі ключі ['max_item']"),
     ({"fields": {**ROUTE["fields"], "x": {"type": "enum", "values": [True, False]}}}, "в лапках"),
+    ({"fields": {**ROUTE["fields"], "x": {"type": "enum", "values": [969]}}}, "в лапках"),       # 16:9 без лапок
+    ({"fields": {**ROUTE["fields"], "x": {"type": "string", "nullable": "yes"}}}, "nullable — true або false"),
     ({"fields": {**ROUTE["fields"], "x": {"type": "enum", "values": []}}}, "непорожнього списку"),
     ({"fields": {**ROUTE["fields"], "x": {"type": "const"}}}, "const потребує value"),
     ({"fields": {**ROUTE["fields"], "x": {"type": "object"}}}, "object потребує fields"),
@@ -399,12 +497,55 @@ def test_minimal_catalog_with_bom_and_hints(tmp_path: Path) -> None:
     ({"price": {"unit": "minute", "rate": 1}}, "price: словник з unit"),
     ({"price": {"unit": "image", "by": "quality", "values": {"hi": 1}}}, "price.by «quality»"),
     ({"price": {"unit": "image", "by": "size", "values": {"1K": "дешево"}}}, "price.values"),
+    ({"price": {"unit": "image", "by": "size", "values": {"1K": 0.01}}}, "ставка на кожне значення"),
+    ({"price": {"unit": "image", "by": "size", "values": {"1K": 0.01, "2K": 0.02, "4K": 0.04}}}, "≠ значенням «size»"),
+    ({"price": {"unit": "image", "by": "size", "values": {"1K": 0.01, "2K": 0.02}, "video_input": {"4K": 1}}},
+     "price.video_input: зайві ключі ['4K']"),
     ({"price": {"unit": "second"}}, "by + values або rate"),
     ({"manual": {"surface": "Тест", "url": "https://example.com"}}, "manual"),
     ({"extra_key": 1}, "невідомі ключі ['extra_key']"),
 ])
 def test_broken_catalog(tmp_path: Path, changes: dict, expected: str) -> None:
     assert expected in broken(tmp_path, **changes)
+
+
+GEN = {"profile": "a", "profiles": {"a": {"clip_s": [5], "resolution": "720p"}}}
+
+
+@pytest.mark.parametrize("gen, expected", [
+    ({"profile": "b", "profiles": GEN["profiles"]}, "generation.profile «b» немає серед profiles"),
+    ({"profile": "a", "profiles": {}}, "generation: потрібні profile і profiles"),
+    ([1], "generation: потрібні"),
+    ({**GEN, "default": "a"}, "generation: невідомі ключі ['default']"),
+    ({"profile": "a", "profiles": {"a": {"resolution": "720p"}}}, "або clip_s"),
+    ({"profile": "a", "profiles": {"a": {"clip_s": [5], "clip_max_s": 9, "resolution": "720p"}}}, "або clip_s"),
+    ({"profile": "a", "profiles": {"a": {"clip_s": [], "resolution": "720p"}}}, "clip_s — непорожній список"),
+    ({"profile": "a", "profiles": {"a": {"clip_s": [0], "resolution": "720p"}}}, "clip_s — непорожній список"),
+    ({"profile": "a", "profiles": {"a": {"clip_s": [True], "resolution": "720p"}}}, "clip_s — непорожній список"),
+    ({"profile": "a", "profiles": {"a": {"clip_min_s": 9, "clip_max_s": 4, "resolution": "720p"}}}, "clip_min_s ≤"),
+    ({"profile": "a", "profiles": {"a": {"clip_min_s": 4, "resolution": "720p"}}}, "clip_min_s ≤"),
+    ({"profile": "a", "profiles": {"a": {"clip_s": [5]}}}, "потрібні resolution або resolution_by_tier"),
+    ({"profile": "a", "profiles": {"a": {"clip_s": [5], "resolution": 720}}}, "роздільність 720 — рядок"),
+    ({"profile": "a", "profiles": {"a": {"clip_s": [5], "resolution": "720P"}}}, "«720P» не знає жоден відео-маршрут"),
+    ({"profile": "a", "profiles": {"a": {"clip_s": [5], "resolution_by_tier": ["720p"]}}}, "resolution_by_tier — словник"),
+    ({"profile": "a", "profiles": {"a": {"clip_s": [5], "resolution": "720p", "clip": 5}}}, "невідомі ключі ['clip']"),
+    ({"profile": "a", "profiles": {"a": {"clip_s": [5], "resolution": "720p", "surface": ""}}}, "surface — непорожній"),
+    ({"profile": "a", "profiles": {"a": "5s"}}, "generation.profiles.a: потрібен словник"),
+])
+def test_broken_generation(tmp_path: Path, gen, expected: str) -> None:
+    data = yaml.safe_load((ROOT / "prompts" / "providers.yaml").read_text(encoding="utf-8"))
+    with pytest.raises(PR.ProviderError) as e:
+        PR.load(write(tmp_path, {**data, "generation": gen}))
+    assert expected in str(e.value)
+
+
+def test_generation_optional_in_catalog(tmp_path: Path, no_env_profile: pytest.MonkeyPatch) -> None:
+    path = write(tmp_path, {"routes": {"replicate:a/b": ROUTE}})
+    assert PR.load(path) and PR.validate("replicate:a/b", {"prompt": "x", "aspect_ratio": "1:1"}, path=path) == []
+    with pytest.raises(PR.ProviderError, match="немає блоку generation"):
+        PR.generation(path=path)
+    good = write(tmp_path, {"routes": {"replicate:a/b": ROUTE}, "generation": GEN})
+    assert PR.generation(path=good) == {"name": "a", "clip_s": [5], "resolution": "720p"}
 
 
 def test_broken_catalog_file(tmp_path: Path) -> None:

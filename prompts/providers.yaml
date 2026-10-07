@@ -8,17 +8,30 @@
 # Поле: type — string | uri | uri_list | string_list | int | number | bool | enum | const | object
 #   values (enum) · value (const) · min / max (+ also — дозволені значення поза межами) · max_items
 #   min_chars / max_chars · pattern (regex на весь рядок) · default (що візьме API, якщо поле не надіслано)
-#   required · in: body | query | path (де поле в HTTP-запиті; за замовчуванням body) · fields (для object)
+#   required (None / "" — помилка) · nullable (API приймає null; інакше None у payload — помилка: поле, яке не
+#   надсилаємо, просто не кладемо) · in: body | query | path (де поле в HTTP-запиті; за замовчуванням body)
+#   fields (для object)
 #   avoid: «чому не надсилаємо» · policy + why (значення, яке свідомо тримаємо) · note (довідка людям)
 # URI-поля приймають «ref:<id>» (файл підставить автоматика / людина), http(s)://…, data:… або локальний шлях.
 # Правила (rules): frame_xor_reference, last_frame_needs_image, audio_needs_visual_ref, adaptive_with_frame,
-#   match_input_needs_image — див. RULES у fabrica/providers.py.
+#   match_input_needs_image, text_or_auto_text — див. RULES у fabrica/providers.py.
 # Ціна (price): unit second | image | 1k_chars; by (поле) + values, або rate; video_input — ставки з reference_videos.
+#   Для enum-поля by ставка потрібна на кожне його значення (нова роздільність без ціни — помилка каталогу).
+# hints: «поле» — підказка до невідомого поля верхнього рівня будь-якого маршруту; «об'єкт.поле» — вкладеного.
+# generation: профіль довжини кліпу (providers.generation(); env GENERATION_PROFILE перемикає) — clip_s
+#   (фіксовані довжини, с) або clip_min_s + clip_max_s; resolution або resolution_by_tier; surface / url / note.
 # УВАГА YAML: співвідношення сторін («16:9») і on/off — лише в лапках, інакше YAML зробить із них число / bool.
 
 version: 1
 
-hints:      # підказка до «невідомого поля» — для всіх маршрутів
+generation:
+  profile: manual-5s            # активний профіль
+  profiles:
+    manual-5s: {clip_s: [5], resolution: "720p", surface: "dropshot AI Studio (Seedance 2.5)",
+                url: "https://aistudio.dropshot.io", note: "1 генерація 720p × 5 с на акаунт"}
+    replicate-2.5: {clip_min_s: 4, clip_max_s: 30, resolution_by_tier: {hero: "720p", secondary: "480p", found_footage: "480p"}}
+
+hints:      # підказка до «невідомого поля» (див. шапку)
   negative_prompt: "у Seedance і Nano Banana немає negative — опиши бажане позитивно в промпті"
   negative: "у Seedance і Nano Banana немає negative — опиши бажане позитивно в промпті"
   use_virtual_avatar: "є лише на маршруті cloudflare:bytedance/seedance-2.5"
@@ -26,9 +39,9 @@ hints:      # підказка до «невідомого поля» — для
   camera_fixed: "замка камери в API немає — пиши «Static locked-off camera on a tripod» у промпті"
   last_image: "поле називається last_frame_image"
   draft: "draft є лише на ModelArk; на Replicate і Cloudflare його немає"
-  style: "eleven_v4 приймає у voice_settings лише stability і similarity_boost"
-  speed: "eleven_v4 приймає у voice_settings лише stability і similarity_boost"
-  use_speaker_boost: "eleven_v4 приймає у voice_settings лише stability і similarity_boost"
+  voice_settings.style: "eleven_v4 приймає у voice_settings лише stability і similarity_boost"
+  voice_settings.speed: "eleven_v4 приймає у voice_settings лише stability і similarity_boost"
+  voice_settings.use_speaker_boost: "eleven_v4 приймає у voice_settings лише stability і similarity_boost"
   thinking_level: "UNVERIFIED: на Replicate поля thinking_level не знайдено (є на fal)"
   num_outputs: "один виклик — одне зображення"
 
@@ -48,8 +61,8 @@ routes:
     prompt_max_chars: 2000
     fields:
       prompt: {type: string, default: "", note: "необов'язковий, якщо є медіа; діалог — у подвійних лапках"}
-      image: {type: uri, note: "перший кадр; не поєднується з reference_*"}
-      last_frame_image: {type: uri, note: "лише разом з image; те саме співвідношення сторін"}
+      image: {type: uri, nullable: true, note: "перший кадр; не поєднується з reference_*"}
+      last_frame_image: {type: uri, nullable: true, note: "лише разом з image; те саме співвідношення сторін"}
       reference_images: {type: uri_list, max_items: 30, default: [], note: "у промпті — [Image1], [Image2]…"}
       reference_videos: {type: uri_list, max_items: 10, default: [], note: "разом ≤30 с; тариф «з відео» (×4,2)"}
       reference_audios: {type: uri_list, max_items: 10, default: [], note: "разом ≤30 с; потрібне фото чи відео"}
@@ -59,7 +72,7 @@ routes:
       generate_audio: {type: bool, default: true}
       watermark: {type: bool, default: false}
       output_format: {type: enum, values: ["mp4", "mov"], default: "mp4"}
-      seed: {type: int, note: "відтворюваність не гарантовано"}
+      seed: {type: int, nullable: true, note: "відтворюваність не гарантовано"}
     rules: [frame_xor_reference, last_frame_needs_image, audio_needs_visual_ref, adaptive_with_frame]
     price: {unit: second, by: resolution, values: {"480p": 0.1028, "720p": 0.2312},
             video_input: {"480p": 0.4304, "720p": 0.9676}}
@@ -101,7 +114,7 @@ routes:
       seed: {type: int}
       use_virtual_avatar: {type: bool, default: false,
                            note: "true — лише для AI-персонажів, на які маємо права (пропускає обличчя через бібліотеку аватарів)"}
-      fps: {type: const, value: 24, avoid: "стала 24 к/с — не надсилаємо"}
+      fps: {type: const, value: 24, avoid: "Seedance завжди дає 24 к/с"}
       camera_fixed: {type: bool, avoid: "у Cloudflare «has no effect» — пиши «Static locked-off camera on a tripod» у промпті"}
     rules: [frame_xor_reference, last_frame_needs_image, adaptive_with_frame]
     price: {unit: second, by: resolution, values: {"480p": 0.1028, "720p": 0.2312},
@@ -112,14 +125,19 @@ routes:
       endpoint: "POST https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/ai/run/bytedance/seedance-2.5 (UNVERIFIED: REST-шлях)"
       how: >-
         Плейграунда для відео не підтверджено — запускай curl. Ключі лише з оточення: CLOUDFLARE_ACCOUNT_ID і
-        CLOUDFLARE_API_TOKEN (у файли не вписуй). Збережи payload у payload.json, кожне «ref:<id>» заміни на
-        публічний https-URL файлу (R2 тощо; base64 — UNVERIFIED). macOS / zsh:
-        curl -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/ai/run/bytedance/seedance-2.5"
-        -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data @payload.json.
-        Windows / PowerShell: curl.exe і $env:CLOUDFLARE_ACCOUNT_ID, $env:CLOUDFLARE_API_TOKEN. Відповідь — {"video": url}
-        (у REST, імовірно, всередині {"result": …}). UNVERIFIED: REST-шлях; якщо не працює — Worker:
-        env.AI.run('bytedance/seedance-2.5', payload). use_virtual_avatar:true — лише для AI-персонажів; стартовий
-        кадр тоді задає обличчя, а не композицію, тож розстановку тримає текст промпту.
+        CLOUDFLARE_API_TOKEN (у файли не вписуй). Збережи payload у payload.json (UTF-8 без BOM — не через `>` у
+        PowerShell 5.1), кожне «ref:<id>» заміни на публічний https-URL файлу (R2 тощо; base64 — UNVERIFIED).
+        macOS / zsh:
+
+          curl -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/ai/run/bytedance/seedance-2.5" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary "@payload.json"
+
+        Windows / PowerShell — саме curl.exe, а "@payload.json" лише в лапках (без них @ — оператор PowerShell):
+
+          curl.exe -X POST "https://api.cloudflare.com/client/v4/accounts/$env:CLOUDFLARE_ACCOUNT_ID/ai/run/bytedance/seedance-2.5" -H "Authorization: Bearer $env:CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" --data-binary "@payload.json"
+
+        Відповідь — {"video": url} (у REST, імовірно, всередині {"result": …}). UNVERIFIED: REST-шлях; якщо не
+        працює — Worker: env.AI.run('bytedance/seedance-2.5', payload). use_virtual_avatar:true — лише для
+        AI-персонажів; стартовий кадр тоді задає обличчя, а не композицію, тож розстановку тримає текст промпту.
 
   replicate:bytedance/seedance-2.0:
     provider: replicate
@@ -142,7 +160,7 @@ routes:
       resolution: {type: enum, values: ["480p", "720p", "1080p", "4k"], default: "720p", note: "4k — 10-біт H.265"}
       aspect_ratio: {type: enum, values: ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9", "9:21", "adaptive"], default: "16:9"}
       generate_audio: {type: bool, default: true}
-      seed: {type: int}
+      seed: {type: int, nullable: true}
     rules: [frame_xor_reference, last_frame_needs_image, audio_needs_visual_ref, adaptive_with_frame]
     price: {unit: second, by: resolution, values: {"480p": 0.08, "720p": 0.18, "1080p": 0.45, "4k": 1.00},
             video_input: {"480p": 0.10, "720p": 0.22, "1080p": 0.55, "4k": 1.25}}
@@ -235,7 +253,7 @@ routes:
     prompt_field: text
     prompt_max_chars: 10000
     fields:
-      voice_id: {type: string, in: path, note: "з bible.yaml → voice.voice_id; підставляє автоматика"}
+      voice_id: {type: string, in: path, min_chars: 1, note: "з bible.yaml → voice.voice_id; підставляє автоматика"}
       output_format: {type: enum, in: query, default: "mp3_44100_128", note: "mp3_44100_192 — від тарифу Creator; wav/pcm 44.1 — Pro",
                       values: ["mp3_22050_32", "mp3_44100_32", "mp3_44100_64", "mp3_44100_96", "mp3_44100_128",
                                "mp3_44100_192", "pcm_16000", "pcm_22050", "pcm_24000", "pcm_44100", "wav_44100"]}
@@ -286,7 +304,7 @@ routes:
       loudness: {type: number, min: -1, max: 1, default: 0.5}
       seed: {type: int, min: 0, max: 4294967295, note: "той самий сід + вхід = той самий голос; межі UNVERIFIED"}
       should_enhance: {type: bool, default: false}
-    rules: []
+    rules: [text_or_auto_text]
     price: null
     manual:
       surface: "ElevenLabs Voice Design — сайт або API"
