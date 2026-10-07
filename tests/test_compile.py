@@ -300,10 +300,10 @@ def test_video_route_by_face_and_payload(data, ts) -> None:
                                               "resolution": "720p", "seed": P.seed_for("p1-1.02-video"),
                                               "aspect_ratio": "adaptive", "generate_audio": True,
                                               "output_format": "mp4", "use_virtual_avatar": True}
-    assert "Blocking:" not in clear.prompt                                   # руками (dropshot) старт точний
+    assert "Blocking:" in clear.prompt                                       # Cloudflare: кадр задає обличчя, не склад
+    assert "the woman in the black denim jacket on the left of the frame" in clear.prompt
     auto = C.video_items(_spec(people=[S.Person(id="vale", screen="left")], face="clear"), data, ts, profile=RANGE)[0]
-    assert "Blocking:" in auto.prompt                                        # автоматика: Cloudflare — кадр приблизний
-    assert "the woman in the black denim jacket on the left of the frame" in auto.prompt
+    assert auto.prompt == clear.prompt                                       # лабораторія = автомат (рішення 07.10)
     none = C.video_items(_spec(people=[S.Person(id="vale", view="back")], face="none"), data, ts, profile=MANUAL)[0]
     assert none.route == ts["video.i2v"].route and "use_virtual_avatar" not in none.payload
     assert "Blocking:" not in none.prompt and none.extra["face"] == "none"
@@ -682,9 +682,9 @@ def test_route_t2v_never_face_and_face_frame_chains_keep_face_route(data, ts) ->
 def test_continuity_spelled_out_only_when_frame_is_loose(data, ts) -> None:
     sp = _spec(people=[S.Person(id="vale")], face="clear",
                continuity=["hundreds of small grey pebbles hang motionless in the air."])
-    lab = C.video_items(sp, data, ts, profile=MANUAL)[0]                     # руками старт точний — без складу словами
-    assert "Continuity:" not in lab.prompt and "Blocking:" not in lab.prompt
+    lab = C.video_items(sp, data, ts, profile=MANUAL)[0]
     face = C.video_items(sp, data, ts, profile=RANGE)[0]
+    assert lab.prompt == face.prompt                                         # промпт не залежить від профілю
     assert "Continuity: hundreds of small grey pebbles hang motionless in the air." in face.prompt
     assert face.prompt.index("Blocking:") < face.prompt.index("Continuity:") < face.prompt.index("She slowly raises")
     rep = C.video_items(sp.model_copy(update={"people": [S.Person(id="vale", view="back")], "face": "none"}), data, ts,

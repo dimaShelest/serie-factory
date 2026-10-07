@@ -113,16 +113,33 @@ def test_media_only_from_media_and_prompts_out(base: str, env: dict) -> None:
     f.write_bytes(PNG)
     status, body, h = call(f"{base}/media?path={urllib.parse.quote(str(f))}")
     assert status == 200 and body == PNG and h["Content-Type"] == "image/png"
-    out = P.OUT / SLUG / "casting" / "index.html"
+    assert h["X-Content-Type-Options"] == "nosniff"
+    out = P.OUT / SLUG / "casting" / "ref.png"
     out.parent.mkdir(parents=True)
-    out.write_text("<p>пакет</p>", encoding="utf-8")
+    out.write_bytes(PNG)
     assert call(f"{base}/media?path={urllib.parse.quote(str(out))}")[0] == 200
-    secret = env["tmp"] / "secret.txt"
-    secret.write_text("x", encoding="utf-8")
-    sneaky = str(lab_mod.MEDIA / SLUG / ".." / ".." / ".." / "secret.txt")
-    for bad in ("pyproject.toml", ".env", "../../etc/passwd", "/etc/passwd", str(secret), sneaky, ""):
+    page = out.with_name("index.html")                                    # не медіа — не віддаємо (XSS з того ж origin)
+    page.write_text("<script>alert(1)</script>", encoding="utf-8")
+    secret = env["tmp"] / "secret.png"
+    secret.write_bytes(PNG)
+    sneaky = str(lab_mod.MEDIA / SLUG / ".." / ".." / ".." / "secret.png")
+    for bad in ("pyproject.toml", ".env", "../../etc/passwd", "/etc/passwd", str(secret), sneaky, "", str(page),
+                "//evil-host/share/a.png", "\\\\evil-host\\share\\a.png", str(f).replace("/", "\\"),
+                "media/lab/../../secret.png"):
         status, body, _ = call(f"{base}/media?path={urllib.parse.quote(bad)}")
         assert status == 404 and "error" in body, bad
+
+
+def test_media_file_never_touches_unc_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Windows: Path(r"\\\\host\\share\\x").resolve() / is_file() іде на чужий SMB-сервер і віддає NTLM-хеш —
+    рядок відсікаємо ДО звертання до диска."""
+    def boom(*a, **k):
+        raise AssertionError("звернення до диска")
+
+    monkeypatch.setattr(Path, "resolve", boom)
+    monkeypatch.setattr(Path, "is_file", boom)
+    for bad in ("//evil-host/share/a.png", "\\\\evil-host\\share\\a.png", "media/../x.png", "media/x.txt", "x\x00.png"):
+        assert studio_mod.media_file(bad) is None, bad
 
 
 def test_media_range_for_video(base: str) -> None:
@@ -144,6 +161,25 @@ def test_foreign_origin_and_host_rejected(base: str) -> None:
     assert status == 403
     assert call(f"{base}/api/lessons?story={SLUG}", headers={"Origin": "null"})[0] == 403
     assert call(f"{base}/api/lessons?story={SLUG}", headers={"Origin": base})[0] == 200
+    port = int(base.rsplit(":", 1)[1])
+    other = f"http://127.0.0.1:{port + 1 if port < 65535 else port - 1}"      # інший локальний сервер — чужий
+    assert call(f"{base}/api/status", {"story": SLUG, "item": "loc-mina", "status": "skip"},
+                headers={"Origin": other})[0] == 403
+    assert call(f"{base}/api/lessons?story={SLUG}", headers={"Host": other.removeprefix("http://")})[0] == 403
+    assert call(f"{base}/api/lessons?story={SLUG}", headers={"Host": f"localhost:{port}"})[0] == 200
+    assert call(f"{base}/api/lessons?story={SLUG}", headers={"Host": "127.0.0.1:abc"})[0] == 403
+    assert progress_mod.load(SLUG) == {}
+
+
+def test_post_must_be_json_or_multipart(base: str) -> None:
+    """«Простий» POST (text/plain, form-urlencoded) браузер шле без CORS-перевірки — студія його не приймає."""
+    raw = json.dumps({"story": SLUG, "item": "loc-mina", "status": "skip"}).encode("utf-8")
+    for ctype in ("text/plain", "application/x-www-form-urlencoded", ""):
+        status, body, _ = call(f"{base}/api/status", raw, headers={"Content-Type": ctype} if ctype else {})
+        assert status == 415 and "JSON" in body["error"], ctype
+    assert progress_mod.load(SLUG) == {}
+    status, body, _ = call(f"{base}/api/status", raw, headers={"Content-Type": "application/json; charset=utf-8"})
+    assert (status, body) == (200, {"ok": True})
 
 
 # ---------------------------------------------------------------- стан
@@ -277,6 +313,28 @@ def test_log_errors(base: str) -> None:
     assert status == 400 and "файлу немає" in body["error"]
     status, body, _ = call(f"{base}/api/log", b"{not json", headers={"Content-Type": "application/json"})
     assert status == 400 and "JSON" in body["error"]
+
+
+def test_log_checks_copied_prompt_and_budget_counts_clips(base: str, env: dict) -> None:
+    """Скопійована версія промпту (prompt_sha) ≠ поточна → 409, нічого не записано; бюджет рахує лише генерації
+    кліпу, а не кадри «<кліп>-last»; інструмент з «../» — 400."""
+    v = item(state(base), "p1-1.01-video")
+    status, body, _ = call(f"{base}/api/log", {"story": SLUG, "item": v["id"], "tool": "dropshot", "score": 4,
+                                               "prompt_sha": "0" * 16})
+    assert status == 409 and "скопіюй промпт ще раз" in body["error"]
+    assert lab_mod.results(SLUG) == []
+    status, body, _ = call(f"{base}/api/log", {"story": SLUG, "item": v["id"], "tool": "../../x", "score": 4})
+    assert status == 400 and "латиниця" in body["error"]
+    status, body, _ = call(f"{base}/api/log", {"story": SLUG, "item": v["id"], "tool": "dropshot", "score": 4,
+                                               "prompt_sha": v["prompt_sha"]})
+    assert status == 200, body
+    src = env["tmp"] / "last.png"
+    src.write_bytes(PNG)
+    status, body, _ = call(f"{base}/api/log", {"story": SLUG, "item": v["id"] + "-last", "tool": "dropshot",
+                                               "score": 5, "file": str(src), "prompt_sha": v["prompt_sha"]})
+    assert status == 200, body
+    bud = state(base)["budget"]
+    assert bud["runs"] == 1 and bud["spent"] > 0 and bud["spent"] < bud["per_pass"]
 
 
 def test_approve(base: str, env: dict) -> None:

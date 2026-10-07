@@ -359,8 +359,9 @@ function statusBody(story, item, status) {
   return {story, item, status};
 }
 
-function logFields(story, item, tool, score, notes) {
-  return {story, item, tool, score, notes};
+// prompt_sha — версія промпту, яку людина скопіювала (сервер відповість 409, якщо промпт відтоді змінився)
+function logFields(story, item, tool, score, notes, prompt_sha) {
+  return {story, item, tool, score, notes, prompt_sha: prompt_sha || null};
 }
 
 function logBody(fields, file) {
@@ -406,6 +407,7 @@ const S = {
   current: null,          // картка під клавішами j / k / c
   open: new Map(),        // `${id}|${секція}` → відкрито? (переживає оновлення картки)
   form: new Map(),        // id → {tool, score, path} — незбережена форма журналу
+  copied: new Map(),      // id → prompt_sha промпту, який людина скопіювала (іде в журнал)
   proposals: new Map(),   // id → пропозиція переписувача
   lessons: [],
   lessonsLoaded: false,
@@ -521,6 +523,13 @@ async function copyText(text, btn) {
   }
   if (btn) flash(btn, ok ? 'Скопійовано ✓' : 'Не вдалося');
   if (!ok) toast('Не вдалося скопіювати — виділи текст і натисни Cmd+C (Windows — Ctrl+C)', 'error');
+  return ok;
+}
+
+/** Промпт / payload елемента → буфер; версію (prompt_sha) запам'ятовуємо — запис результату піде саме з нею. */
+async function copyPrompt(it, text, btn) {
+  const ok = await copyText(text, btn);
+  if (ok && it.prompt_sha) S.copied.set(it.id, it.prompt_sha);
   return ok;
 }
 
@@ -713,11 +722,12 @@ async function submitLog(it, f, btn) {
     toast('Для останнього кадру потрібен файл — картинка (png / jpg)', 'error');
     return;
   }
-  const fields = logFields(S.story, last ? it.id + LAST : it.id, f.tool.value, fs.score, f.notes.value.trim());
+  const fields = logFields(S.story, last ? it.id + LAST : it.id, f.tool.value, fs.score, f.notes.value.trim(),
+    S.copied.get(it.id) || it.prompt_sha);
   let opts;
   if (file) {
     const fd = new FormData();
-    for (const [k, v] of Object.entries(fields)) fd.append(k, String(v));
+    for (const [k, v] of Object.entries(fields)) if (v !== null && v !== undefined) fd.append(k, String(v));
     fd.append('upload', file, file.name);
     opts = {method: 'POST', form: fd, timeout: 600000};
   } else {
@@ -876,7 +886,7 @@ function promptBlock(it) {
   const prompt = String(it.prompt || '');
   return h('div', {class: 'section'},
     h('div', {class: 'prompt-head'},
-      h('button', {type: 'button', class: 'btn primary big', onclick: e => copyText(prompt, e.currentTarget)}, 'Копіювати промпт'),
+      h('button', {type: 'button', class: 'btn primary big', onclick: e => copyPrompt(it, prompt, e.currentTarget)}, 'Копіювати промпт'),
       h('span', {class: 'hint'}, `${prompt.length} символів · клавіша c`)),
     h('pre', {class: 'prompt'}, prompt || '— промпт порожній —'));
 }
@@ -947,7 +957,7 @@ function payloadBlock(it) {
   const copy = h('button', {type: 'button', class: 'btn small', onclick: e => {
     e.preventDefault();
     e.stopPropagation();
-    copyText(text, e.currentTarget);
+    copyPrompt(it, text, e.currentTarget);
   }}, 'Копіювати JSON');
   return h('div', {class: 'section'}, details(it.id, 'payload', false,
     h('summary', {class: 'bar-sum'}, h('span', {class: 'grow'}, 'Payload — тіло запиту до API (JSON)'), copy),
@@ -1522,7 +1532,7 @@ function copyCurrent() {
     setCurrent(id, false);
   }
   const it = S.cards.get(id).item;
-  copyText(String(it.prompt || '')).then(ok => { if (ok) toast(`Промпт «${id}» скопійовано`); });
+  copyPrompt(it, String(it.prompt || '')).then(ok => { if (ok) toast(`Промпт «${id}» скопійовано`); });
 }
 
 function updateLessonsBtn() {

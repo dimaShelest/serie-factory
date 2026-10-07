@@ -558,11 +558,42 @@ def _merged(spec: ShotSpec, gen_s: int) -> tuple[str, str | None, Camera]:
     segs = [(bounds[k], bounds[k + 1], c.action) for k, c in enumerate(parts) if bounds[k + 1] > bounds[k]]
     if len(segs) < 2:
         return spec.action, spec.end_state, spec.camera
-    action = " ".join(f"[{a}s-{b}s] {_strip_end(t)}" for a, b, t in segs)
+    action = " ".join(f"[{a}s-{b}s] {_strip_end(_shift_seconds(t, a))}" for a, b, t in segs)
     cam, last = parts[0].camera or spec.camera, parts[-1].camera
     if last and last.move == cam.move and last.endpoint:
         cam = cam.model_copy(update={"endpoint": last.endpoint})
+    elif last and last.move != cam.move and last.move != "static" and not cam.text and not last.text:
+        cam = _timed_camera(cam, last, segs[-1][0])       # статика, потім наїзд — рух другого кліпу не губимо
     return action, parts[-1].end_state or spec.end_state, cam
+
+
+_MOVE_WORDS = {"push_in": "push in toward", "pull_out": "pull out from", "pan_left": "pan left across",
+               "pan_right": "pan right across", "tilt_up": "tilt up to", "tilt_down": "tilt down to",
+               "follow": "follow", "track_left": "track left alongside", "track_right": "track right alongside",
+               "orbit": "orbit around", "crane_up": "crane up over", "crane_down": "crane down toward",
+               "handheld": "handheld follow of", "rack_focus": "rack focus to", "dolly_zoom": "dolly zoom on"}
+
+
+def _timed_camera(first: Camera, later: Camera, at_s: int) -> Camera:
+    """Камера злитого кліпу з двома рухами → одне речення з часом (Camera.text): «static … for the first 5 seconds,
+    then a very slow push in toward …, ending on …»."""
+    hold = "static, locked off" if first.move == "static" else _MOVE_WORDS.get(first.move, first.move.replace("_", " "))
+    move = " ".join(x for x in (later.speed, _MOVE_WORDS.get(later.move, later.move.replace("_", " ")),
+                                later.target) if x)
+    end = f", ending on {later.endpoint}" if later.endpoint else ""
+    size = f"{first.size}, " if first.size else ""
+    return Camera(size=first.size, angle=first.angle, lens_mm=first.lens_mm, shake=first.shake,
+                  text=f"Camera: {size}{hold} for the first {at_s} seconds, then a {move}{end}.")
+
+
+_REL_SECONDS = re.compile(r"\b((?:at|by|after|around|within)\s+(?:about\s+)?)(\d+(?:\.\d+)?)(\s+seconds?)\b", re.I)
+
+
+def _shift_seconds(text: str, offset: int) -> str:
+    """Секунди, відлічені від початку свого кліпу («at about 2 seconds»), після злиття — від початку злитого кліпу."""
+    if not offset:
+        return text
+    return _REL_SECONDS.sub(lambda m: f"{m.group(1)}{float(m.group(2)) + offset:g}{m.group(3)}", text)
 
 
 def _strip_end(text: str) -> str:

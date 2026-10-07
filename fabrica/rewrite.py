@@ -6,7 +6,8 @@
 Джерело елемента (source_of): кадри й кліпи частини — поля шоту в оверлеї (frame, action, camera …); кастинг —
 запис prompt_en.yaml (персонаж, учасник сімки, локація / її стан); репліка — delivery. LLM (бекенд REWRITE_BACKEND:
 ollama — за замовчуванням, fabrica.local_llm, модель OLLAMA_MODEL; claude — офіційний SDK anthropic, `uv sync --extra
-claude`, ключ ANTHROPIC_API_KEY з оточення / .env, у логи не йде) отримує поточний промпт, поля, які можна змінити,
+claude`, ключ ANTHROPIC_API_KEY з оточення / .env, у логи не йде; платний — лише через Ledger.charge, тож при
+AUTOMATION_ENABLED=false відмова з поясненням) отримує поточний промпт, поля, які можна змінити,
 правила ремесла (prompts/rewrite_rules.md), активні уроки елемента й відгук людини; повертає
 {changes: [{field, value}], lesson: {problem, rule, scope}}. Невідомі поля — помилка; нові значення перевіряє збірка
 промптів (шот-спека / prompt_en) — зламано → RewriteError, нічого не пишемо. Пропозиція тримається в пам'яті й у
@@ -18,6 +19,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import threading
 import uuid
 from collections.abc import Callable
@@ -35,6 +37,7 @@ RULES = config.ROOT / "prompts" / "rewrite_rules.md"
 PROPOSALS = config.ROOT / ".claude" / "tmp" / "studio_proposals.json"
 CLAUDE_MODEL = "claude-opus-5-5"
 CLAUDE_BETAS = ["server-side-fallback-2026-07-01"]
+CLAUDE_EST_USD = 0.5                        # оцінка зверху на один виклик (~8k токенів на вході, до 16k на виході)
 KEEP = 50                                   # скільки пропозицій пам'ятати
 SHOT_FIELDS = ("frame", "end_frame", "action", "end_state", "camera", "sound", "people", "continuity", "clips",
                "window", "event_s")
@@ -85,8 +88,8 @@ def _ollama(prompt: str, schema: dict, system: str) -> dict:
     return local_llm.generate_json(prompt, schema, system=system, temperature=0.3, max_tokens=3000)
 
 
-def _claude(prompt: str, schema: dict, system: str) -> dict:
-    """Claude через офіційний SDK (beta: серверний fallback при відмові); ключ — лише в клієнт, ніде не друкуємо."""
+def _claude_ready():
+    """Пакет anthropic і ключ є? → (модуль, ключ); ні — RewriteError (до будь-якого резерву в журналі витрат)."""
     try:
         import anthropic
     except ImportError:
@@ -95,6 +98,13 @@ def _claude(prompt: str, schema: dict, system: str) -> dict:
     key = config.get("ANTHROPIC_API_KEY")
     if not key:
         raise RewriteError("REWRITE_BACKEND=claude, але ANTHROPIC_API_KEY порожній — впиши ключ у .env")
+    return anthropic, key
+
+
+def _claude(prompt: str, schema: dict, system: str) -> dict:
+    """Claude через офіційний SDK (beta: серверний fallback при відмові); ключ — лише в клієнт, ніде не друкуємо.
+    Платний: propose викликає його лише через журнал витрат (_paid)."""
+    anthropic, key = _claude_ready()
     client = anthropic.Anthropic(api_key=key)
     try:
         resp = client.beta.messages.create(
@@ -118,6 +128,32 @@ def _claude(prompt: str, schema: dict, system: str) -> dict:
 
 
 BACKENDS: dict[str, Backend] = {"ollama": _ollama, "claude": _claude}
+PAID = {"claude": ("anthropic", CLAUDE_EST_USD)}      # платні бекенди: провайдер у журналі витрат, оцінка на виклик
+
+
+def _paid(name: str, slug: str, item: prompts_mod.Item, call: Callable[[], dict]) -> dict:
+    """Платний бекенд — лише через Ledger.charge (ліміти BUDGET_*, AUTOMATION_ENABLED); вимкнено — зрозуміла відмова
+    ще до журналу витрат (локальний Ollama безкоштовний і працює завжди)."""
+    from fabrica import ledger
+
+    provider, estimate = PAID[name]
+    if not config.automation_enabled():
+        raise RewriteError(f"REWRITE_BACKEND={name} — платний виклик, а платні виклики вимкнені "
+                           "(AUTOMATION_ENABLED=false, режим лабораторії). Безкоштовно — REWRITE_BACKEND=ollama у .env; "
+                           f"{name} — лише коли людина ввімкне AUTOMATION_ENABLED=true і задасть ліміти BUDGET_*")
+    if name == "claude":
+        _claude_ready()                                   # немає пакета / ключа — відмова без резерву
+    led = ledger.Ledger(ledger.DB_PATH)
+    try:
+        with led.charge(slug, _part(item) or 0, "rewrite", provider, estimate_usd=estimate, units=1,
+                        unit="call", note=item.id) as c:
+            for w in c.warnings:
+                print(f"⚠️ бюджет: {w}", file=sys.stderr)
+            return call()
+    except ledger.BudgetError as e:
+        raise RewriteError(f"REWRITE_BACKEND={name}: {e}") from None
+    finally:
+        led.close()
 
 
 def strict_schema(schema):
@@ -143,8 +179,12 @@ def backend_status() -> dict:
             import anthropic  # noqa: F401
         except ImportError:
             return {"name": name, "model": CLAUDE_MODEL, "ok": False, "note": "не встановлено: uv sync --extra claude"}
-        ok = bool(config.get("ANTHROPIC_API_KEY"))
-        return {"name": name, "model": CLAUDE_MODEL, "ok": ok, "note": "" if ok else "немає ANTHROPIC_API_KEY у .env"}
+        if not config.get("ANTHROPIC_API_KEY"):
+            return {"name": name, "model": CLAUDE_MODEL, "ok": False, "note": "немає ANTHROPIC_API_KEY у .env"}
+        if not config.automation_enabled():
+            return {"name": name, "model": CLAUDE_MODEL, "ok": False,
+                    "note": "платний: AUTOMATION_ENABLED=false — візьми REWRITE_BACKEND=ollama"}
+        return {"name": name, "model": CLAUDE_MODEL, "ok": True, "note": "платний: журнал витрат, ліміти BUDGET_*"}
     if name != "ollama":
         return {"name": name, "model": "", "ok": name in BACKENDS,
                 "note": "" if name in BACKENDS else f"невідомий REWRITE_BACKEND «{name}» (ollama | claude)"}
@@ -313,6 +353,14 @@ def schema_for(editable: list[str], kinds: tuple[str, ...], route: str, tags: li
                 "tags": {"type": "array", "items": tag_items}}}}}}}
 
 
+def _merged_clips(item: prompts_mod.Item, src: dict) -> bool:
+    """Кліпи оверлею (≥ 2) зведено в одну генерацію (shotspec._merged): верхні action / camera промпт не бере."""
+    clip = item.extra.get("clip") if isinstance(item.extra.get("clip"), dict) else {}
+    clips = (src.get("fields") or {}).get("clips")
+    return (item.kind == "video" and src.get("kind") == "shot" and isinstance(clips, list) and len(clips) >= 2
+            and (clip.get("of") or 1) == 1 and "[0s-" in item.prompt)          # зведено: дія з мітками секунд
+
+
 def build_prompt(item: prompts_mod.Item, src: dict, lessons: list[dict], tags: list[str], feedback: str) -> str:
     fields = {f: src["fields"].get(f) for f in src["editable"]}
     formats = {f: FORMATS[f] for f in src["editable"] if f in FORMATS}
@@ -327,6 +375,10 @@ def build_prompt(item: prompts_mod.Item, src: dict, lessons: list[dict], tags: l
     if (clip.get("of") or 1) > 1:
         rows.append(f"CLIP: this item is clip {clip['index']} of {clip['of']} — its action / end_state / camera come "
                     f"from clips[{clip['index'] - 1}]: to change them, return the whole `clips` array.")
+    elif _merged_clips(item, src):
+        rows.append(f"CLIPS: this shot's {len(src['fields']['clips'])} clips are merged into ONE generation with "
+                    "[Xs-Ys] timestamps — the action / end_state / camera in the prompt come from `clips` (top-level "
+                    "action / end_state / camera only fill gaps): to change them, return the whole `clips` array.")
     rows += ["ACTIVE LESSONS FOR THIS ITEM:"] + ([f"- {x['id']}: {x['rule']}" for x in lessons] or ["- none"])
     rows += [f"ITEM TAGS (for lesson scope.tags): {', '.join(tags) or '—'}",
              "HUMAN FEEDBACK (may be Ukrainian):", f'"""{feedback.strip()}"""',
@@ -408,7 +460,7 @@ def _store(p: dict) -> None:
         tmp = PROPOSALS.with_suffix(".tmp")
         with tmp.open("w", encoding="utf-8", newline="\n") as f:
             json.dump(keep, f, ensure_ascii=False, indent=1)
-        tmp.replace(PROPOSALS)
+        config.replace_atomic(tmp, PROPOSALS)
 
 
 def _disk() -> dict:
@@ -452,9 +504,13 @@ def propose(slug: str, item_id: str, feedback: str, *, backend: str | None = Non
     if fn is None:
         raise RewriteError(f"невідомий REWRITE_BACKEND «{name}» — ollama або claude")
     kinds = ("image", "video") if item.kind != "voice" else ("voice",)
+
+    def call() -> dict:
+        return fn(build_prompt(item, src, active, tags, feedback),
+                  schema_for(src["editable"], kinds, item.route, tags), rules_text())
+
     try:
-        raw = fn(build_prompt(item, src, active, tags, feedback), schema_for(src["editable"], kinds, item.route, tags),
-                 rules_text())
+        raw = _paid(name, slug, item, call) if name in PAID else call()
     except RewriteError:
         raise
     except Exception as e:                  # local_llm.LocalLLMError та ін. — людині одним рядком
@@ -478,8 +534,18 @@ def propose(slug: str, item_id: str, feedback: str, *, backend: str | None = Non
     try:
         with prompts_mod.pending_overrides(slug, patch), lessons_mod.pending(slug, preview):
             new_item = _find(prompts_mod.build(slug, set_name), item_id, after=True)
+        only = new_item
+        if changes and preview:                       # що дає сама правка полів, без уроку «на пробу»
+            with prompts_mod.pending_overrides(slug, patch):
+                only = _find(prompts_mod.build(slug, set_name), item_id, after=True)
     except (S.SpecError, prompts_mod.PromptError, lessons_mod.LessonError) as e:
         raise RewriteError(f"правка ламає дані — нічого не записано:\n{e}") from None
+    if changes and only.prompt_sha == item.prompt_sha:
+        fields = ", ".join(dict.fromkeys(c["field"] for c in changes))
+        why = (" (кліпи шоту зведено в одну генерацію — дію, кінцевий стан і камеру бере масив clips)"
+               if _merged_clips(item, src) and set(fields.split(", ")) & {"action", "end_state", "camera"} else "")
+        raise RewriteError(f"правка полів {fields} не змінила промпт — цей елемент їх не використовує{why}; "
+                           "натисни «Редагувати» ще раз або опиши інакше")
     p = {"id": f"rw-{uuid.uuid4().hex[:8]}", "story": slug, "item": item_id, "backend": name, "changes": changes,
          "lesson": lesson, "prompt_old": item.prompt, "prompt_new": new_item.prompt,
          "sha_old": item.prompt_sha, "sha_new": new_item.prompt_sha,
@@ -521,7 +587,7 @@ def write_overrides(slug: str, patch: dict) -> Path:
     with tmp.open("w", encoding="utf-8", newline="\n") as f:
         f.write(head + "\n")
         yaml.safe_dump(merged, f, allow_unicode=True, sort_keys=False, width=110)
-    tmp.replace(path)
+    config.replace_atomic(tmp, path)
     return path
 
 
@@ -533,12 +599,17 @@ def apply(slug: str, proposal_id: str, *, save_lesson: bool = True, rule: str | 
         raise RewriteError(f"пропозиція «{proposal_id}» — для історії {p.get('story')}, а не {slug}")
     if p.get("applied"):
         raise RewriteError(f"пропозицію «{proposal_id}» уже записано ({p['applied']}) — щоб змінити ще, «Редагувати»")
+    set_name = prompts_mod.set_of(p["item"])
+    now = next((i for i in prompts_mod.build(slug, set_name) if i.id == p["item"]), None)
+    if now is None or (p.get("sha_old") and now.prompt_sha != p["sha_old"]):
+        raise RewriteError(f"промпт «{p['item']}» змінився після цієї пропозиції (інша правка, урок або файли серіалу) "
+                           "— пропозиція застаріла, нічого не записано: натисни «Редагувати» ще раз")
     path = prompts_mod.overrides_path(slug)
     before = path.read_bytes() if path.exists() else None
     if p.get("_patch"):
         write_overrides(slug, p["_patch"])
         try:
-            prompts_mod.build(slug, prompts_mod.set_of(p["item"]))
+            prompts_mod.build(slug, set_name)
         except (S.SpecError, prompts_mod.PromptError) as e:
             if before is None:
                 path.unlink(missing_ok=True)

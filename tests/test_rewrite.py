@@ -296,6 +296,35 @@ def test_proposals_survive_restart(story: Path, monkeypatch: pytest.MonkeyPatch)
         R.get("rw-missing")
 
 
+def test_merged_clips_hint_and_noop_change_rejected(story: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """1.05 (6 с) з двома кліпами оверлею → профіль lab-2.5 зводить їх в одну генерацію з мітками секунд; верхній
+    action промпт не бере: LLM отримує підказку про clips, а правка, що не змінила промпт, — помилка."""
+    (story / "lab" / "overrides.yaml").write_text(yaml.safe_dump({"shots": {"p1-1.05": {"clips": [
+        {"action": "The flashlight beam sweeps across the wet rock wall."},
+        {"action": "The beam stops on a dark gap in the rock."}]}}}), encoding="utf-8")
+    item = next(i for i in P.build(SLUG, "1") if i.id == "p1-1.05-video")
+    assert "[0s-5s]" in item.prompt and "[5s-6s]" in item.prompt
+    f = fake(monkeypatch, video_answer())
+    with pytest.raises(R.RewriteError, match=r"не змінила промпт.*clips"):
+        R.propose(SLUG, "p1-1.05-video", "дія не та")
+    assert "CLIPS:" in f.calls[0]["prompt"] and "the whole `clips` array" in f.calls[0]["prompt"]
+    fake(monkeypatch, video_answer(changes=[{"field": "clips", "value": json.dumps([
+        {"action": "The beam sweeps slowly across the wet rock wall."}, {"action": ACTION}])}]))
+    p = R.propose(SLUG, "p1-1.05-video", "дія не та")
+    assert "[5s-6s] The woman with curly bangs" in p["prompt_new"]
+
+
+def test_apply_rejects_stale_proposal(story: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    fake(monkeypatch, video_answer())
+    p = R.propose(SLUG, "p1-1.03-video", "дія надто різка")
+    ov = story / "lab" / "overrides.yaml"
+    ov.write_text(yaml.safe_dump({"shots": {"p1-1.03": {"action": "The three walk on in silence."}}}), encoding="utf-8")
+    before = ov.read_bytes()
+    with pytest.raises(R.RewriteError, match="застаріла"):
+        R.apply(SLUG, p["id"])
+    assert ov.read_bytes() == before and lessons_mod.all(SLUG) == []
+
+
 # ---------------------------------------------------------------- бекенди
 
 
@@ -374,6 +403,41 @@ def test_claude_not_installed(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("REWRITE_BACKEND", "claude")
     assert R.backend_status() == {"name": "claude", "model": "claude-opus-5-5", "ok": False,
                                   "note": "не встановлено: uv sync --extra claude"}
+
+
+def test_claude_refused_in_lab_mode(story: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Claude — платний: при AUTOMATION_ENABLED=false відмова ще до клієнта й журналу витрат (Ollama — безкоштовно)."""
+    monkeypatch.setenv("REWRITE_BACKEND", "claude")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-secret")
+    monkeypatch.delenv("AUTOMATION_ENABLED", raising=False)
+    calls = _anthropic(monkeypatch, _Resp("end_turn", json.dumps(video_answer())))
+    with pytest.raises(R.RewriteError, match="AUTOMATION_ENABLED=false") as e:
+        R.propose(SLUG, "p1-1.03-video", "дія надто різка")
+    assert calls == [] and "sk-test-secret" not in str(e.value) and "ollama" in str(e.value)
+    st = R.backend_status()
+    assert st["ok"] is False and "AUTOMATION_ENABLED=false" in st["note"]
+
+
+def test_claude_goes_through_ledger(story: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from fabrica import ledger
+
+    db = tmp_path / "costs.sqlite"
+    monkeypatch.setattr(ledger, "DB_PATH", db)
+    monkeypatch.setenv("AUTOMATION_ENABLED", "true")
+    for key in ledger.LIMIT_KEYS:
+        monkeypatch.setenv(key, "none")
+    monkeypatch.setenv("REWRITE_BACKEND", "claude")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-secret")
+    calls = _anthropic(monkeypatch, _Resp("end_turn", json.dumps(video_answer())))
+    p = R.propose(SLUG, "p1-1.03-video", "дія надто різка")
+    assert p["backend"] == "claude" and ACTION in p["prompt_new"] and len(calls) == 2
+    led = ledger.Ledger(db, ledger.Limits.of())
+    try:
+        rows = led.db.execute("SELECT stage, provider, status, part, note, usd_micros FROM costs").fetchall()
+    finally:
+        led.close()
+    assert rows == [("rewrite", "anthropic", "settled", 1, "p1-1.03-video", ledger.to_micros(R.CLAUDE_EST_USD))]
+    assert R.backend_status()["ok"] is True
 
 
 def test_ollama_backend_uses_generate_json(monkeypatch: pytest.MonkeyPatch) -> None:

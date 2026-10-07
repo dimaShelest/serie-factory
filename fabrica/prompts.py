@@ -139,7 +139,7 @@ _ENV.filters["capfirst"] = lambda s: s[:1].upper() + s[1:] if s else s     # cap
 def _clean(text: str) -> str:
     text = re.sub(r"\s+", " ", text).strip()
     text = re.sub(r"\s+([.,;:])", r"\1", text)
-    text = re.sub(r"([.;!?])(?=[A-Za-zÁÉÍÓÚÑáéíóúñ¡¿«])", r"\1 ", text)   # «ghost.plain» → «ghost. plain»
+    text = re.sub(r"([.;!?])(?=[A-Za-zÁÉÍÓÚÑáéíóúñ¡¿«\[])", r"\1 ", text)   # «ghost.plain» → «ghost. plain»; «.[0s-»
     text = re.sub(r"\.(\s+\.)+", ".", text)                              # «стан. .» → «стан.»
     return re.sub(r"(?<!\.)\.\.(?!\.)", ".", text)                        # «..» → «.», але «...» лишається
 
@@ -254,6 +254,10 @@ def load_overrides(slug: str) -> dict:
     if not isinstance(raw, dict) or set(raw) - set(OVERRIDE_KEYS) \
             or not all(isinstance(raw.get(k) or {}, dict) for k in OVERRIDE_KEYS):
         raise PromptError(f"{path.name}: очікую словник із shots, scenes, prompt_en (кожен — словник)")
+    bad = [f"{block}.{key}" for block in ("shots", "scenes") for key, body in (raw.get(block) or {}).items()
+           if body is not None and not isinstance(body, dict)]
+    if bad:
+        raise PromptError(f"{path.name}: правка шоту / сцени має бути словником полів — не так у {', '.join(bad)}")
     out = merge_overrides({}, raw)
     pending = (_PENDING.get() or {}).get(slug)
     return merge_overrides(out, pending) if pending else out

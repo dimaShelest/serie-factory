@@ -7,9 +7,11 @@
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+REPLACE_TRIES = 6
 
 
 class ConfigError(ValueError):
@@ -56,6 +58,19 @@ def get(key: str, env: dict[str, str] | None = None) -> str | None:
         value = (env if env is not None else read_env()).get(key)
     value = (value or "").strip()
     return value or None
+
+
+def replace_atomic(tmp: Path, dest: Path) -> None:
+    """tmp → dest одним кроком (os.replace). Windows: файл, який саме читає інший процес (студія в браузері,
+    антивірус, OneDrive, редактор), дає PermissionError — кілька спроб з паузою, потім та сама помилка."""
+    for n in range(REPLACE_TRIES):
+        try:
+            os.replace(tmp, dest)
+            return
+        except PermissionError:
+            if n == REPLACE_TRIES - 1:
+                raise
+            time.sleep(0.05 * (n + 1))
 
 
 def automation_enabled() -> bool:

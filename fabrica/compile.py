@@ -585,10 +585,15 @@ def _sound(spec: S.ShotSpec, cast: list[dict], first: bool, action: str = "") ->
     return [x for x in out if x]
 
 
-def _lock(data: Data, cast: list[dict]) -> str:
-    """Замок (§2.2 A, рядок 8): місце на екрані, обличчя / волосся / одяг, стани (video-фраза), місце."""
+def _lock(data: Data, cast: list[dict], placed: bool = False) -> str:
+    """Замок (§2.2 A, рядок 8): місце на екрані, обличчя / волосся / одяг, стани (video-фраза), місце.
+    placed — місця вже названо в Blocking (маршрут з обличчям): для 2+ людей одна фраза замість переліку (ліміт 2000)."""
     states = data.en.get("states") or {}
-    parts = [f"{_tag(x)} stays {SCREEN[x['p'].screen]}" for x in cast if x["p"].screen]
+    on_screen = [x for x in cast if x["p"].screen]
+    if placed and len(on_screen) > 1:
+        parts = ["everyone keeps their place in the frame"]
+    else:
+        parts = [f"{_tag(x)} stays {SCREEN[x['p'].screen]}" for x in on_screen]
     if cast:
         parts.append("faces, hair and clothing stay exactly as in the image")
     by_state: dict[str, list[str]] = {}            # той самий стан у кількох людей — одна фраза (ліміт 2000 знаків)
@@ -700,16 +705,18 @@ def video_items(spec: S.ShotSpec, data: Data, templates: dict[str, Template], *,
         end = (spec.end_ref, f"{spec.prefix}-end") if spec.mode == "first_last" and c.index == c.of else None
         t = templates["video.t2v"] if start is None else templates["video.first_last"] if end else i2v
         route = FACE_ROUTE if start and (spec.face == "clear" or start_route == FACE_ROUTE) else i2v.route
-        # кадр приблизний (Cloudflare use_virtual_avatar: «обличчя, а не перший кадр») або його немає — склад словами;
-        # руками (профіль з поверхнею: dropshot Frame to Video) старт точний — два описи тих самих пікселів дають дрейф
-        loose = start is None or (route == FACE_ROUTE and not (profile or {}).get("surface"))
+        # промпт не залежить від профілю (рішення 07.10: golden = те саме, що надішле автомат): маршрут з обличчям
+        # (Cloudflare use_virtual_avatar — кадр задає обличчя, а не композицію) або без кадру — склад словами
+        loose = start is None or route == FACE_ROUTE
         size = c.camera.size or spec.camera.size
+        blocking = _people_line(cast, size) if loose else ""
         ctx = {"clean_head": style["low_light"]["video"] if _dark(spec.time, light) else "",
                "footage": (style.get("video_footage") or {}).get(spec.footage, "") if spec.footage else "",
-               "blocking": _people_line(cast, size) if loose else "",
+               "blocking": blocking,
                "continuity": [_strip(x) for x in spec.continuity if _strip(x)] if loose else [],
                "action": _sent(c.action), "end_state": _strip(c.end_state), "camera": camera_sentence(c.camera),
-               "light": light, "sound": _sound(spec, cast, c.index == 1, c.action or ""), "lock": _lock(data, cast),
+               "light": light, "sound": _sound(spec, cast, c.index == 1, c.action or ""),
+               "lock": _lock(data, cast, placed=bool(blocking)),
                "preserve": _preserve(cast), "constants": [_sent(x) for x in _en(data, "video_constants")],
                "size": _shot_size(size) or _strip(place["framing"]),
                "place": _strip(place["desc"]), "style": "" if spec.footage else _sent(style.get("video"))}

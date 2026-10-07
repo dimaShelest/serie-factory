@@ -161,6 +161,21 @@ def test_last_row_takes_only_images(lab: Path, monkeypatch: pytest.MonkeyPatch) 
     assert lab_mod.results(SLUG) == [] and not lab_mod.MEDIA.exists() and ff.calls == []
 
 
+def test_log_checks_tool_and_file_type(lab: Path) -> None:
+    """Інструмент і ім'я файлу йдуть у шлях копії в media/lab: «../» з інструмента вивів би файл з теки журналу."""
+    for bad in ("../../evil", "a/b", "x" * 40, "-dash"):
+        with pytest.raises(lab_mod.LabError, match="латиниця"):
+            lab_mod.log(SLUG, "p1-1.02-frame", bad, 4, _file(lab, "f.png"))
+    with pytest.raises(lab_mod.LabError, match="лише медіа"):
+        lab_mod.log(SLUG, "p1-1.02-frame", "gemini", 4, _file(lab, "notes.txt", b"x"))
+    assert lab_mod.results(SLUG) == [] and not lab_mod.MEDIA.exists()
+    e = lab_mod.log(SLUG, "p1-1.02-frame", "AI Studio", 4, _file(lab, "Мій кадр (1).PNG"))
+    name = Path(e["file"]).name
+    assert e["tool"] == "ai-studio" and name.endswith("_ai-studio_1.png")
+    assert Path(e["file"]).parent == lab / "media" / "lab" / SLUG / "p1-1.02-frame"
+    assert all(c.isascii() and (c.isalnum() or c in "-_.") for c in name)
+
+
 def test_last_frame_row_is_not_a_template_test(lab: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Регресія: кадр «<кліп>-last» з оцінкою 5 відкривав approve відео-шаблону без жодного кліпу ≥ 4."""
     monkeypatch.setattr(P, "load_templates", lambda root=None: {t: _tpl(t) for t in ("video.i2v", "image.start_frame")})

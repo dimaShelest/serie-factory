@@ -16,6 +16,7 @@ from pathlib import Path
 
 import yaml
 
+from fabrica import config
 from fabrica import lab as lab_mod
 
 PROGRESS: Path | None = None        # None — поруч із журналом: lab_mod.RESULTS.with_name("progress.yaml")
@@ -67,7 +68,7 @@ def set_status(slug: str, item_id: str, status: str, prompt_sha: str) -> dict:
     tmp = p.with_suffix(".tmp")
     with tmp.open("w", encoding="utf-8", newline="\n") as f:
         yaml.safe_dump(data, f, allow_unicode=True, sort_keys=True, width=110)
-    tmp.replace(p)
+    config.replace_atomic(tmp, p)
     return entry
 
 

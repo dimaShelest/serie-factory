@@ -1790,10 +1790,8 @@ shots:
           on the right with his arms raised and his head thrown back
         camera: *c601a
       - action: >-
-          The old maroon sedan hangs about two metres above the cobblestones and turns slowly a few degrees around its
-          vertical axis; dry leaves and dust circle slowly beneath it. The man in the bright yellow windbreaker and
-          backwards red cap stands on the right with his arms still raised toward it, his shoulders heaving with
-          excited breaths.
+          The sedan hangs in the air and turns slowly a few degrees around its vertical axis; dust and dry leaves
+          circle beneath it. He keeps his arms raised toward it, his shoulders heaving with excited breaths.
         end_state: *e601b
         camera:
           size: wide

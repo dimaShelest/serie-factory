@@ -329,7 +329,7 @@ def _write_manifest(folder: Path, slug: str, part: int, model: str, p: Plan) -> 
     tmp = folder / "manifest.json.tmp"
     with tmp.open("w", encoding="utf-8", newline="\n") as f:
         f.write(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
-    tmp.replace(folder / "manifest.json")
+    config.replace_atomic(tmp, folder / "manifest.json")
 
 
 def _source(slug: str, part: int, out: Path, dry_run: bool, log) -> list[prompts_mod.Item]:
@@ -406,7 +406,7 @@ def run(slug: str, part: int, out: Path, *, dry_run: bool = False, client: Eleve
                         c.actual_usd = round(item.billed_chars / 1000 * rate_per_1k, 6)
                     tmp = path.with_suffix(".part")
                     tmp.write_bytes(audio)
-                    tmp.replace(path)
+                    config.replace_atomic(tmp, path)
                 log(f"  ✓ {item.line.shot_id} {item.line.character_id}: «{item.line.text[:40]}»")
             else:
                 item.cached = True

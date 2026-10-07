@@ -38,6 +38,7 @@ from pathlib import Path
 import yaml
 
 from fabrica import bible as bible_mod
+from fabrica import config
 
 KEYS = {"id", "at", "item", "route", "kind", "problem", "rule", "scope", "priority", "active", "avoid"}
 SCOPE = {"kind", "route", "template", "location", "character", "tags"}
@@ -165,7 +166,7 @@ def _save(slug: str, rows: list[dict]) -> None:
     with tmp.open("w", encoding="utf-8", newline="\n") as f:
         f.write(head + "\n")
         yaml.safe_dump({"lessons": rows}, f, allow_unicode=True, sort_keys=False, width=110)
-    tmp.replace(p)
+    config.replace_atomic(tmp, p)
     _CACHE.pop(p, None)
 
 

@@ -702,6 +702,27 @@ def test_clips_split_with_and_without_overlay_clips(data, out_root: Path) -> Non
     assert any("лише для шоту з одного кліпу" in w for w in a.warnings)
 
 
+LAB = {"name": "lab-2.5", "clip_min_s": 4, "clip_max_s": 10, "resolution": "720p"}
+
+
+def test_clips_merged_into_one_long_clip(data, out_root: Path) -> None:
+    """Оверлей розписано кліпами по 5 с, профіль дає один кліп 8 с → одна дія з мітками секунд; рух другого кліпу
+    (статика → наїзд) не губиться; «at about 2 seconds» другого кліпу стає секундою 7 злитого."""
+    own = [S.ClipIn(action="She sits still", end_state="still", camera=S.Camera(size="medium", move="static")),
+           S.ClipIn(action="At about 2 seconds she looks up.", end_state="she looks up",
+                    camera=S.Camera(move="push_in", speed="very slow", target="her face", endpoint="a close-up"))]
+    (c,) = S.clips(_clip_spec(data, out_root, edit_s=8.0).model_copy(update={"clips": own}), LAB)
+    assert c.gen_s == 8 and c.of == 1 and c.end_state == "she looks up"
+    assert c.action == "[0s-5s] She sits still. [5s-8s] At about 7 seconds she looks up."
+    assert c.camera.text == ("Camera: medium, static, locked off for the first 5 seconds, then a very slow push in "
+                             "toward her face, ending on a close-up.")
+    same = [own[0].model_copy(update={"camera": S.Camera(move="push_in", endpoint="a medium shot")}),
+            own[1].model_copy(update={"camera": S.Camera(move="push_in", endpoint="a close-up")})]
+    (c,) = S.clips(_clip_spec(data, out_root, edit_s=8.0).model_copy(update={"clips": same}), LAB)
+    assert c.camera.move == "push_in" and c.camera.endpoint == "a close-up" and not c.camera.text
+    assert S._shift_seconds("by about 1 second, after 2 seconds", 0) == "by about 1 second, after 2 seconds"
+
+
 def test_clips_handoff_t2v_and_no_video(data, out_root: Path) -> None:
     (c,) = S.clips(_clip_spec(data, out_root, edit_s=4.0, handoff="continue"), FIXED)
     assert c.start == "prev_last"

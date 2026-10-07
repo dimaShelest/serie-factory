@@ -22,8 +22,8 @@ TOOLS = ("dropshot", "ai-studio", "gemini", "elevenlabs", "replicate", "cloudfla
 # DESIGN §16: точні ключі тіл POST (будують statusBody / logFields / … в app.js)
 BODIES = {
     "status": ["item", "status", "story"],
-    "log": ["file", "item", "notes", "score", "story", "tool"],
-    "log_fields": ["item", "notes", "score", "story", "tool"],
+    "log": ["file", "item", "notes", "prompt_sha", "score", "story", "tool"],
+    "log_fields": ["item", "notes", "prompt_sha", "score", "story", "tool"],
     "approve": ["item", "story"],
     "rewrite": ["feedback", "item", "story"],
     "apply": ["proposal", "rule", "save_lesson", "story"],
@@ -222,7 +222,7 @@ const res = {
   bodies: {
     status: m.statusBody('s', 'i', 'done'),
     log: m.logBody(m.logFields('s', 'i', 'dropshot', 4, ''), ''),
-    log_fields: m.logFields('s', 'i-last', 'other', 5, 'n'),
+    log_fields: m.logFields('s', 'i-last', 'other', 5, 'n', 'abc123'),
     approve: m.approveBody('s', 'i'),
     rewrite: m.rewriteBody('s', 'i', 'ліхтарик'),
     apply: m.applyBody('s', 'rw-1', true, 'Keep the beam on the ceiling.'),
@@ -270,6 +270,7 @@ console.log(JSON.stringify(res));
     b = out["bodies"]
     assert b["status"] == {"story": "s", "item": "i", "status": "done"}
     assert b["log"]["file"] is None and b["log"]["score"] == 4
-    assert b["log_fields"]["item"] == "i-last"
+    assert b["log_fields"]["item"] == "i-last" and b["log_fields"]["prompt_sha"] == "abc123"
+    assert b["log"]["prompt_sha"] is None                       # не скопіювали — сервер не звіряє
     assert b["apply"]["save_lesson"] is True and b["apply_no_lesson"]["save_lesson"] is False
     assert b["toggle"] == {"story": "s", "id": "L1", "active": False}

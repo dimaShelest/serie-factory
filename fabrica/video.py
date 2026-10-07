@@ -437,7 +437,7 @@ def _save(folder: Path, slug: str, part: int, jobs: list[Job]) -> None:
     with tmp.open("w", encoding="utf-8", newline="\n") as f:
         f.write(json.dumps({"story": slug, "part": part, "jobs": [asdict(j) for j in jobs]},
                            ensure_ascii=False, indent=2) + "\n")
-    tmp.replace(folder / "queue.json")
+    config.replace_atomic(tmp, folder / "queue.json")
 
 
 def _report(jobs: list[Job], folder: Path, slug: str, part: int, log) -> None:
@@ -518,7 +518,7 @@ def run(slug: str, part: int, out: Path, *, dry_run: bool = False, provider: Vid
                 dest = folder / f"{job.key}.{item.payload.get('output_format') or 'mp4'}"
                 tmp = dest.with_suffix(".part")
                 prov.download(info, tmp)
-                tmp.replace(dest)
+                config.replace_atomic(tmp, dest)
                 job.state, job.file = "done", dest.name
             frame, warn = lab_mod.extract_last_frame(dest, folder / f"{job.key}.last.png", item_id=job.item_id)
             job.last_frame = frame.name if frame else None

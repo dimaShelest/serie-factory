@@ -35,7 +35,11 @@ MEDIA = config.ROOT / "media" / "lab"
 GOLDEN = config.ROOT / "prompts" / "golden.yaml"
 PASS_SCORE = 4
 VIDEO = (".mp4", ".mov", ".webm", ".m4v", ".mkv")
-LAST = "-last"                 # «<кліп>-last» — останній кадр кліпу, записаний руками
+IMAGE = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif")
+AUDIO = (".mp3", ".wav", ".m4a", ".ogg", ".flac")
+FILE_TYPES = IMAGE + VIDEO + AUDIO      # що приймає журнал (і віддає студія через /media) — лише медіа
+TOOL_RE = re.compile(r"[a-z0-9][a-z0-9_-]{0,30}")      # інструмент іде в ім'я файлу: латиниця, цифри, «-», «_»
+LAST = "-last"                # «<кліп>-last» — останній кадр кліпу, записаний руками
 FFMPEG_TIMEOUT_S = 120
 
 
@@ -58,7 +62,7 @@ def _dump(path: Path, data) -> None:
     tmp = path.with_suffix(".tmp")
     with tmp.open("w", encoding="utf-8", newline="\n") as f:
         yaml.safe_dump(data, f, allow_unicode=True, sort_keys=False, width=110)
-    tmp.replace(path)
+    config.replace_atomic(tmp, path)
 
 
 def _now() -> str:
@@ -83,6 +87,12 @@ def stored_path(path: str) -> Path:
 
 def _stored(path: Path) -> str:
     return path.relative_to(config.ROOT).as_posix() if path.is_relative_to(config.ROOT) else path.as_posix()
+
+
+def _safe_name(src: Path) -> str:
+    """Ім'я копії в media/lab: латиниця, цифри, «-», «_» + розширення (Windows, URL студії, журнал у Git)."""
+    stem = re.sub(r"[^A-Za-z0-9_-]+", "_", src.stem).strip("_")[:60] or "file"
+    return f"{stem}{src.suffix.lower()}"
 
 
 def results(slug: str | None = None) -> list[dict]:
@@ -145,20 +155,24 @@ def log(slug: str, item_id: str, tool: str, score: int, file: Path | None = None
     (`last_frame`). Повертає запис + `warnings` (напр. немає ffmpeg) — їх у журнал не пишемо."""
     if not 1 <= int(score) <= 5:
         raise LabError("оцінка має бути від 1 до 5")
-    tool = tool.strip().lower()
+    tool = re.sub(r"\s+", "-", tool.strip().lower())
     if not tool:
-        raise LabError("вкажи інструмент: --tool syntx | gemini | dreamina | replicate | elevenlabs | …")
+        raise LabError("вкажи інструмент: --tool dropshot | gemini | ai-studio | replicate | elevenlabs | …")
+    if not TOOL_RE.fullmatch(tool):
+        raise LabError(f"інструмент «{tool[:40]}» — лише латиниця, цифри, «-», «_» (до 31 знака), напр. dropshot")
     item, row_id, kind = _target(slug, item_id)
     stored, digest, last, warnings = None, None, None, []
     if file is not None:
         src = Path(file).expanduser()
+        if src.suffix.lower() not in FILE_TYPES:
+            raise LabError(f"{src.name}: журнал приймає лише медіа ({' '.join(t[1:] for t in FILE_TYPES)})")
         if not src.is_file():
             raise LabError(f"файлу немає: {src}")
         if kind == "image" and src.suffix.lower() in VIDEO:
             hint = f"; відео кліпу логуй на сам кліп: `fabrica lab log {item.id} --file {src.name} …`" \
                 if row_id != item.id else ""
             raise LabError(f"«{row_id}» — кадр (png / jpg / webp), а {src.name} — відео{hint}")
-        dest = MEDIA / slug / row_id / f"{datetime.now():%Y%m%d-%H%M%S}_{tool}_{src.name}"
+        dest = MEDIA / slug / row_id / f"{datetime.now():%Y%m%d-%H%M%S}_{tool}_{_safe_name(src)}"
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dest)
         digest = hashlib.sha256(dest.read_bytes()).hexdigest()

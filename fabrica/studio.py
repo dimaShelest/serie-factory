@@ -9,14 +9,17 @@ style.css, без CDN і збірки); дані — JSON API:
     GET  /media?path=<шлях>      файл з media/ або prompts/out/ (інше — 404); Range для відео (Safari)
     GET  /api/state?story=&seq=  послідовність: кроки, прогрес, «Далі», елементи (промпт, payload, референси …)
     POST /api/status             {story, item, status}                → {ok}        (lab/progress.yaml)
-    POST /api/log                {story, item, tool, score, notes, file} або multipart (поле upload)
+    POST /api/log                {story, item, tool, score, notes, file, prompt_sha} або multipart (поле upload)
                                                                       → {entry, warnings}   (lab.log)
+                                 prompt_sha — скопійована версія промпту: змінився відтоді → 409
     POST /api/approve            {story, item[, force]}               → {message}   (lab.approve)
     POST /api/rewrite            {story, item, feedback}              → {proposal}  (rewrite.propose)
     POST /api/rewrite/apply      {story, proposal, save_lesson, rule} → {ok, item}  (overrides.yaml + lessons.yaml)
     GET  /api/lessons?story=     → {lessons}         POST /api/lessons/toggle {story, id, active} → {ok}
 
-Помилки — HTTP 4xx / 5xx з {"error": "<українською>"}. Мережа — лише localhost і бекенд переписувача;
+Помилки — HTTP 4xx / 5xx з {"error": "<українською>"}. Запити — лише з 127.0.0.1 / localhost на цьому самому порту
+(Host і Origin), POST — лише JSON або multipart; /media — лише медіа-файли з media/ і prompts/out/, шлях
+перевіряється рядком до звертання до диска (UNC, «..»). Мережа — лише localhost і бекенд переписувача;
 платної генерації студія не запускає. Елементи збираються один раз і кешуються, доки не зміняться файли
 (series/<slug>/, шаблони, каталоги, shots.json / script.json, GENERATION_PROFILE).
 """
@@ -54,9 +57,13 @@ MAX_BODY = 600 * 1024 * 1024               # відео 720p × 5 с — дес�
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
          ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml",
          ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
+         ".gif": "image/gif", ".avif": "image/avif",
          ".mp4": "video/mp4", ".m4v": "video/mp4", ".mov": "video/quicktime", ".webm": "video/webm",
-         ".mp3": "audio/mpeg", ".wav": "audio/wav", ".m4a": "audio/mp4", ".ogg": "audio/ogg",
+         ".mkv": "video/x-matroska",
+         ".mp3": "audio/mpeg", ".wav": "audio/wav", ".m4a": "audio/mp4", ".ogg": "audio/ogg", ".flac": "audio/flac",
          ".md": "text/markdown; charset=utf-8", ".txt": "text/plain; charset=utf-8"}
+STATIC_RE = re.compile(r"[A-Za-z0-9_-]+\.(?:html|js|css|svg|png|ico)")       # файли fabrica/studio_ui/, без тек
+CHUNK = 1024 * 1024
 NEED_STATE = {"golden": "golden", "ok": "ok", "nofile": "nofile"}       # решта (weak, clip, missing) → missing
 WARN_KEYS = {"API": "api", "lint": "lint", "дані": "data"}
 SEQ_TITLES = {"casting": "Кастинг", "test-pack": "Тест-пак"}
@@ -76,13 +83,20 @@ def media_roots() -> list[Path]:
 
 
 def media_file(path: str) -> Path | None:
-    """Шлях із журналу → файл, лише якщо він під media_roots (після resolve: «..» і symlink-втечі відсікаються)."""
-    if not path or "\x00" in path:
+    """Шлях із журналу → файл-медіа (lab.FILE_TYPES), лише якщо він під media_roots. Спершу — перевірка рядка, ДО
+    будь-якого звертання до диска: «\\», «//…» (UNC: Windows пішов би на чужий SMB-сервер і віддав NTLM-хеш), «..»,
+    чужий корінь; потім resolve (symlink-втечі)."""
+    if not path or "\x00" in path or "\\" in path or path.startswith("//") or ".." in path.split("/"):
         return None
     p = Path(path)
-    p = (p if p.is_absolute() else config.ROOT / p).resolve()
-    roots = [r.resolve() for r in media_roots()]
-    return p if p.is_file() and any(p.is_relative_to(r) for r in roots) else None
+    if p.suffix.lower() not in lab_mod.FILE_TYPES:
+        return None
+    p = p if p.is_absolute() else config.ROOT / p
+    roots = media_roots()
+    if not any(p.is_relative_to(r) for r in roots + [r.resolve() for r in roots]):
+        return None
+    p = p.resolve()
+    return p if p.is_file() and any(p.is_relative_to(r.resolve()) for r in roots) else None
 
 
 def media_url(path: str | None) -> str | None:
@@ -324,7 +338,8 @@ class Studio:
         if not limit:
             return None
         price = {i.id: providers_mod.price(i.route, i.payload) or 0.0 for i in c.items if i.kind == "video"}
-        runs = {x["id"]: len(x["results"]) for x in items if x["id"] in price}
+        runs = {x["id"]: sum(1 for r in x["results"] if r["item"] == x["id"])      # «<кліп>-last» — кадр, не генерація
+                for x in items if x["id"] in price}
         spent = sum(price[k] * n for k, n in runs.items())
         per_pass = sum(price.values())
         return {"limit": float(limit), "spent": round(spent, 2), "per_pass": round(per_pass, 2),
@@ -347,6 +362,13 @@ class Studio:
         except (TypeError, ValueError):
             raise StudioError(400, "оцінка — ціле число від 1 до 5") from None
         tool, notes = str(body.get("tool") or "").strip(), str(body.get("notes") or "")
+        copied = body.get("prompt_sha")
+        if isinstance(copied, str) and copied.strip():
+            item, _ = self.find(slug, item_id.removesuffix(lab_mod.LAST), body.get("seq"))
+            if copied.strip() != item.prompt_sha:
+                raise StudioError(409, f"промпт «{item.id}» змінився після копіювання (правка, урок або файли "
+                                       "серіалу) — результат старого промпту не записую: скопіюй промпт ще раз "
+                                       "і згенеруй заново")
         with self._write, tempfile.TemporaryDirectory(prefix="studio-") as tmp:
             file = None
             if upload:
@@ -425,14 +447,18 @@ class Handler(BaseHTTPRequestHandler):
 
     # ------------------------------------------------------------ відповіді
 
-    def _send(self, status: int, body: bytes, ctype: str, extra: dict | None = None) -> None:
+    def _head(self, status: int, ctype: str, length: int, extra: dict | None = None) -> None:
         self.send_response(status)
         self.send_header("Content-Type", ctype)
-        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Content-Length", str(length))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
         for k, v in (extra or {}).items():
             self.send_header(k, v)
         self.end_headers()
+
+    def _send(self, status: int, body: bytes, ctype: str, extra: dict | None = None) -> None:
+        self._head(status, ctype, len(body), extra)
         if self.command != "HEAD":
             self.wfile.write(body)
 
@@ -444,8 +470,10 @@ class Handler(BaseHTTPRequestHandler):
         self._json({"error": message}, status)
 
     def _file(self, path: Path) -> None:
+        """Файл частинами по CHUNK (відео — десятки МБ: не тримаємо в пам'яті); Range — для перемотки (Safari)."""
         ctype = TYPES.get(path.suffix.lower()) or mimetypes.guess_type(path.name)[0] or "application/octet-stream"
         size = path.stat().st_size
+        start, end, status, extra = 0, size - 1, 200, {"Accept-Ranges": "bytes"}
         rng = re.fullmatch(r"bytes=(\d*)-(\d*)", self.headers.get("Range") or "")
         if rng and (rng.group(1) or rng.group(2)):
             a, b = rng.groups()
@@ -454,23 +482,41 @@ class Handler(BaseHTTPRequestHandler):
             if start >= size or start > end:
                 self._send(416, b"", ctype, {"Content-Range": f"bytes */{size}"})
                 return
-            with path.open("rb") as f:
-                f.seek(start)
-                chunk = f.read(end - start + 1)
-            self._send(206, chunk, ctype, {"Content-Range": f"bytes {start}-{end}/{size}", "Accept-Ranges": "bytes"})
+            status, extra = 206, extra | {"Content-Range": f"bytes {start}-{end}/{size}"}
+        self._head(status, ctype, end - start + 1, extra)
+        if self.command == "HEAD":
             return
-        self._send(200, path.read_bytes(), ctype, {"Accept-Ranges": "bytes"})
+        with path.open("rb") as f:
+            f.seek(start)
+            left = end - start + 1
+            while left > 0 and (chunk := f.read(min(CHUNK, left))):
+                self.wfile.write(chunk)
+                left -= len(chunk)
 
     # ------------------------------------------------------------ безпека
 
     def _local(self) -> bool:
-        """Захист від DNS rebinding і чужих сторінок: Host і Origin (якщо є) — лише 127.0.0.1 / localhost."""
-        ok = ("127.0.0.1", "localhost", "[::1]")
-        host = (self.headers.get("Host") or "").rsplit(":", 1)[0] if self.headers.get("Host") else "127.0.0.1"
+        """Захист від DNS rebinding і чужих сторінок: Host і Origin (якщо є) — лише 127.0.0.1 / localhost І саме
+        цей порт (інший локальний сервер — dev-сервер, чужий застосунок — теж «чужа сторінка»)."""
+        port = self.server.server_address[1]
+        hosts = {"127.0.0.1", "localhost", "::1"}
+        host = self.headers.get("Host")
+        if host is not None:
+            u = urlsplit(f"//{host}")
+            try:
+                if (u.hostname or "") not in hosts or (u.port or 80) != port:
+                    return False
+            except ValueError:                                    # «host:abc» — зламаний порт
+                return False
         origin = self.headers.get("Origin")                      # «null» — sandbox-iframe чужої сторінки: ні
-        if origin and (urlsplit(origin).hostname or "") not in ("127.0.0.1", "localhost", "::1"):
-            return False
-        return host in ok
+        if origin is not None:
+            u = urlsplit(origin)
+            try:
+                if u.scheme != "http" or (u.hostname or "") not in hosts or (u.port or 80) != port:
+                    return False
+            except ValueError:
+                return False
+        return True
 
     # ------------------------------------------------------------ маршрути
 
@@ -486,8 +532,10 @@ class Handler(BaseHTTPRequestHandler):
     def _handle(self, fn) -> None:
         try:
             if not self._local():
-                raise StudioError(403, "студія приймає запити лише з 127.0.0.1 / localhost")
+                raise StudioError(403, "студія приймає запити лише з 127.0.0.1 / localhost (цей самий порт)")
             fn()
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):   # браузер закрив з'єднання
+            self.close_connection = True                             # (перемотка відео, оновлення сторінки) — тихо
         except StudioError as e:
             self._error(e.status, str(e))
         except FileNotFoundError as e:
@@ -520,9 +568,10 @@ class Handler(BaseHTTPRequestHandler):
         raise StudioError(404, f"немає такої сторінки: {path}")
 
     def _static(self, name: str) -> None:
+        name = unquote(name)
         root = UI.resolve()
-        f = (root / unquote(name)).resolve()
-        if not f.is_relative_to(root) or not f.is_file():
+        f = (root / name).resolve() if STATIC_RE.fullmatch(name) else None
+        if f is None or not f.is_relative_to(root) or not f.is_file():
             raise StudioError(404, "інтерфейсу студії немає (fabrica/studio_ui/)" if name == "index.html"
                               else f"немає файлу інтерфейсу: {name}")
         self._file(f)
@@ -531,9 +580,13 @@ class Handler(BaseHTTPRequestHandler):
         size = int(self.headers.get("Content-Length") or 0)
         if size > MAX_BODY:
             raise StudioError(413, f"файл завеликий (> {MAX_BODY // 1024 // 1024} МБ)")
-        raw = self.rfile.read(size) if size else b""
+        raw = self.rfile.read(size) if size else b""            # спершу дочитати: інакше клієнт отримає RST, а не 415
         ctype = self.headers.get("Content-Type") or ""
-        if ctype.lower().startswith("multipart/form-data"):
+        multipart = ctype.lower().startswith("multipart/form-data")
+        # лише JSON або multipart: «простий» POST чужої сторінки (text/plain, form-urlencoded) іде без CORS-перевірки
+        if not multipart and ctype.split(";")[0].strip().lower() != "application/json":
+            raise StudioError(415, "тіло запиту — JSON (Content-Type: application/json) або multipart/form-data")
+        if multipart:
             return _multipart(ctype, raw)
         try:
             body = json.loads(raw.decode("utf-8-sig") or "{}")

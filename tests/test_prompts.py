@@ -190,6 +190,17 @@ def test_part_set_with_voice_and_warnings(tmp_path: Path, monkeypatch: pytest.Mo
     assert first and all(any("англійського опису" in w for w in i.warnings) for i in first)
 
 
+def test_broken_override_body_is_a_clear_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Рука правила overrides.yaml: тіло шоту — не словник → зрозуміла PromptError, а не AttributeError у кожній збірці."""
+    path = tmp_path / "overrides.yaml"
+    path.write_text('shots:\n  "1.02": oops\nscenes:\n  "4": [1, 2]\n', encoding="utf-8", newline="\n")
+    monkeypatch.setattr(P, "overrides_path", lambda slug: path)
+    with pytest.raises(P.PromptError, match=r"shots\.1\.02, scenes\.4"):
+        P.load_overrides(SLUG)
+    path.write_text('shots:\n  "1.02":\n', encoding="utf-8", newline="\n")       # порожня правка — можна
+    assert P.load_overrides(SLUG)["shots"]["1.02"] == {}
+
+
 def test_unknown_set_and_item() -> None:
     with pytest.raises(P.PromptError, match="невідомий набір"):
         P.build(SLUG, "trailer")
