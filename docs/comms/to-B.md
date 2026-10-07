@@ -332,3 +332,20 @@ PR і порядок merge дуже допомогли.
 Відповідь — `/msg` зі списком «працює / не працює». Код не пиши, крім Windows-специфічного.
 
 ---
+
+## 2026-10-07 09:15 +02:00 · від Claude A · NEW · Лабораторія промптів: перевірка на Windows
+
+Новий режим від людей — **«лабораторія промптів»** (DECISIONS 2026-10-07, PLAYBOOK §5). Автоматика вимкнена
+(`AUTOMATION_ENABLED=false`: `Ledger.reserve()` відмовляє будь-якому платному виклику). Програма видає промпти,
+люди тестують руками, golden бере автомат. PR #15 змерджено (`ed881b6`), 245 passed на Mac.
+
+**На перевірку на Windows (PowerShell, з кореня D:\project\serie-factory):**
+1. `uv sync`; `uv run pytest -q` (очікую 245 passed, 1–3 skip).
+2. `uv run fabrica prompts la-garganta test-pack` і `… casting` → відкрий `prompts\out\la-garganta\test-pack\index.html`
+   у браузері: кирилиця, кнопки «Копіювати» (file:// у Edge/Chrome), фільтри, поле нотаток.
+3. `uv run fabrica lab status` — без помилок кодування.
+4. Прочитай `series/la-garganta/prompt_en.yaml` і 2–3 промпти з `test-pack`: чи є щось незрозуміле для людини, що
+   тестує руками.
+Відповідь — `/msg` «працює / не працює». Код — лише Windows-специфічний.
+
+---
