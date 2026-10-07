@@ -16,6 +16,9 @@
 | Код | пише все | лише Windows-специфічні виправлення |
 | Платні API | тільки з Mac A (журнал витрат локальний) | без ключів |
 
+**Режим «лабораторія промптів»:** Claude платного не запускає (`AUTOMATION_ENABLED=false`) — видає промпти
+(`fabrica prompts`), люди тестують руками, golden бере автомат (docs/PLAYBOOK.md → 5).
+
 **Claude A працює автономно** по критичному шляху (`docs/STATUS.md`), не чекаючи промпту на кожен крок.
 Технічні рішення ухвалює сам і пише в DECISIONS. Людину питає лише про зміст історії, гроші/ліміти й ручні дії людей.
 Після кожного логічного кроку — короткий звіт людині: **1) Зроблено** (коміти/PR); **2) Далі роблю**;
@@ -83,7 +86,8 @@ Python замість bash — див. [.claude/rules/cross-platform.md](.claude
 uv sync                                         # залежності (Python 3.12 uv поставить сам)
 uv run pytest -q                                # тести
 uv run --no-project .claude/hooks/collab.py -h  # пам'ять: whoami, inbox, send, log, digest, overview
-uv run fabrica --help                           # CLI фабрики: shotlist, validate, costs, schema
+uv run fabrica --help                           # CLI: shotlist, validate, costs, voice, prompts, lab …
+uv run fabrica prompts la-garganta test-pack     # лабораторія: пакет промптів + HTML-переглядач
 ```
 
 Хуки (`.claude/settings.json`): **SessionStart** — fetch + rebase, хто я, STATUS, нові листи, попередження

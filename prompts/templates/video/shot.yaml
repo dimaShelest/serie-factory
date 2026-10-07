@@ -1,0 +1,16 @@
+id: video.shot
+kind: video
+version: 1
+description: Промпт відео шоту (image-to-video від стартового кадру) — дія, камера, світло, ДНК, правила Seedance.
+params:
+  tool: Replicate / Dreamina / SYNTX
+  model: Seedance 2.5 (Replicate — модель уточнюємо)
+  aspect_ratio: "16:9"
+prompt: |-
+  {% if footage %}{{ style.footage[footage] }} {% endif %}
+  {{ action }}
+  Camera: {{ camera }}.
+  {% if people %}Keep each person exactly as in the first frame: {% for p in people %}{{ p.name }} ({{ p.short }}){% if not loop.last %}; {% endif %}{% endfor %}.{% endif %}
+  Lighting: {{ light }}. {{ style.video if not footage else "" }} Strictly: {{ rules | join("; ") }}.
+negative: |-
+  {{ (negative.common + negative.video) | join(", ") }}

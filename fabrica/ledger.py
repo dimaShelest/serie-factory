@@ -16,6 +16,7 @@
 - Гроші — цілі мікродолари (1 USD = 1 000 000), межі дня й місяця — за UTC.
 - Журнал локальний для машини (output/fabrica.sqlite): платні виклики робимо лише з однієї машини (Mac A).
 - Один Ledger — на один потік.
+- Режим лабораторії: AUTOMATION_ENABLED=false (типово) → reserve()/charge() відмовляють (AutomationDisabled).
 """
 
 from __future__ import annotations
@@ -72,6 +73,10 @@ class BudgetError(RuntimeError):
 
 class BudgetExceeded(BudgetError):
     """Виклик перевищив би ліміт. Продовжити — лише явно (force)."""
+
+
+class AutomationDisabled(BudgetError):
+    """Режим лабораторії промптів: платні виклики вимкнені (AUTOMATION_ENABLED=false)."""
 
 
 class BudgetNotConfigured(BudgetError):
@@ -263,6 +268,10 @@ class Ledger:
                 unit: str, input_hash: str = "", force: bool = False, when: datetime | None = None,
                 note: str = "") -> Charge:
         """Атомарно: перевірити ліміти з урахуванням чужих резервів і зарезервувати оцінку."""
+        if not config.automation_enabled():
+            raise AutomationDisabled(
+                "Режим лабораторії промптів: платні виклики вимкнені (AUTOMATION_ENABLED=false). Візьми промпти з "
+                "`fabrica prompts …`, протестуй руками і запиши `fabrica lab log …`.")
         micros, when = to_micros(estimate_usd), _utc(when)
         if not math.isfinite(units) or units < 0:
             raise ValueError(f"units має бути ≥ 0, а не {units!r}")

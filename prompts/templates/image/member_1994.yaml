@@ -1,0 +1,16 @@
+id: image.member_1994
+kind: image
+version: 1
+description: Сімка 1994 — портрет у стилі плівки 1994 (base) і «мокрий» варіант для привидів (wet).
+params:
+  tool: Gemini / Nano Banana
+  model: google/nano-banana
+  aspect_ratio: "3:4"
+prompt: |-
+  {% if variant == "wet" %}Use the attached reference image as the identity reference: same person, same school uniform, now {{ wet_ghost }}
+  {% else %}{% if member_id == "tomas" %}Use the attached reference image (Mateo) as the identity reference. {% endif %}
+  Half-length portrait of {{ name }}, {{ m.who }}: {{ m.look }}. School uniform: {{ uniform_1994 }}. {{ style.era_1994 }}
+  {% endif %}
+  {{ style.original }} Strictly: {{ rules | join("; ") }}.
+negative: |-
+  {{ negative.common | join(", ") }}, modern clothes, smartphone, monstrous eyes, zombie

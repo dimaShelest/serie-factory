@@ -19,6 +19,8 @@ dist/
 
 # --- Результати і медіа (зберігаються в R2, у Git — лише маніфести) ---
 output/
+media/
+prompts/out/
 *.mp4
 *.mov
 *.wav

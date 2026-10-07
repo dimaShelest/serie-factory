@@ -20,7 +20,7 @@ ElevenLabs (голос) · IMAGE API (референси) · Sync (lip-sync) · 
 | 2 | **shots** | script | `shots.json`: шоти 1–10 с (`SCREAMER` — 0,5–2 с) — план, камера, дія, промпт відео, репліки, мітки, звукові удари | Ollama: qwen3.5-abliterated 9B (локально) |
 | 3 | **refs** | біблія (персонажі, локації), shots | референс-зображення персонажів і локацій, кеш за хешем | IMAGE API |
 | 4 | **voice** | script, голоси персонажів | `wav` на кожну репліку + тривалості (вони задають довжину шота) | ElevenLabs |
-| 5 | **video** | shots, refs, voice | кліп на шот (image-to-video), lip-sync для шотів з діалогом | Seedance, Sync |
+| 5 | **video** | shots, refs, voice | кліп на шот (image-to-video), lip-sync для шотів з діалогом | Seedance 2.5 (Replicate), Sync |
 | 6 | **qc** | кліпи | оцінка кожного шота: тривалість, артефакти, консистентність облич, відповідність промпту | FFmpeg + vision-LLM |
 | 7 | **repair** | шоти, що не пройшли qc | перегенерація (ліміт спроб і бюджету), інакше — позначка для людини | як у 3–5 |
 | 8 | **assemble** | кліпи, аудіо, музика | частина 16:9 (6–8 хв): склейка, субтитри ES, −14 LUFS. Після 4-ї частини — **Película completa** 25–30 хв: частини без рекапів і «Continuará…» | FFmpeg |
@@ -37,6 +37,27 @@ ElevenLabs (голос) · IMAGE API (референси) · Sync (lip-sync) · 
   (продовжити — лише явний force, позначається в журналі). Межі дня й місяця — UTC.
 - Журнал `output/fabrica.sqlite` — один на машину (SQLite, WAL, гроші в мікродоларах). Платні виклики — лише з Mac A.
 - `uv run fabrica costs <slug> <N>` — кошторис і ліміти; `docs/COSTS.md` — людський підсумок, оновлюється на `/handoff`.
+
+## Лабораторія промптів (режим до golden)
+
+```
+prompts/templates/{image,video,voice}/*.yaml   шаблони з версіями (Jinja): ДНК + стиль + дія/камера/світло + правила
+series/<slug>/prompt_en.yaml                    англійський шар біблії (ДНК, локації, стиль, правила, negative)
+series/<slug>/lab/test_pack.yaml                тест-пак як дані;  part<N>_prompts_en.yaml — англійські описи шотів
+        │  uv run fabrica prompts <slug> <casting|test-pack|1–4>
+        ▼
+prompts/out/<slug>/<набір>/  *.md + index.html (переглядач) + manifest.json        — не в Git, генерується
+        │  люди тестують руками → uv run fabrica lab log <id> …
+        ▼
+lab/results.yaml (Git) + media/lab/ (не в Git)  →  uv run fabrica lab approve <шаблон|елемент>  →  prompts/golden.yaml
+        │  AUTOMATION_ENABLED=true (люди) + лише golden (lab.require_golden)
+        ▼
+етапи refs / video / voice — ті самі промпти, сіди й референси, платні виклики через Ledger.charge()
+```
+
+- `AUTOMATION_ENABLED=false` за замовчуванням: `Ledger.reserve()` відмовляє будь-якому платному виклику.
+- Кожен результат прив'язаний до `id@версії` шаблону, sha шаблону і sha промпту. Сід — стабільний для елемента.
+- Провайдер відео — Replicate (клієнт — коли промпти golden). Фото — Gemini / Nano Banana, голос — ElevenLabs.
 
 ## Дані
 

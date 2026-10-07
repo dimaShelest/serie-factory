@@ -10,7 +10,9 @@ from pathlib import Path
 import pytest
 
 from fabrica import config
-from fabrica.ledger import BudgetExceeded, BudgetNotConfigured, Ledger, Limits
+from fabrica.ledger import AutomationDisabled, BudgetExceeded, BudgetNotConfigured, Ledger, Limits
+
+pytestmark = pytest.mark.usefixtures("automation_on")   # платний шлях — явно
 
 UTC = timezone.utc
 T0 = datetime(2026, 10, 6, 12, 0, tzinfo=UTC)
@@ -250,3 +252,24 @@ def test_utf16_env_is_clear_error(env: Path) -> None:
     env.write_text("BUDGET_DAILY_USD=30\n", encoding="utf-16")
     with pytest.raises(config.ConfigError, match="UTF-16"):
         Limits.from_env()
+
+
+@pytest.mark.parametrize("value", [None, "false", "0", "ні"])
+def test_lab_mode_blocks_paid_calls_by_default(ledger: Ledger, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+                                               value: str | None) -> None:
+    """Режим лабораторії: без AUTOMATION_ENABLED=true жоден платний виклик не стартує, навіть з ключами й лімітами."""
+    env = tmp_path / "lab.env"
+    env.write_text("", encoding="utf-8")
+    monkeypatch.setenv("FABRICA_ENV_FILE", str(env))
+    if value is None:
+        monkeypatch.delenv("AUTOMATION_ENABLED", raising=False)
+    else:
+        monkeypatch.setenv("AUTOMATION_ENABLED", value)
+    with pytest.raises(AutomationDisabled, match="лабораторії"):
+        ledger.reserve("la-garganta", 1, "video", "seedance", estimate_usd=1, units=1, unit="second")
+    with pytest.raises(AutomationDisabled):
+        with ledger.charge("la-garganta", 1, "voice", "elevenlabs", estimate_usd=0.1, units=10, unit="char"):
+            pass
+    assert ledger.spent() == 0
+    rec(ledger, 1.0)                      # ручний факт (імпорт з рахунку) записувати можна
+    assert ledger.spent() == 1.0

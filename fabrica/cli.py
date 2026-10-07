@@ -22,10 +22,13 @@ from pydantic import ValidationError
 from fabrica import bible as bible_mod
 from fabrica import config
 from fabrica import costs as costs_mod
+from fabrica import lab as lab_mod
+from fabrica import prompts as prompts_mod
 from fabrica import shotlist as shotlist_mod
 from fabrica import story as story_mod
+from fabrica import viewer as viewer_mod
 from fabrica import voice as voice_mod
-from fabrica.ledger import BudgetExceeded, BudgetNotConfigured, Ledger
+from fabrica.ledger import BudgetError, BudgetExceeded, BudgetNotConfigured, Ledger
 from fabrica.models import Script, Shots, check_refs, check_shots, script_errors, shots_errors
 
 OUTPUT = config.ROOT / "output"
@@ -66,7 +69,8 @@ def friendly(fn: Callable) -> Callable:
             typer.echo(f"✗ немає файлу: {e.filename or e}", err=True)
         except ValidationError as e:
             typer.echo(f"✗ дані не за схемою:\n{e}", err=True)
-        except (ValueError, KeyError, voice_mod.VoiceError, voice_mod.ElevenLabsError) as e:
+        except (ValueError, KeyError, voice_mod.VoiceError, voice_mod.ElevenLabsError, BudgetError,
+                lab_mod.GoldenError) as e:
             typer.echo(f"✗ {e}", err=True)           # ConfigError, StoryFormatError, голоси, ключі …
         raise typer.Exit(1)
     return wrapper
@@ -210,6 +214,74 @@ def voices(search: str = typer.Option("", "--search", help="фільтр за н
             continue
         info = ", ".join(f"{k}: {val}" for k, val in labels.items() if val)
         typer.echo(f"{v.get('voice_id')}  {v.get('name')}  ({info})")
+
+
+def _story(story: str | None) -> str:
+    """--story або єдиний серіал у series/ (без _archive)."""
+    if story:
+        return story
+    found = [p.name for p in bible_mod.SERIES.iterdir() if (p / "bible.yaml").exists() and not p.name.startswith("_")]
+    if len(found) != 1:
+        raise ValueError(f"вкажи --story (серіали: {', '.join(sorted(found)) or 'немає'})")
+    return found[0]
+
+
+@app.command()
+@friendly
+def prompts(slug: str = Slug,
+            set_name: str = typer.Argument(..., metavar="НАБІР", help="casting | test-pack | номер частини 1–4"),
+            kind: list[str] = typer.Option(None, "--kind", help="image | video | voice (можна кілька)"),
+            only: str = typer.Option(None, "--only", help="один елемент або шот, напр. tp-T1 чи 4.03"),
+            out: Path = Out) -> None:
+    """Пакет промптів для ручних тестів: prompts/out/<slug>/<набір>/ (*.md + index.html для телевізора)."""
+    for k in kind or []:
+        if k not in prompts_mod.KINDS:
+            raise ValueError(f"--kind {k}: має бути image, video або voice")
+    items = prompts_mod.build(slug, set_name, kind or None, only, out)
+    producers = [] if set_name == "casting" else prompts_mod.build(slug, "casting")
+    index = viewer_mod.write_package(slug, set_name, items, producers=producers)
+    by_kind = ", ".join(f"{k}: {sum(1 for i in items if i.kind == k)}" for k in prompts_mod.KINDS
+                        if any(i.kind == k for i in items))
+    typer.echo(f"✓ {len(items)} промптів ({by_kind}) → {index.parent}")
+    warned = sum(1 for i in items if i.warnings)
+    if warned:
+        typer.echo(f"  ⚠️ {warned} з попередженнями (див. переглядач)")
+    typer.echo(f"Переглядач: {index}")
+
+
+lab_app = typer.Typer(help="Лабораторія промптів: журнал ручних тестів і golden.", no_args_is_help=True)
+app.add_typer(lab_app, name="lab")
+
+
+@lab_app.command("log")
+@friendly
+def lab_log(item: str = typer.Argument(..., help="id елемента з пакета, напр. tp-T1-frame, cast-mateo-front"),
+            tool: str = typer.Option(..., "--tool", help="syntx | gemini | nano-banana | dreamina | replicate | elevenlabs"),
+            score: int = typer.Option(..., "--score", min=1, max=5, help="оцінка 1–5"),
+            file: Path = typer.Option(None, "--file", help="файл результату (копіюється в media/lab/)"),
+            notes: str = typer.Option("", "--notes", help="що вийшло, що виправити"),
+            story: str = typer.Option(None, "--story", help="серіал (типово — єдиний у series/)")) -> None:
+    """Записати результат ручного тесту промпту (прив'язується до версії шаблону й промпту)."""
+    e = lab_mod.log(_story(story), item, tool, score, file, notes)
+    typer.echo(f"✓ #{e['id']} {e['item']} · {e['tool']} · {e['score']}/5 · {e['template']}@v{e['template_version']} "
+               f"· промпт {e['prompt_sha']}" + (f" · {e['file']}" if e["file"] else ""))
+
+
+@lab_app.command("approve")
+@friendly
+def lab_approve(target: str = typer.Argument(..., help="id шаблону (image.start_frame) або елемента (tp-T1-frame)"),
+                force: bool = typer.Option(False, "--force", help="без результату ≥ 4 у журналі"),
+                story: str = typer.Option(None, "--story")) -> None:
+    """Позначити версію шаблону або промпт елемента як golden — лише їх використовує автоматика."""
+    typer.echo(f"★ {lab_mod.approve(_story(story), target, force)}")
+
+
+@lab_app.command("status")
+@friendly
+def lab_status(story: str = typer.Option(None, "--story")) -> None:
+    """Шаблони: версія, golden, скільки тестів і середня оцінка."""
+    for line in lab_mod.status(_story(story)):
+        typer.echo(line)
 
 
 @app.command("schema")

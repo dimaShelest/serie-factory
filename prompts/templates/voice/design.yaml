@@ -1,0 +1,10 @@
+id: voice.design
+kind: voice
+version: 1
+description: Кастинг голосу — опис для ElevenLabs Voice Design + текст прев'ю іспанською (≥ 100 символів).
+params:
+  tool: ElevenLabs Voice Design
+  model: eleven_multilingual_ttv_v2
+prompt: |-
+  {{ c.voice }}. Character: {{ name }}, {{ c.who }}. Natural, cinematic delivery for a Spanish-language horror drama.
+negative: ""

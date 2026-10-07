@@ -56,3 +56,8 @@ def get(key: str, env: dict[str, str] | None = None) -> str | None:
         value = (env if env is not None else read_env()).get(key)
     value = (value or "").strip()
     return value or None
+
+
+def automation_enabled() -> bool:
+    """Режим «лабораторія промптів»: платні виклики вимкнені, доки людина явно не ввімкне AUTOMATION_ENABLED=true."""
+    return (get("AUTOMATION_ENABLED") or "false").strip().lower() in {"1", "true", "yes", "on", "так"}

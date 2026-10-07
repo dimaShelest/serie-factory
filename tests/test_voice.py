@@ -17,6 +17,8 @@ from fabrica.cli import app
 from fabrica.ledger import BudgetNotConfigured, Ledger, Limits
 from fabrica.models import Script, Shots
 
+pytestmark = pytest.mark.usefixtures("automation_on")   # платний шлях — явно
+
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "la-garganta" / "part1.script.json"
 SHOTLIST = ROOT / "series" / "la-garganta" / "part1_shotlist.md"

@@ -1,0 +1,21 @@
+id: image.character
+kind: image
+version: 1
+description: Лист персонажа — окремий кадр на кожен ракурс (анфас, 3/4, профіль, повний зріст, 3 емоції).
+params:
+  tool: Gemini / Nano Banana
+  model: google/nano-banana
+  aspect_ratio: "3:4"
+prompt: |-
+  {% if view != "front" %}Use the attached reference image as the identity reference: keep exactly the same face, hairstyle, skin tone, distinguishing marks and outfit. {% endif %}
+  {% if view == "front" %}Head-and-shoulders portrait, front-facing, eyes to camera,
+  {% elif view == "three_quarter" %}Head-and-shoulders portrait, three-quarter view facing left,
+  {% elif view == "profile" %}Head-and-shoulders portrait, strict left profile,
+  {% elif view == "full_body" %}Full body portrait, standing, front view, whole figure from head to shoes visible,
+  {% else %}Head-and-shoulders portrait, front-facing, expression: {{ emotion }},
+  {% endif %}
+  of {{ name }}, {{ c.who }}. {{ c.dna | join("; ") | capfirst }}. Wearing {{ c.wardrobe }}.
+  {% if view != "emotion" %}Expression: {{ c.expression }}.{% endif %}
+  {{ style.sheet_background }}. {{ style.photo }} {{ style.original }} Strictly: {{ rules | join("; ") }}.
+negative: |-
+  {{ negative.common | join(", ") }}, different person, changed hairstyle, changed outfit, accessories not in the description

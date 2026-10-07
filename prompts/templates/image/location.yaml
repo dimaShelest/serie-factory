@@ -1,0 +1,13 @@
+id: image.location
+kind: image
+version: 1
+description: Плита локації (порожня, без людей) — базова і стани (світанок, стеля, годинник 3:17 …).
+params:
+  tool: Gemini / Nano Banana
+  model: google/nano-banana
+  aspect_ratio: "16:9"
+prompt: |-
+  Cinematic wide establishing shot of {{ loc_desc }}. Lighting: {{ light }}. Mood: {{ mood }}. Empty, no people.
+  {{ style.photo }} Strictly: {{ rules[0] }}.
+negative: |-
+  {{ negative.common | join(", ") }}, people, person, crowd

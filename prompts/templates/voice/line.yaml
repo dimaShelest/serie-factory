@@ -1,0 +1,16 @@
+id: voice.line
+kind: voice
+version: 1
+description: Репліка для ElevenLabs (text-to-speech) — текст іспанською + налаштування за подачею.
+params:
+  tool: ElevenLabs
+  model: eleven_multilingual_v2
+  output_format: mp3_44100_128
+settings:
+  normal: {stability: 0.5, similarity_boost: 0.75, style: 0.25, use_speaker_boost: true}
+  whisper: {stability: 0.35, similarity_boost: 0.75, style: 0.15, use_speaker_boost: false}
+  shout: {stability: 0.3, similarity_boost: 0.8, style: 0.7, use_speaker_boost: true}
+  scream: {stability: 0.2, similarity_boost: 0.8, style: 0.9, use_speaker_boost: true}
+prompt: |-
+  {{ text }}
+negative: ""

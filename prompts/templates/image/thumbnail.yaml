@@ -1,0 +1,14 @@
+id: image.thumbnail
+kind: image
+version: 1
+description: Обкладинка частини (YouTube 16:9) або тизера (9:16) — без тексту, назву накладаємо в монтажі.
+params:
+  tool: Gemini / Nano Banana
+  model: google/nano-banana
+  aspect_ratio: "16:9"
+prompt: |-
+  {% if refs %}Use the attached reference images for the identity of each person and the location. {% endif %}
+  High-impact cover image: {{ composition }} Strong silhouette, one clear focal point, dramatic contrast, empty area on
+  the {{ text_side }} third for a title added later. {{ style.photo }} Strictly: {{ rules | join("; ") }}.
+negative: |-
+  {{ negative.common | join(", ") }}, clutter, busy background

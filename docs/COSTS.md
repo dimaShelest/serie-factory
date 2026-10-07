@@ -5,11 +5,13 @@
 
 ## Ліміти
 
+Затверджено dimaShelest 2026-10-07. Значення — у `.env` на Mac (шаблон — `.env.example`).
+
 | Ліміт | USD | Де задано |
 |---|---|---|
-| На серію | TODO | `.env` → `BUDGET_PER_EPISODE_USD` |
-| На день | TODO | `.env` → `BUDGET_DAILY_USD` |
-| На місяць | TODO | `.env` → `BUDGET_MONTHLY_USD` |
+| На частину | **160** | `.env` → `BUDGET_PER_EPISODE_USD` |
+| На день | **60** (після вдалих тестів → 150) | `.env` → `BUDGET_DAILY_USD` |
+| На місяць | **900** | `.env` → `BUDGET_MONTHLY_USD` |
 
 - **Не задано → платні виклики заборонені.** Без ліміту — лише явно `none` у `.env`.
 - Від 80 % — попередження; рівно 100 % — ще можна; понад 100 % — зупинка (продовжити — лише явний force, він
@@ -20,13 +22,14 @@
 
 ## Тарифи провайдерів
 
+Seedance 2.5 — через **Replicate** (клієнт підключимо, коли промпти стануть golden).
 Планувальний коефіцієнт: **× 2 спроби** на кожен згенерований шот (repair, невдалі дублі).
 
 | Провайдер | Етап | Одиниця | Ціна, USD | Перевірено (дата, джерело) |
 |---|---|---|---|---|
 | Claude API | script, shots, qc | 1M токенів in/out | TODO | |
 | IMAGE API | refs, repair | зображення | TODO | |
-| ElevenLabs | voice | 1K символів | TODO | |
+| ElevenLabs | voice | 1K символів | ≈ 0,182 | 2026-10-07, dimaShelest: тариф Creator — $22 / 121 000 символів на місяць |
 | Seedance 2.5 | video, repair | секунда відео 720p (hero) | ≈ 0,23 | 2026-10-06, dimaShelest — звірити з першим рахунком |
 | Seedance 2.5 | video, repair, found-footage | секунда відео 480p (secondary) | ≈ 0,11 | 2026-10-06, dimaShelest — звірити з першим рахунком |
 | Sync | video (lip-sync) | секунда | TODO | |

@@ -1,0 +1,17 @@
+id: image.start_frame
+kind: image
+version: 1
+description: Стартовий кадр шоту (first frame для image-to-video) — локація + персонажі з ДНК + композиція.
+params:
+  tool: Gemini / Nano Banana
+  model: google/nano-banana
+  aspect_ratio: "16:9"
+prompt: |-
+  {% if refs %}Use the attached reference images for the identity of each person and for the location. {% endif %}
+  {% if footage %}{{ style.footage[footage] }} {% endif %}
+  {{ composition }}
+  {% if people %}People in the frame: {% for p in people %}{{ p.name }} — {{ p.desc }}{% if not loop.last %}; {% endif %}{% endfor %}.{% endif %}
+  Location: {{ loc_desc }}. Lighting: {{ light }}.
+  {{ framing }} shot, 16:9. {{ style.photo if not footage else "" }} Strictly: {{ rules | join("; ") }}.
+negative: |-
+  {{ negative.common | join(", ") }}
