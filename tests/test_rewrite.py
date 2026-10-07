@@ -46,6 +46,8 @@ def make_copy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     raw = yaml.safe_load(ov_path.read_text(encoding="utf-8-sig")) or {}
     if "version" in raw:
         raw["shots"] = {k: v for k, v in (raw.get("shots") or {}).items() if str(k) in keep}
+        for line in ((raw["shots"].get("1.02") or {}).get("lines") or {}).values():
+            line["voice"] = "elevenlabs"    # у ч.1 це рідний звук Seedance; тут — репліка ElevenLabs для тестів редагування
         raw["scenes"] = {k: v for k, v in (raw.get("scenes") or {}).items()
                          if any(str(k) in S._scene_aliases(sc) for sc in scenes)}
     else:

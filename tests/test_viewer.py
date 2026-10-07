@@ -302,7 +302,7 @@ def test_html_phone_css_and_js_kept(lab_dirs: Path, items: list[P.Item]) -> None
     assert '<meta name="viewport" content="width=device-width,initial-scale=1">' in text
     assert "@media (max-width:640px)" in text and "--bg:#0f1115" in text
     assert "uv run fabrica lab log " in text and "localStorage" in text and "data-step-filter" in V.JS
-    assert "профіль кліпів «manual-5s»" in text                                   # є відео → активний профіль
+    assert "профіль кліпів «lab-2.5»" in text                                     # є відео → активний профіль
 
 
 def test_html_legacy_items_without_step(lab_dirs: Path) -> None:

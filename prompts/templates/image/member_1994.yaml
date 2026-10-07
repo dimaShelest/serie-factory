@@ -1,6 +1,6 @@
 id: image.member_1994
 kind: image
-version: 2
+version: 3
 profile: nano-banana
 route: replicate:google/nano-banana-2.1      # мокрий і обличчя з чужого якоря (Image 1); якір лише текстом — nano-banana-pro
 description: >-
@@ -16,7 +16,7 @@ route_payload:
 prompt: |-
   {% if variant == "wet" %}
   Image 1 is the approved identity reference for {{ name }}. Create a new half-length photograph of {{ wet }}.
-  Keep the face, hair, build and clothing exactly as in Image 1; only the wet state changes.
+  Keep the identity exactly as in Image 1 — the same face shape, eyes, nose, eyebrows, any scar, hairline and build — and the same clothing; only the wet state and the expression change, to the expression described here.
   Same plain light-grey seamless backdrop and the same soft even lighting as Image 1.
   {% else %}
   {% if face_of %}Image 1 is the approved identity reference for {{ face_of }}: give {{ name }} exactly the same face —

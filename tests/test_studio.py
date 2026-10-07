@@ -156,7 +156,7 @@ def test_state_first30(base: str) -> None:
     assert data["story"] == SLUG and data["seq"] == "first30"
     names = [s["name"] for s in data["sequences"]]
     assert names[0] == "first30" and {"part:1", "casting", "test-pack"} <= set(names)
-    assert data["profile"]["name"] == "manual-5s" and data["profile"]["clip_s"] == [5]
+    assert data["profile"]["name"] == "lab-2.5" and data["profile"]["clip_max_s"] == 10
     assert data["rewrite_backend"] == {"name": "fake", "model": "m", "ok": True, "note": ""}
     assert [s["n"] for s in data["steps"]] == [1, 2, 3, 4, 5, 6, 7] and data["steps"][0]["title"]
     assert data["progress"] | {"next": None} == {"done": 0, "total": len(want), "next": None, "approved": 0,

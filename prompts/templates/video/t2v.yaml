@@ -1,6 +1,6 @@
 id: video.t2v
 kind: video
-version: 2
+version: 3
 profile: seedance-2.5
 route: replicate:bytedance/seedance-2.5
 description: >-
@@ -14,14 +14,14 @@ payload:
 prompt: |-
   Single continuous shot, no cuts.
   {{ clean_head }}
-  {{ footage }}
   {{ size | capfirst }} of {{ place }}.
   {{ blocking }}
   {% if continuity %}Continuity: {{ continuity | join("; ") }}.{% endif %}
   {{ action }}{% if end_state %} End state: {{ end_state }}.{% endif %}
   {{ style }}
   {{ camera }}
+  {{ footage }}
   Light: {{ light }}.
-  {{ sound | join(" ") }} No BGM.
+  {{ sound | join(" ") }} No BGM; only ambience and action sounds.
   {{ lessons | join(" ") }}
   {{ constants | join(" ") }}

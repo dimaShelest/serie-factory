@@ -55,9 +55,8 @@ style:
     Live-action horror film look, natural motion, natural skin texture, muted desaturated palette with deep teal
     shadows and warm practical highlights.
   video_footage:
-    vhs: >-
-      Handheld home-video camcorder look: moderate shake, imperfect framing, autofocus hunting, small exposure shifts;
-      no stabilization, no gimbal.
+    # трясучку й рух задає речення камери шоту; тут — лише вигляд запису (§3: «moderate shake» першим словом перебивав дію)
+    vhs: "Home-video camcorder look: imperfect handheld framing; no stabilization, no gimbal."
     phone: "Handheld smartphone video look, natural phone-camera motion; no stabilization."
   low_light:
     image: >-
@@ -87,6 +86,12 @@ image_rules:
   - people's hands relaxed at medium distance, natural, five fingers
   - every person is an adult
   - only the people described appear in the frame
+  - a single full-bleed photograph, no panels, borders or captions
+# кадр без людей (плити локацій, порожні кадри): без речень про людей і руки — вони підказують домалювати людину
+image_rules_empty:
+  - a clean frame with unmarked walls and surfaces, no lettering, signs or logos anywhere
+  - every object is plain and unbranded
+  - the frame holds only the place, its objects, dust and light
   - a single full-bleed photograph, no panels, borders or captions
 
 # v2: сталі речення в кінці кожного відео-промпту (компілятор додає; лінт їх пропускає).
@@ -394,8 +399,15 @@ locations:
       # Під землею денного світла немає: night = «завжди темно», хоч би котра була година.
       tunnel:
         replace: true
-        desc: a narrow abandoned silver-mine tunnel with wet rough rock walls, old timber supports and rusted rail tracks
-        light: total darkness except handheld flashlight beams cutting through floating dust
+        # поворот праворуч — для 1.05–1.07 (втеча за поворот, промінь на порожньому повороті); світло — від камери, без
+        # «ліхтарів у руках» (плита порожня: інакше промені й руки копіюються в кожен кадр)
+        desc: >-
+          a narrow abandoned silver-mine tunnel, empty and deserted, only rock, timber and rails: wet rough rock walls,
+          old timber supports, a dry gravel floor and rusted rail tracks that run into the dark and curve out of sight
+          around a bend to the right
+        light: >-
+          darkness, lit only by one hard white light from the camera position that falls off into black down the
+          tunnel, fine dust floating in it
         mood: claustrophobic, the mountain hums, water drips
         ref: null
         framing: medium wide shot down the tunnel

@@ -73,7 +73,8 @@ SIZE_TERM = re.compile(r"(extreme wide|medium wide|wide|medium)(?![\w-])(?!\s*cl
 STATIC_TEXT = re.compile(r"\b(static|locked[- ]off|tripod|very slow(ly)? push(es|ing)? in)\b", re.I)
 HONORIFICS = {"Don", "Doña", "Los", "Las", "El", "La"}
 # сталі речення компілятора — лінт їх не чіпає (allow)
-CONSTANTS = ("Single continuous shot, no cuts.", "The clip begins exactly at this moment.", STATIC, "No BGM.",
+NO_BGM = "No BGM; only ambience and action sounds."          # §2.6: окремий рядок звуку, «No BGM» сам інколи програє
+CONSTANTS = ("Single continuous shot, no cuts.", "The clip begins exactly at this moment.", STATIC, "No BGM.", NO_BGM,
              "there is no narration")
 MODEL_UA = {"replicate:google/nano-banana-pro": "Nano Banana Pro",
             "replicate:google/nano-banana-2.1": "Nano Banana 2.1"}
@@ -327,7 +328,7 @@ def location_items(data: Data, templates: dict[str, Template]) -> list[Item]:
             refs = [p["ref"]] if mode in ("variant", "related") else []
             ctx = {"mode": mode, "base": _strip(p["base"]), "change": _strip(p["change"]), "desc": _strip(p["desc"]),
                    "framing": _strip(p["framing"]), "same_view": p["framing"] == p["plate_framing"],
-                   "light": _strip(p["light"]), "mood": _strip(p["mood"])}
+                   "light": _strip(p["light"]), "mood": _strip(p["mood"]), "rules": _empty_rules(data)}
             items.append(_image(
                 data, t, ctx, item_id=f"loc-{lid}" + (f"-{variant}" if variant else ""), set_name="casting",
                 title=f"{loc['name']} — {variant or 'плита'}", refs=refs, produces=f"{lid}.{variant or 'plate'}",
@@ -463,6 +464,15 @@ def _tags(spec: S.ShotSpec) -> set[str]:
 # ---------------------------------------------------------------- кадри
 
 
+def _empty_rules(data: Data) -> list[str]:
+    """Правила кадру без людей: image_rules_empty з prompt_en, інакше image_rules без речень про людей і руки
+    (у порожньому кадрі «руки» й «кожна людина доросла» підказують моделі домалювати людину)."""
+    own = data.en.get("image_rules_empty")
+    if own:
+        return list(own)
+    return [r for r in _en(data, "image_rules") if not re.search(r"\b(people|person|hands?|adult)\b", r, re.I)]
+
+
 def _frame(spec: S.ShotSpec, data: Data, t: Template, which: str) -> Item:
     place = data.place(spec.location, spec.variant, spec.light)
     loc_ref = f"{spec.location}.{spec.variant}" if spec.variant else f"{spec.location}.plate"
@@ -473,11 +483,13 @@ def _frame(spec: S.ShotSpec, data: Data, t: Template, which: str) -> Item:
     refs = [first] + [x["ref"] for x in people]
     slots = ["Image 1 is the first frame of this shot: keep the place, the camera position, the framing and the light "
              "exactly; only what this description changes is different." if from_frame else
-             f"Image 1 is the location: {_strip(place['desc'])}; keep the place exactly as in Image 1."]
+             f"Image 1 is the location: {_strip(place['desc'])}. Keep its architecture, materials, colours and objects as "
+             "in Image 1; the camera position, framing and light come from this description."]
     if people:
-        slots.append(_sent(", ".join(f"Image {n} is {x['name']}" for n, x in enumerate(people, 2))))
+        slots.append(_sent("; ".join(f"Image {n} is {x['name']}, {_tag(x)}" for n, x in enumerate(people, 2))))
     style = data.en["style"]
     ctx = {"which": which, "footage": spec.footage, "slots": slots, "bind": bool(people),
+           "rules": _en(data, "image_rules") if cast else _empty_rules(data),
            "scene": _sent(spec.frame if which == "first" else spec.end_frame),
            "blocking": [b for x in cast if (b := _image_blocking(data, x))],
            "continuity": [_strip(c) for c in spec.continuity], "light": _strip(place["light"]),
@@ -579,11 +591,18 @@ def _lock(data: Data, cast: list[dict]) -> str:
     parts = [f"{_tag(x)} stays {SCREEN[x['p'].screen]}" for x in cast if x["p"].screen]
     if cast:
         parts.append("faces, hair and clothing stay exactly as in the image")
+    by_state: dict[str, list[str]] = {}            # той самий стан у кількох людей — одна фраза (ліміт 2000 знаків)
     for x in cast:
-        for s in x["p"].state:
-            if s in states:
-                phrase = _strip(states[s]["video"])
-                parts.append(phrase if len(cast) == 1 else f"{_tag(x)}: {phrase}")
+        for st in x["p"].state:
+            if st in states:
+                by_state.setdefault(st, []).append(_tag(x))
+    for st, tags in by_state.items():
+        phrase = _strip(states[st]["video"])
+        if len(cast) == 1:
+            parts.append(phrase)
+        else:
+            who = tags[0] if len(tags) == 1 else ", ".join(tags[:-1]) + " and " + tags[-1]
+            parts.append(f"for {who}: {phrase}")
     parts.append("the place and its layout stay exactly as in the image")
     return _sent(_cap("; ".join(parts)))
 
@@ -681,7 +700,9 @@ def video_items(spec: S.ShotSpec, data: Data, templates: dict[str, Template], *,
         end = (spec.end_ref, f"{spec.prefix}-end") if spec.mode == "first_last" and c.index == c.of else None
         t = templates["video.t2v"] if start is None else templates["video.first_last"] if end else i2v
         route = FACE_ROUTE if start and (spec.face == "clear" or start_route == FACE_ROUTE) else i2v.route
-        loose = route == FACE_ROUTE or start is None              # кадр приблизний або його немає — склад словами
+        # кадр приблизний (Cloudflare use_virtual_avatar: «обличчя, а не перший кадр») або його немає — склад словами;
+        # руками (профіль з поверхнею: dropshot Frame to Video) старт точний — два описи тих самих пікселів дають дрейф
+        loose = start is None or (route == FACE_ROUTE and not (profile or {}).get("surface"))
         size = c.camera.size or spec.camera.size
         ctx = {"clean_head": style["low_light"]["video"] if _dark(spec.time, light) else "",
                "footage": (style.get("video_footage") or {}).get(spec.footage, "") if spec.footage else "",
@@ -735,6 +756,8 @@ def line_items(spec: S.ShotSpec, data: Data, templates: dict[str, Template]) -> 
     dot = spec.prefix.replace("-", ".")
     items: list[Item] = []
     for ln in spec.lines:
+        if ln.voice == "native":           # голос — рідний звук Seedance у кліпі (одноразова репліка VHS)
+            continue
         item_id = f"{spec.prefix}-voice{ln.n}"
         s = t.settings.get(ln.delivery) or t.settings["normal"]
         vid = _voice_id(data, ln.speaker)

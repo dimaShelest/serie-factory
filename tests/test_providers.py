@@ -386,8 +386,9 @@ def test_cache_not_mutable_from_outside() -> None:
     PR.load()[SD25].manual["surface"] = "x"
     assert PR.route(SD25).manual["surface"] == "Replicate playground"
     g = PR.generation()
-    g["clip_s"].append(10)
-    assert PR.generation()["clip_s"] == [5]
+    g["resolution"] = "480p"
+    g.setdefault("clip_s", []).append(10)
+    assert PR.generation()["resolution"] == "720p" and "clip_s" not in PR.generation()
 
 
 # ---------------------------------------------------------------- профіль генерації
@@ -402,15 +403,14 @@ def no_env_profile(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> pytest.Mo
 
 def test_generation_default_profile(no_env_profile: pytest.MonkeyPatch) -> None:
     g = PR.generation()
-    assert g["name"] == "manual-5s" and g["clip_s"] == [5] and g["resolution"] == "720p"
-    assert "dropshot" in g["surface"] and g["url"].startswith("https://") and "5 с" in g["note"]
+    assert g["name"] == "lab-2.5" and (g["clip_min_s"], g["clip_max_s"]) == (4, 10) and g["resolution"] == "720p"
+    assert "dropshot" in g["surface"] and g["url"].startswith("https://") and "платний" in g["note"]
 
 
 def test_generation_env_override(no_env_profile: pytest.MonkeyPatch, tmp_path: Path) -> None:
     no_env_profile.setenv("GENERATION_PROFILE", "replicate-2.5")
     g = PR.generation()
-    assert g == {"name": "replicate-2.5", "clip_min_s": 4, "clip_max_s": 30,
-                 "resolution_by_tier": {"hero": "720p", "secondary": "480p", "found_footage": "480p"}}
+    assert g == {"name": "replicate-2.5", "clip_min_s": 4, "clip_max_s": 10, "resolution": "720p"}
     no_env_profile.delenv("GENERATION_PROFILE")
     env = tmp_path / "with.env"
     env.write_text("\ufeffGENERATION_PROFILE=replicate-2.5\n", encoding="utf-8", newline="\n")

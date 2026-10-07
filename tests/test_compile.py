@@ -244,7 +244,9 @@ def test_frame_ref_order_views_and_text_only_people(data, ts) -> None:
     assert it.id == "p1-1.02-frame" and it.step == 5 and it.produces == "p1.1.02.frame"
     assert it.refs == ["mina.tunnel", "mateo.three_quarter", "vale.full_body", "sofia.profile"]
     assert it.payload["image_input"] == [f"ref:{r}" for r in it.refs]
-    assert "Image 2 is Mateo, Image 3 is Vale, Image 4 is Sofía." in it.prompt
+    assert ("Image 2 is Mateo, the pale man in the plaid flannel shirt; Image 3 is Vale, the woman in the black denim "
+            "jacket; Image 4 is Sofía, the woman with round glasses.") in it.prompt   # ім'я + тег: жінок не сплутати
+    assert "the camera position, framing and light come from this description" in it.prompt
     assert "Vale is on the right of the frame, seen from behind" in it.prompt
     assert "The man in the yellow windbreaker is out of focus" in it.prompt           # blurred — лише текст
     assert "An adult Mexican man, 48, a small-town policeman: heavy-set" in it.prompt     # другорядний — текстом
@@ -298,8 +300,10 @@ def test_video_route_by_face_and_payload(data, ts) -> None:
                                               "resolution": "720p", "seed": P.seed_for("p1-1.02-video"),
                                               "aspect_ratio": "adaptive", "generate_audio": True,
                                               "output_format": "mp4", "use_virtual_avatar": True}
-    assert "Blocking:" in clear.prompt
-    assert "the woman in the black denim jacket on the left of the frame" in clear.prompt
+    assert "Blocking:" not in clear.prompt                                   # руками (dropshot) старт точний
+    auto = C.video_items(_spec(people=[S.Person(id="vale", screen="left")], face="clear"), data, ts, profile=RANGE)[0]
+    assert "Blocking:" in auto.prompt                                        # автоматика: Cloudflare — кадр приблизний
+    assert "the woman in the black denim jacket on the left of the frame" in auto.prompt
     none = C.video_items(_spec(people=[S.Person(id="vale", view="back")], face="none"), data, ts, profile=MANUAL)[0]
     assert none.route == ts["video.i2v"].route and "use_virtual_avatar" not in none.payload
     assert "Blocking:" not in none.prompt and none.extra["face"] == "none"
@@ -313,10 +317,12 @@ def test_video_block_order_and_lock(data, ts) -> None:
                people=[S.Person(id="vale", screen="left", state=["nosebleed"])],
                sound=S.Sound(ambience=["water drips"], sfx=["a low rumble"]))
     p = C.video_items(sp, data, ts, profile=MANUAL)[0].prompt
-    order = ["Single continuous shot, no cuts.", "Clean low-noise image", "Handheld home-video camcorder look",
+    order = ["Single continuous shot, no cuts.", "Clean low-noise image",
              "The clip begins exactly at this moment.", "She slowly raises", "End state: the beam rests",
-             "Camera: very slow push in toward the ceiling, ending on the cracked beam.", "Light: flashlight beams",
-             "Sound: a low rumble; water drips.", "No BGM.", "The woman in the black denim jacket stays on the left",
+             "Camera: very slow push in toward the ceiling, ending on the cracked beam.",
+             "Handheld home-video camcorder look", "Light: flashlight beams",               # вигляд запису — після камери
+             "Sound: a low rumble; water drips.", "No BGM; only ambience and action sounds.",
+             "The woman in the black denim jacket stays on the left",
              "the thin line of blood under the nose stays", "No subtitles, no on-screen text."]
     pos = [p.index(x) for x in order]
     assert pos == sorted(pos), p
@@ -522,7 +528,8 @@ def test_real_casting_and_test_pack_are_api_clean(manual_profile) -> None:
 def test_sequence_first30_closure(manual_profile, part1_out) -> None:
     items = P.sequence_items(SLUG, "first30", out_root=part1_out)
     steps = [i.step for i in items]
-    assert steps == sorted(steps) and steps[0] <= 4 and steps[-1] == 7
+    assert steps == sorted(steps) and steps[0] <= 4 and steps[-1] == 6     # репліки VHS — рідний звук Seedance
+    assert not any(i.kind == "voice" for i in items)
     shots = {i.extra.get("shot") for i in items if i.step >= 5}
     assert shots <= {f"1.0{k}" for k in range(1, 9)} and {"1.01", "1.07"} <= shots
     produced = {i.produces for i in items}
@@ -642,7 +649,7 @@ def test_shot_size_only_suffixes_vocabulary(size, want) -> None:
 def test_free_text_size_in_frame_and_blocking(data, ts) -> None:
     sp = _spec(people=[S.Person(id="vale")], face="clear", camera=S.Camera(size="wide, seen from the doorway"))
     assert "Camera: wide shot, seen from the doorway." in C.frame_items(sp, data, ts)[0].prompt
-    assert "Blocking: wide shot, seen from the doorway;" in C.video_items(sp, data, ts, profile=MANUAL)[0].prompt
+    assert "Blocking: wide shot, seen from the doorway;" in C.video_items(sp, data, ts, profile=RANGE)[0].prompt
 
 
 def test_video_names_characters_warns(data, ts) -> None:
@@ -675,7 +682,9 @@ def test_route_t2v_never_face_and_face_frame_chains_keep_face_route(data, ts) ->
 def test_continuity_spelled_out_only_when_frame_is_loose(data, ts) -> None:
     sp = _spec(people=[S.Person(id="vale")], face="clear",
                continuity=["hundreds of small grey pebbles hang motionless in the air."])
-    face = C.video_items(sp, data, ts, profile=MANUAL)[0]
+    lab = C.video_items(sp, data, ts, profile=MANUAL)[0]                     # руками старт точний — без складу словами
+    assert "Continuity:" not in lab.prompt and "Blocking:" not in lab.prompt
+    face = C.video_items(sp, data, ts, profile=RANGE)[0]
     assert "Continuity: hundreds of small grey pebbles hang motionless in the air." in face.prompt
     assert face.prompt.index("Blocking:") < face.prompt.index("Continuity:") < face.prompt.index("She slowly raises")
     rep = C.video_items(sp.model_copy(update={"people": [S.Person(id="vale", view="back")], "face": "none"}), data, ts,
@@ -684,7 +693,7 @@ def test_continuity_spelled_out_only_when_frame_is_loose(data, ts) -> None:
     t2v = C.video_items(sp.model_copy(update={"mode": "t2v"}), data, ts, profile=MANUAL)[0]
     assert "Continuity: hundreds of small grey pebbles" in t2v.prompt
     fl = C.video_items(sp.model_copy(update={"mode": "first_last", "end_frame": "The tunnel is empty."}), data, ts,
-                       profile=MANUAL)[0]
+                       profile=RANGE)[0]
     assert "Continuity: hundreds" in fl.prompt and not _lint([face, t2v, fl])
 
 

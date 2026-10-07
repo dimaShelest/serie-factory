@@ -161,7 +161,7 @@ def test_template_edit_changes_sha(tmp_path: Path) -> None:
 
 
 def test_part_set_with_voice_and_warnings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("GENERATION_PROFILE", "manual-5s")
+    monkeypatch.setenv("GENERATION_PROFILE", "lab-2.5")             # оверлей ч.1 розписано під активний профіль
     folder = tmp_path / SLUG / "part1"
     folder.mkdir(parents=True)
     shutil.copy(FIXTURE, folder / "script.json")
@@ -171,12 +171,15 @@ def test_part_set_with_voice_and_warnings(tmp_path: Path, monkeypatch: pytest.Mo
     (folder / "shots.json").write_text(shots.model_dump_json(), encoding="utf-8")
     items = P.build(SLUG, "1", out_root=tmp_path)
     voices = [i for i in items if i.kind == "voice"]
-    assert len(voices) == sum(len(sh.dialogue) for sh in shots.shots)
-    chuy = next(i for i in voices if "¡Chuy" in i.prompt)
-    assert chuy.prompt.startswith("[shouting] ¡Chuy") and chuy.extra["delivery"] == "shout"
-    assert chuy.payload["voice_settings"] == {"stability": 0.3, "similarity_boost": 0.8}   # v4: лише ці два
+    native = [ln for sp in S.part_specs(P.Data(SLUG), 1, out_root=tmp_path) for ln in sp.lines if ln.voice == "native"]
+    assert {ln.text_es[:6] for ln in native} == {"¡Chuy,", "¿Oyero"}         # репліки VHS 1.02 / 1.04 — звук Seedance
+    assert len(voices) == sum(len(sh.dialogue) for sh in shots.shots) - len(native)
+    assert not any("¡Chuy, graba" in i.prompt for i in voices)
+    shout = next(i for i in voices if i.extra["delivery"] == "shout")
+    assert shout.prompt.startswith("[shouting] ")
+    assert shout.payload["voice_settings"] == {"stability": 0.3, "similarity_boost": 0.8}   # v4: лише ці два
     videos = [i for i in items if i.kind == "video"]
-    assert videos and all(i.payload["resolution"] == "720p" and i.payload["duration"] == 5 for i in videos)
+    assert videos and all(i.payload["resolution"] == "720p" and 4 <= i.payload["duration"] <= 10 for i in videos)
     assert [i.step for i in items] == sorted(i.step for i in items)
     # усі шоти ч.1 мають англійський опис; API-чисто (лінт і дані — до переписування оверлею v2)
     assert not any("англійського опису" in w or w.startswith("API:") for i in items for w in i.warnings)
@@ -277,7 +280,7 @@ def test_cli_prompts_and_lab(lab_dirs: Path, monkeypatch: pytest.MonkeyPatch) ->
     r = runner.invoke(app, ["lab", "approve", "tp-T2-video"])
     assert r.exit_code == 0 and "golden" in r.output
     r = runner.invoke(app, ["lab", "status"])
-    assert r.exit_code == 0 and "video.i2v@v3" in r.output
+    assert r.exit_code == 0 and "video.i2v@v4" in r.output
 
 
 def test_cli_prompts_sequence(lab_dirs: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -294,6 +297,6 @@ def test_cli_prompts_sequence(lab_dirs: Path, tmp_path: Path, monkeypatch: pytes
     r = runner.invoke(app, ["prompts", SLUG, "1", "--sequence", "first30", "--out", str(tmp_path / "o")])
     assert r.exit_code == 0, r.output
     assert (lab_dirs / "out" / SLUG / "first30" / "index.html").exists()
-    assert "кроки: 1 Обличчя-якорі:" in r.output and "7 Репліки (озвучка): 2" in r.output and "API 0" in r.output
+    assert "кроки: 1 Обличчя-якорі:" in r.output and "Репліки" not in r.output and "API 0" in r.output
     r = runner.invoke(app, ["prompts", SLUG, "2", "--sequence", "first30", "--out", str(tmp_path / "o")])
     assert r.exit_code == 1 and "з частини 1" in r.output

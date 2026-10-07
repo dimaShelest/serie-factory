@@ -25,11 +25,17 @@
 version: 1
 
 generation:
-  profile: manual-5s            # активний профіль
+  # Рішення людини 2026-10-07: відео в лабораторії тестуємо на ОДНОМУ платному акаунті (ліміт «перших 30 с» — $40),
+  # тими самими моделлю й параметрами, що й автоматика: Seedance 2.5, 720p, кліп = довжина шоту (4–10 с).
+  profile: lab-2.5              # активний профіль (GENERATION_PROFILE у .env його перевизначає)
   profiles:
+    lab-2.5: {clip_min_s: 4, clip_max_s: 10, resolution: "720p", surface: "dropshot AI Studio (Seedance 2.5)",
+              url: "https://aistudio.dropshot.io",
+              note: "платний акаунт; тривалість = duration картки (немає в списку — найближча більша, у монтаж — вікно)"}
     manual-5s: {clip_s: [5], resolution: "720p", surface: "dropshot AI Studio (Seedance 2.5)",
-                url: "https://aistudio.dropshot.io", note: "1 генерація 720p × 5 с на акаунт"}
-    replicate-2.5: {clip_min_s: 4, clip_max_s: 30, resolution_by_tier: {hero: "720p", secondary: "480p", found_footage: "480p"}}
+                url: "https://aistudio.dropshot.io", note: "1 генерація 720p × 5 с на акаунт (безкоштовні акаунти)"}
+    # автоматика: ті самі модель і роздільність, що в лабораторії; шот ≤ 10 с → один кліп
+    replicate-2.5: {clip_min_s: 4, clip_max_s: 10, resolution: "720p"}
 
 hints:      # підказка до «невідомого поля» (див. шапку)
   negative_prompt: "у Seedance і Nano Banana немає negative — опиши бажане позитивно в промпті"

@@ -1,6 +1,6 @@
 id: video.first_last
 kind: video
-version: 2
+version: 3
 profile: seedance-2.5
 route: replicate:bytedance/seedance-2.5
 description: >-
@@ -15,13 +15,13 @@ route_payload:
 prompt: |-
   Single continuous shot, no cuts.
   {{ clean_head }}
-  {{ footage }}
   {{ blocking }}
   {% if continuity %}Continuity: {{ continuity | join("; ") }}.{% endif %}
   Preserve {{ preserve }}. Generate a continuous transition from the first frame to the last frame.
   Motion: {{ action }}{% if end_state %} End state: {{ end_state }}.{% endif %}
   {{ camera }}
+  {{ footage }}
   Lighting: {{ light }}.
-  {{ sound | join(" ") }} No BGM.
+  {{ sound | join(" ") }} No BGM; only ambience and action sounds.
   {{ lessons | join(" ") }}
   {{ constants | join(" ") }}

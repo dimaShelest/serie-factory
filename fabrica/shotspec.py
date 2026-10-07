@@ -117,6 +117,7 @@ class Line(_Strict):
     on_screen: bool = False          # рот того, хто говорить, у кадрі → lip-sync
     offscreen: bool = False
     delivery_source: Literal["script", "overlay", "guess", "default"]
+    voice: Literal["elevenlabs", "native"] = "elevenlabs"   # native — рідний звук Seedance, окремої озвучки немає
 
 
 class ClipIn(_Strict):
@@ -198,6 +199,7 @@ def _camera_before(v: object) -> object:
 class LineIn(_Strict):
     delivery: Delivery | None = None
     on_screen: bool | None = None
+    voice: Literal["elevenlabs", "native"] | None = None   # native — голос лишаємо з кліпу Seedance, без ElevenLabs
 
 
 class SceneIn(_Strict):
@@ -542,6 +544,32 @@ def _window(spec: ShotSpec, gen_s: int) -> tuple[tuple[float, float], list[str]]
     return (0.0, keep), []
 
 
+MERGE_STEP_S = 5     # оверлей ч.1 розписано кліпами по 5 с (профіль manual-5s) — межі міток при злитті
+
+
+def _merged(spec: ShotSpec, gen_s: int) -> tuple[str, str | None, Camera]:
+    """Шот, розписаний clips (під короткі кліпи), а профіль дає один довгий кліп → одна дія з мітками секунд
+    («[0s-5s] … [5s-8s] …» — Seedance 2.5 дотримується цілих секунд), кінцевий стан — останнього кліпу, камера —
+    першого (одна камера на кліп) з кінцевою точкою останнього, якщо рух той самий."""
+    parts = [c for c in spec.clips if c.action]
+    if len(parts) < 2:
+        return spec.action, spec.end_state, spec.camera
+    bounds = [min(k * MERGE_STEP_S, gen_s) for k in range(len(parts))] + [gen_s]
+    segs = [(bounds[k], bounds[k + 1], c.action) for k, c in enumerate(parts) if bounds[k + 1] > bounds[k]]
+    if len(segs) < 2:
+        return spec.action, spec.end_state, spec.camera
+    action = " ".join(f"[{a}s-{b}s] {_strip_end(t)}" for a, b, t in segs)
+    cam, last = parts[0].camera or spec.camera, parts[-1].camera
+    if last and last.move == cam.move and last.endpoint:
+        cam = cam.model_copy(update={"endpoint": last.endpoint})
+    return action, parts[-1].end_state or spec.end_state, cam
+
+
+def _strip_end(text: str) -> str:
+    text = " ".join(text.split())
+    return text if text.endswith((".", "!", "?")) else text + "."
+
+
 def clips(spec: ShotSpec, profile: dict) -> list[Clip]:
     """Кліпи відео шоту за профілем генерації (providers.generation()); [] — шот без відео.
 
@@ -556,8 +584,9 @@ def clips(spec: ShotSpec, profile: dict) -> list[Clip]:
     warnings: list[str] = []
     if n == 1:
         window, warnings = _window(spec, clip_s)
-        return [Clip(index=1, of=1, gen_s=clip_s, window=window, action=spec.action, end_state=spec.end_state,
-                     camera=spec.camera, start=first, warnings=warnings)]
+        action, end, cam = _merged(spec, clip_s)
+        return [Clip(index=1, of=1, gen_s=clip_s, window=window, action=action, end_state=end, camera=cam,
+                     start=first, warnings=warnings)]
     if spec.window or spec.event_s is not None:
         warnings.append(f"window / event_s — лише для шоту з одного кліпу; тут {n} кліпи — ігнорую")
     if not spec.clips:
@@ -672,7 +701,7 @@ def derive_lines(shot: Shot, people: list[Person], script_delivery: dict[str, st
         elif o.on_screen is not None:
             on = o.on_screen
         lines.append(Line(n=n, speaker=d.character_id, line_id=d.line_id, text_es=d.text_es, delivery=how,
-                          on_screen=on, offscreen=d.offscreen, delivery_source=src))
+                          on_screen=on, offscreen=d.offscreen, delivery_source=src, voice=o.voice or "elevenlabs"))
     return lines, warnings
 
 

@@ -1,6 +1,6 @@
 id: video.i2v
 kind: video
-version: 3
+version: 4
 profile: seedance-2.5
 route: replicate:bytedance/seedance-2.5      # обличчя в кадрі (face clear) → cloudflare:bytedance/seedance-2.5 (компілятор)
 description: >-
@@ -17,14 +17,14 @@ route_payload:
 prompt: |-
   Single continuous shot, no cuts.
   {{ clean_head }}
-  {{ footage }}
   The clip begins exactly at this moment.
   {{ blocking }}
   {% if continuity %}Continuity: {{ continuity | join("; ") }}.{% endif %}
   {{ action }}{% if end_state %} End state: {{ end_state }}.{% endif %}
   {{ camera }}
+  {{ footage }}
   {% if light %}Light: {{ light }}.{% endif %}
-  {{ sound | join(" ") }} No BGM.
+  {{ sound | join(" ") }} No BGM; only ambience and action sounds.
   {{ lock }}
   {{ lessons | join(" ") }}
   {{ constants | join(" ") }}

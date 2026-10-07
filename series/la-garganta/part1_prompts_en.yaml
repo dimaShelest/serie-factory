@@ -197,8 +197,9 @@ shots:
       open across it. In the gap of the gate in the centre stands a man with short dark hair parted in the middle, in an
       open blue-grey plaid flannel over a white button-up shirt and dark trousers, with his back to the lens, one foot
       already inside, his flashlight beam pointing into the black tunnel. A few steps behind him, Iván on the left and
-      Mónica on the right wait on the rails with their backs to the lens, their flashlights aimed at the gate. Two more
-      warm flashlight beams light the rock from inside the tunnel mouth.
+      Mónica on the right wait on the rails with their backs to the lens, their flashlights aimed at the gate. Deep
+      inside the tunnel mouth two more warm flashlight beams move on the rock, the people holding them hidden behind
+      the rock.
     action: >-
       The man in the plaid flannel ducks through the gap of the rusty gate into the black tunnel. The man in the denim
       jacket steps through after him; the woman with the black headband walks up to the gate. Their beams bob with
@@ -220,17 +221,17 @@ shots:
       sfx:
         - boots crunch on gravel
         - the gate hinge creaks once
-        - a woman giggles beside the microphone; a man's sharp shh answers from deeper inside the dark tunnel
+        - an unseen woman right beside the camera giggles; a man's sharp shh answers from deeper inside the dark tunnel
     continuity:
       - every flashlight is the same plain dark metal flashlight
     success:
       - "у кадрі троє спиною (джинсова куртка ліворуч, фланель у воротах, обідок праворуч) + два промені всередині"
-      - "жодного обличчя до камери; оператора (Chuy) не видно"
+      - "жодного обличчя до камери; оператора (Chuy) не видно; ніхто не обертається на сміх"
       - "на воротах, балках і скелі немає написів"
     notes:
-      - "Сімка мінус оператор: троє спиною (Iván, Tomás — текстом, Mónica) + двоє всередині (промені) + Lupita хихоче біля мікрофона = шестеро."
-      - "Плита mina (вхід уночі, без variant). Шикає хтось глибше в тунелі (поза кадром), не людина у воротах: шикання жестом чи поворотом голови показало б обличчя Tomás."
-      - "Без screen у people: камера йде слідом, Iván пролазить у ворота — замок «stays on the left» сперечався б із рухом; ліво/право тримає текст кадру."
+      - "Сімка мінус оператор: троє спиною (Iván, Tomás — текстом, Mónica) + двоє всередині (промені, люди за скелею) + Lupita хихоче біля мікрофона = шестеро."
+      - "Сміх — «невидима жінка біля камери»: інакше модель поверне голову Mónica до об'єктива (обличчя в кліпі без облич)."
+      - "Без screen у people: камера йде слідом, Iván пролазить у ворота — замок «stays on the left» сперечався б із рухом."
 
   "1.02":
     beat: dialogue
@@ -239,21 +240,22 @@ shots:
       - {id: lupita, view: face, screen: center}
       - {id: monica, view: three_quarter, screen: right}
     frame: >-
-      Inside the narrow mine tunnel, seen at eye level from the camcorder. Lupita stands in the centre a step from the
-      lens, laughing straight into the camcorder's white lamp, a plain label-less clear glass bottle of dark soda raised
-      in one hand. Iván on the left and Mónica on the right stand half a step behind her, both turned three-quarters
-      toward the lens and laughing; Iván holds another plain label-less glass bottle, Mónica holds a plain dark metal
-      flashlight pointed at the floor. Far back in the tunnel on the right, at the edge of the light, stands a man with short dark hair
-      parted in the middle, in an open blue-grey plaid flannel over a white button-up shirt and dark trousers, alone
-      with his back to the lens, his flashlight beam pointing into the dark depth of the tunnel. The rusted rails run
-      past them into the darkness.
-    action: &a102 >-
-      The woman with curly bangs leans in, lifts her bottle and shouts her line at the lens; the other two grin with
-      closed lips, shoulders shaking with laughter.
-    end_state: &e102b >-
+      Inside the narrow mine tunnel, seen at eye level from the camcorder. Lupita stands in the centre about two metres
+      from the lens, laughing straight into the camcorder's white lamp, a plain straight-sided clear glass bottle of
+      dark soda held at shoulder height. Iván on the left and Mónica on the right stand half a step behind her, both
+      turned three-quarters toward the lens and laughing; Iván holds another plain straight-sided glass bottle, Mónica
+      holds a plain dark metal flashlight pointed at the floor. Far back in the tunnel on the right, at the edge of the
+      light, stands a man with short dark hair parted in the middle, in an open blue-grey plaid flannel over a white
+      button-up shirt and dark trousers, alone with his back to the lens, his flashlight beam pointing into the dark
+      depth of the tunnel. The rusted rails run past them into the darkness.
+    action: >-
+      [0s-4s] The woman with curly bangs leans toward the lens, lifts her bottle above her head and shouts her line;
+      the other two grin with closed lips, shoulders shaking. [4s-6s] All three keep grinning with closed lips; the
+      woman with curly bangs slowly lowers her bottle.
+    end_state: >-
       the three grin in their places with closed lips; far back, the man in the plaid flannel stands still at the edge
       of the light with his back to the lens
-    camera: &c102a
+    camera:
       size: medium wide
       move: push_in
       speed: very slow
@@ -262,28 +264,20 @@ shots:
       angle: eye level
       shake: light
     lines:
-      1: {delivery: shout, on_screen: true}
+      1: {delivery: shout, on_screen: true, voice: native}
     sound:
+      ambience:
+        - the low hum of the mountain
+        - slow water drips
       sfx:
-        - laughter echoes off the rock
-    clips:
-      - action: *a102
-        end_state: >-
-          the three grin with closed lips; far back, the man in the plaid flannel keeps his back to the lens
-        camera: *c102a
-      - action: >-
-          All three keep grinning with closed lips, shoulders shaking with laughter; the woman with curly bangs slowly
-          lowers her bottle. Far back, the man in the plaid flannel stands still with his back to the lens.
-        end_state: *e102b
-        camera: {size: medium, move: static, angle: eye level, shake: light}
+        - after her line, muffled giggles echo off the rock
     success:
-      - "Lupita кричить «¡Chuy, graba, graba! Esto va para el anuario.» в об'єктив, губи збігаються; інші — без слів"
-      - "Tomás увесь кліп спиною, у синьо-сірій фланелі; пляшки без етикеток"
+      - "Lupita кричить «¡Chuy, graba, graba! Esto va para el anuario.» в об'єктив мексиканською іспанською, губи збігаються; інші — без слів"
+      - "Tomás увесь кліп спиною, у синьо-сірій фланелі; пляшки прості, без етикеток"
       - "ДНК: кучері з чубчиком і кільця (Lupita), обідок і темна помада (Mónica), волосся до плечей і джинсова куртка (Iván)"
     notes:
-      - "+C14. Репліка (shout, у кадрі) — лише в кліпі 1; кліп 2 — тільки сміх із закритими ротами, без панорами."
-      - "Монтаж: кліп 1 цілий + 0–1 с кліпу 2 (сміх триває, камера майже нерухома; Tomás далеко спиною)."
-      - "Довжина: відео кліпу 1 ≈ 1980 знаків при ліміті 2000 (компілятор двічі повторює місця трьох людей — Blocking і замок). Тексту не додавати; «той самий ліхтар» — у frame, не в continuity."
+      - "+C14. Голос — рідний звук Seedance (voice: native): одноразова репліка VHS, ElevenLabs не потрібен."
+      - "Шот 6 с = один кліп 6 с (профіль lab-2.5)."
 
   "1.03":
     beat: investigate
@@ -297,11 +291,12 @@ shots:
       flashlight pointed at the rock ceiling. Between them, far back in the tunnel and soft out of focus, stands a man
       with short dark hair parted in the middle, in an open blue-grey plaid flannel over a white button-up shirt and
       dark trousers, with his back to the lens, facing the darkness. At the right edge of the frame, beside Beto, an old
-      dented two-way radio with a short antenna hangs by a leather strap from a nail on a timber support, its casing
-      blank and unmarked.
+      dented dark-green metal radio box with a short antenna, one round speaker grille and one plain black knob hangs by
+      a leather strap from a nail on a timber support; its smooth casing is bare.
     action: >-
-      The woman with two braids smiles into the lens; the man with the buzz cut grins. Then the radio beside him bursts
-      into loud hissing static; his grin fades and he turns his head slowly toward it.
+      The woman with two braids on the left smiles into the lens; the man with the buzz cut on the right grins. Then
+      the old radio hanging on the timber at the right edge bursts into loud crackling static; his grin fades and he
+      turns his head slowly toward it.
     end_state: >-
       the man with the buzz cut in profile, facing the radio; far back, the man in the plaid flannel keeps his back to
       the lens
@@ -314,19 +309,21 @@ shots:
       angle: eye level
       shake: light
     sound:
+      ambience:
+        - the low hum of the mountain
+        - slow water drips
       sfx:
         - soft laughter nearby
-        - a loud burst of crackling radio static, then a low hiss
+        - the radio gives one loud burst of pure crackling white-noise static, then a low steady hiss
     continuity:
       - every flashlight is the same plain dark metal flashlight
     success:
       - "панорама зліва направо: Rosa Elena (дві коси, хрестик) → Beto (стрижка під нуль, шрам на підборідді) → рація"
-      - "рація чутно шипить і тріщить, без розбірливих слів; на корпусі нічого не написано"
+      - "рація шипить і тріщить, без розбірливих слів; на корпусі нічого не написано, без шкал і цифр"
       - "Tomás — далеко в розфокусі, спиною"
     notes:
       - "+C07: шипіння шахтної рації в записі — головний доказ ч.4 (голос Saldívar). Слів не генеруємо."
       - "Beto тут живий і сухий — за 20 с його мокре обличчя (1.07): усмішка тут важлива для контрасту."
-      - "Без screen у people: панорама вправо зсуває Beto до центру — замок «stays on the right» сперечався б із панорамою; ліво/право тримає текст кадру."
 
   "1.04":
     beat: reaction
@@ -336,14 +333,15 @@ shots:
       - {id: beto, view: three_quarter, screen: right}
     frame: >-
       Inside the narrow mine tunnel, seen at eye level from the camcorder, the three mid-laugh under the low rock
-      ceiling. Mónica stands in the centre facing the lens with a confident half-smile, her plain dark metal flashlight pointed at the
-      floor. Lupita on the left laughs with her head tipped back, a plain label-less glass bottle in her hand. Beto on
-      the right grins, turned three-quarters toward the lens, his plain dark metal flashlight pointed at the ceiling. Behind them the
-      rusted rails run into the empty dark depth of the tunnel.
+      ceiling. Mónica stands in the centre facing the lens with a confident half-smile, her plain dark metal flashlight
+      pointed at the floor. Lupita on the left laughs with her head tipped back, a plain straight-sided glass bottle in
+      her hand. Beto on the right grins, turned three-quarters toward the lens, his plain dark metal flashlight pointed
+      at the ceiling. Behind them the rusted rails run into the empty dark depth of the tunnel.
     action: >-
-      The two beside her laugh for a moment. Then a deep rumble rolls through the rock and grey dust trickles from the
-      ceiling; the laughter stops and all three look up, shoulders rising. The woman with the black headband says her
-      line; then all three hold still, listening.
+      [0s-1s] The woman with curly bangs and the broad-shouldered man with a buzz cut laugh beside the woman with the
+      black headband. [1s-2s] A deep rumble rolls through the rock and grey dust trickles from the ceiling; the
+      laughter stops and all three look up, shoulders rising. [2s-3s] The woman with the black headband says her line.
+      [3s-4s] All three hold still with lips closed, listening.
     end_state: the three stand still, faces tilted up, listening
     camera:
       size: medium wide
@@ -354,22 +352,20 @@ shots:
       angle: eye level
       shake: light
     lines:
-      1: {delivery: quiet_fear, on_screen: true}
-    window: [0.5, 4.5]
+      1: {delivery: quiet_fear, on_screen: true, voice: native}
     sound:
       ambience:
         - slow water drips
       sfx:
-        - a deep rumble after one second
+        - the three laugh out loud for the first second
+        - a deep rumble at second 1 cuts the laughter off
     success:
-      - "стартовий кадр — ще сміх (голови не підняті); гул → сміх обривається → погляди вгору → репліка Mónica"
-      - "Mónica каже «¿Oyeron eso?» тихо, з напругою (не шепіт), губи збігаються; далі всі мовчать і слухають"
-      - "пил сиплеться тонкою цівкою; у кадрі лише троє (Tomás — у 1.01–1.03, тут ні); Chuy у кадрі немає"
+      - "стартовий кадр — ще сміх; гул на 1 с → сміх обривається → погляди вгору → Mónica тихо: «¿Oyeron eso?»"
+      - "Mónica каже тихо, з напругою (не шепіт), губи збігаються; ніхто не відповідає, далі тиша й краплі"
+      - "пил сиплеться тонкою цівкою; у кадрі лише троє; Chuy у кадрі немає"
     notes:
-      - "Репліка коротка (3 слова) — дія розписана до кінця кліпу, щоб модель не домальовувала бурмотіння (§2.6)."
-      - "Троє, без Tomás: діалоговий кліп стабільніший із ≤ 3 людьми (§3 №4), спину Tomás уже показали 1.01–1.03."
-      - "Монтаж 0.5–4.5 с кліпу; редактор може зсунути вікно до репліки."
-      - "Лише пил зі стелі (без каміння): каміння — ескалація в 1.05. Довжина відео ≈ 1980 знаків при ліміті 2000 — тексту не додавати."
+      - "Шот 4 с = кліп 4 с; дія розписана по секундах, щоб коротка репліка не обросла бурмотінням (§2.6)."
+      - "Голос — рідний звук Seedance (voice: native)."
 
   "1.05":
     beat: reaction
@@ -378,82 +374,58 @@ shots:
     frame: >-
       Inside the narrow mine tunnel, a tilted view at eye level from the camcorder. A thick curtain of grey dust hangs
       below cracks in the low rock ceiling, crossed by three warm yellow flashlight beams at different angles. Far down
-      the tunnel at the edge of the light, three people in white shirts and navy sweaters are seen from behind,
-      mid-stride, facing the black bend of the tunnel, each with a flashlight in hand. The camcorder's white lamp lights
-      a patch of wet rock wall on the right. The rusted rails run into the darkness.
-    action: &a105 >-
-      A second, heavier rumble shakes the tunnel and grey dust pours from the ceiling in thick streams. The three people
-      run deeper into the tunnel, their flashlight beams swinging wildly across the walls and ceiling, and vanish one
-      after another around the bend.
-    end_state: &e105b >-
-      the lamp light rests on the wet rock wall on the left, the dust hanging still in it, and the bend of the tunnel
-      stays dark beyond
-    camera: &c105a
-      size: medium wide
-      move: handheld
-      speed: moderate
-      target: the swinging flashlight beams of the three running people
-      endpoint: the empty rails leading into the dark bend
-      angle: POV
-      shake: strong
+      the tunnel at the edge of the light, three people are seen from behind, mid-stride, facing the black bend of the
+      tunnel: on the left a woman with curly dark hair, in the centre a tall woman with straight dark hair under a wide
+      black headband, on the right a broad-shouldered man with a buzz cut, all in white shirts and navy sweaters, each
+      with a flashlight in hand. The camcorder's white lamp lights a patch of wet rock wall on the right. The rusted
+      rails run into the darkness.
+    action: >-
+      [0s-4s] A second, heavier rumble shakes the tunnel and grey dust pours from the ceiling in thick streams. The
+      three people run deeper into the tunnel, their flashlight beams swinging across the walls and ceiling, and one
+      after another turn the corner at the bend and are gone from view. [4s-6s] The dust slowly settles through the
+      steady white lamp light; a few small stones roll down the rock wall and click onto the rails.
+    end_state: >-
+      the white lamp light rests on the empty rails leading into the dark bend, the dust hanging still in it
+    camera: >-
+      Camera: handheld, staying in place by the tunnel wall, swinging after the running beams with a strong shake that
+      settles in the last two seconds, ending steady on the empty rails leading into the dark bend.
     sound:
       ambience:
         - the deep uneven rumble of the mountain settling
         - echoes of falling stones
+        - the operator's ragged panting close to the microphone
       sfx:
         - running footsteps crunch away down the tunnel
-        - a man's voice shouts "¡Chuy!" twice from deeper in the tunnel, echoing
-        - the operator's ragged panting close to the microphone
-    clips:
-      - action: *a105
-        end_state: >-
-          the beams of the others are gone around the bend, and only the camcorder's white lamp lights the swirling dust
-          over the empty rails
-        camera: *c105a
-      - action: >-
-          Right away the camcorder's white lamp flickers twice and fades almost to darkness, then comes back steady. The
-          dust slowly settles through the white light; a few small stones roll down the rock wall and click onto the
-          rails.
-        end_state: *e105b
-        camera:
-          size: medium wide
-          move: pan_left
-          speed: slow
-          target: the settling dust
-          endpoint: the wet rock wall on the left side of the tunnel
-          angle: POV
-          shake: moderate
+        - a man's voice far down the tunnel, in Mexican Spanish, shouts only the name "¡Chuy!" twice, echoing
     success:
-      - "промені метаються, троє (білі сорочки, темно-сині светри, ліхтарі в руках) тікають углиб і зникають за поворотом; облич не видно"
-      - "чути «Chuy» (двічі, луною) і важке дихання оператора; музики немає"
-      - "кліп 2: лампа блимає одразу на початку й повертається"
+      - "промені метаються, троє (кучері / обідок / стрижка під нуль) тікають углиб і звертають за поворот; облич не видно"
+      - "чути «¡Chuy!» (двічі, луною) і важке дихання оператора; музики немає"
+      - "кінець — рівне біле світло на порожніх рейках біля темного повороту (з цього кадру стартує 1.06)"
     notes:
-      - "Збій трекінгу VHS — у монтажі (FFmpeg), не в Seedance (§3 №15)."
-      - "Монтаж: кліп 1 цілий + 0–1 с кліпу 2 (мигання лампи)."
+      - "Збій трекінгу й мигання лампи — у монтажі (FFmpeg), не в Seedance (§3 №15)."
 
   "1.06":
     beat: dread_hold
+    handoff: continue
     people: []
     light: >-
       the camcorder's small lamp is the only light: one hard white circle of light with a soft edge that falls off into
       darkness within a few metres
     frame: >-
-      The empty narrow mine tunnel in near darkness, seen at eye level from the camcorder. The camcorder's white lamp
-      throws one soft-edged circle of light onto the wet rock wall on the left half of the frame and the old timber
-      support beside it; fine dust hangs still in the light. The rusted rails run from the bottom of the frame into the
-      dark depth of the tunnel toward a black bend just right of centre.
-    action: &a106 >-
-      A single small pebble clicks somewhere near the dark bend. Then the circle of white light moves slowly right off
-      the wet rock wall, across the timber support and along the rails until it reaches the bend, trembling slightly
-      with the operator's breathing; a single drop of water falls through the light.
-    end_state: &e106b the circle of light rests on the empty bend, trembling slightly
-    camera: &c106a
+      The empty narrow mine tunnel in near darkness, seen at eye level from the camcorder: the white lamp light rests on
+      the empty rails leading into the dark bend, fine dust hanging still in it.
+    action: >-
+      The circle of white light holds on the empty dark bend, trembling slightly with the operator's breathing. After
+      one second a single small pebble clicks somewhere near the bend; later a single drop of water falls through the
+      light. The turn of the tunnel beyond the bend stays empty and black.
+    end_state: the circle of light rests on the empty bend, which fills the centre third of the frame
+    camera:
       size: medium wide
-      move: pan_right
+      move: push_in
       speed: very slow
-      target: the circle of lamp light on the wet rock wall
-      endpoint: the dark bend of the tunnel in the centre of the frame
-      angle: POV
+      target: the dark bend of the tunnel
+      endpoint: the bend filling the centre third of the frame
+      angle: eye level
       shake: light
     sound:
       ambience:
@@ -461,78 +433,63 @@ shots:
         - the operator's slow shaky breathing close to the microphone
       sfx:
         - after one second, a single small pebble clicks once near the bend
-    clips:
-      - action: *a106
-        end_state: the circle of light rests on the empty dark bend in the centre of the frame
-        camera: *c106a
-      - action: >-
-          The light holds on the bend, trembling slightly with the operator's breathing; water drips at the edge of the
-          light. The turn of the tunnel beyond the bend stays empty and black.
-        end_state: *e106b
-        camera:
-          size: medium wide
-          move: push_in
-          speed: very slow
-          target: the dark bend of the tunnel
-          endpoint: the bend filling the centre third of the frame
-          angle: POV
-          shake: light
     success:
-      - "тиша: лише краплі, дихання оператора, один камінчик ≈ на 1 с (тригер) — після нього світло рушає шукати; ні музики, ні голосів"
-      - "коло світла рухається плавно, тремтить від дихання; тунель і поворот порожні"
-      - "кінець — світло на порожньому повороті (з нього стартує 1.07)"
+      - "тиша: краплі, дихання оператора, один камінчик ≈ на 1 с; ні музики, ні голосів"
+      - "світло тремтить на порожньому повороті, камера дуже повільно наближається; поворот порожній"
+      - "стартує з останнього кадру 1.05 — та сама картинка, безшовно"
     notes:
+      - "handoff: continue — стартовий кадр не генеруємо: старт = останній кадр відео 1.05 (студія вирізає його сама)."
       - "Наростання перед скрімером: тиша — це звук (краплі + дихання + один камінчик), не мертвий ефір (§6.7)."
-      - "Монтаж: кліп 1 цілий + 0–1 с кліпу 2 (світло завмирає на повороті)."
 
   "1.07":
     beat: scare
+    mode: first_last
+    handoff: continue
     people:
       - {id: beto, view: face, state: [wet]}
-    light: the camcorder lamp is the only light, a hard white circle on the bend a few metres ahead
+    light: the camcorder lamp beside the lens is the only light, a hard white beam
     frame: >-
-      A close-up from the camcorder in the dark mine tunnel. The camcorder's white lamp lights the rock of the tunnel
-      bend a few metres ahead on the right. On the left, about one arm's length from the lens, Beto stands at the edge
-      of the light, his head and broad shoulders half out of the darkness: the side of his face nearer the light is
-      lit, the other side is in deep shadow. His eyes are open and fixed on the lens, his mouth is closed, fine grey
-      dust clings to his wet pale skin, and drops of water stand on his cheek below his soaked buzz cut. Fine dust
-      hangs in the light.
+      The empty dark bend of the mine tunnel in the circle of white camcorder light (the last frame of shot 1.06).
+    end_frame: >-
+      A close-up from the camcorder in the dark mine tunnel. Beto stands a hand's breadth from the lens, his soaked face
+      filling the centre of the frame in the hard white light of the camcorder lamp beside the lens; the edges of the
+      frame fall into black. His eyes are normal dark human eyes, open and fixed on the lens; his mouth is closed; fine
+      grey dust clings to his wet pale skin; drops of water stand on his cheek below his soaked buzz cut; the soaked
+      collar of his white shirt and navy sweater shows at the bottom of the frame.
     action: >-
-      For one second the soaked man with the buzz cut stays motionless at the edge of the light, water dripping
-      from his chin. Then he lunges straight at the lens in one sudden motion; his pale wet face fills the whole frame,
-      eyes open and unblinking, mouth closed. A split second later the camcorder jerks backward and drops toward the
-      floor.
-    end_state: the frame lies tilted on the wet rock floor, white light across the wet stones
+      [0s-3s] The circle of white light holds on the empty bend, trembling slightly. [3s-4s] The camera swings sharply
+      left and the white lamp lands on the soaked man with the buzz cut standing right at the lens; he stays perfectly
+      still, eyes open, mouth closed, water dripping from his chin.
+    end_state: his still, soaked face fills the frame in the hard white light
     camera:
       size: close-up
-      move: handheld
-      target: the soaked man's face
-      endpoint: the wet rock floor at a tilted angle
-      angle: POV
-      shake: light
-    window: [0.8, 1.8]
-    event_s: 1.2
+      move: pan_left
+      speed: sharp
+      target: the empty bend
+      endpoint: his soaked face at the lens
+      angle: eye level
+      shake: moderate
+    window: [3.0, 4.0]
     sound:
       ambience:
         - near-silence with slow water drips
         - the operator's shaky breathing
       sfx:
-        - a wet rustle of soaked clothes as he lunges
-        - a sharp gasp at the microphone
-        - the camcorder clatters onto the rock
+        - a single wet drip right beside the microphone at second 3
+        - the unseen camera operator gasps sharply right behind the lens at the very end
     success:
-      - "ривок обличчя в об'єктив ≈ на 1,2 с, різко, без морфінгу; обличчя заповнює кадр"
-      - "ДНК Beto впізнавана (стрижка під нуль, шрам на підборідді, широкі плечі) — мокрий, блідий, пил; рот закритий, без усмішки"
-      - "без гору й крові; після ривка камера падає на мокре каміння"
+      - "3 с світло на порожньому повороті → різкий поворот камери вліво → нерухомий мокрий Beto впритул, без морфінгу"
+      - "ДНК Beto впізнавана (стрижка під нуль, шрам на підборідді, широкі плечі) — мокрий, блідий, пил; очі звичайні, рот закритий, без усмішки"
+      - "він не нападає й не тягне рук — лише стоїть; без гору й крові"
     notes:
-      - "SCREAMER · TEASER1_CUT_BEFORE (тизер обривається до цього шоту). У монтаж 1 с: 0.8–1.8."
-      - "Стінг (shots.json sfx sting) і VHS-шум — у монтажі. Референс — beto.wet (стан wet), view face → маршрут з обличчям."
-      - "Стартовий кадр — ДО ривка: обличчя наполовину в темряві на відстані руки; ривок і є скрімер (§6.7: спершу порожнеча, потім поява)."
-      - "Без screen у people: замок «stays on the left» гасив би ривок на весь кадр; місце (ліворуч, на відстані руки) — у тексті кадру. У кадрі голова й плечі (не «обличчя, що висить»)."
+      - "SCREAMER · TEASER1_CUT_BEFORE. Перший + останній кадр: старт = останній кадр 1.06, кінець = p1-1.07-end. У монтаж 1 с: 3–4 с."
+      - "Розкриття поворотом камери (розкадровка: «промінь вихоплює обличчя біля самого об'єктива»); сімка не нападає (біблія)."
+      - "Падіння камкордера, стінг і VHS-шум — у монтажі (1.08)."
+      - "Якщо dropshot відхилить кінцевий кадр з обличчям — Cloudflare (use_virtual_avatar), інструкція на картці."
 
   "1.08":
     notes:
-      - "Монтаж (не генеруємо): VHS-шум → чорний (FFmpeg); звук рветься разом із картинкою."
+      - "Монтаж (не генеруємо): камкордер падає (ривок кадру + стук об каміння), VHS-шум → чорний (FFmpeg); звук рветься разом із картинкою."
 
   "2.01":
     notes:
@@ -789,7 +746,7 @@ shots:
       The four walk steadily deeper into the tunnel in single file between the rails, heel first, strict left-right
       steps. The pale man in the open blue-grey plaid flannel shirt leads at an even pace, his beam fixed ahead; at
       about 1 second he passes under the low timber frame, ducking his head slightly, and the three behind him follow
-      him under it one by one, sweeping their beams slowly across the wet walls.
+      him under it one by one, sweeping their beams slowly across the wet walls, then keep walking at the same pace.
     end_state: >-
       The four are about three metres past the low timber frame in the same single-file order, the leader's beam on the
       black tunnel ahead.
@@ -801,21 +758,6 @@ shots:
       endpoint: the four at the same distance ahead, the black tunnel beyond the leader's beam
       angle: eye level
       lens_mm: 28
-    clips:
-      - action: >-
-          The four walk steadily deeper into the tunnel in single file between the rails, heel first, strict left-right
-          steps. The pale man in the open blue-grey plaid flannel shirt leads at an even pace, his beam fixed ahead; at
-          about 1 second he passes under the low timber frame, ducking his head slightly, and the three behind him
-          follow him under it one by one, sweeping their beams slowly across the wet walls.
-        end_state: >-
-          All four are just past the low timber frame in the same single-file order, the leader's beam on the black
-          tunnel ahead.
-      - action: >-
-          The four keep walking at the same even pace in single file between the rails, the leader's beam fixed on the
-          black tunnel ahead; dust drifts slowly through the beams.
-        end_state: >-
-          The four are about three metres past the low timber frame in the same single-file order, the leader's beam on
-          the black tunnel ahead.
     continuity:
       - the tunnel floor between the rails is dry gravel and packed dirt, matte everywhere
     sound:
@@ -1054,27 +996,13 @@ shots:
       the left is pale gold; the ground is still in cool blue shade.
     action: >-
       Thin low mist drifts slowly from left to right across the flat ground in front of the mine entrance. The edge of
-      the sun rises over the far ridge on the left, and a band of warm golden light slides slowly across the ground from
-      left to right until it lies over the four figures. The four figures lie still where they are.
+      the sun rises over the far ridge on the left, and a band of warm golden light slides slowly across the ground
+      until it lies over the four figures. Near the end the woman in the black denim jacket slowly turns her head to one
+      side; the other three lie still.
     end_state: >-
       The four lie in the golden light, the woman in the black denim jacket with her head turned to one side; the mist
       keeps drifting to the right.
     camera: {size: extreme wide, move: static, angle: eye level, lens_mm: 24}
-    clips:
-      - action: >-
-          Thin low mist drifts slowly from left to right across the flat ground in front of the mine entrance. The edge
-          of the sun rises over the far ridge on the left, and a band of warm golden light slides slowly across the
-          ground from left to right until it lies over the four figures. The four figures lie still where they are.
-        end_state: >-
-          Golden sunlight lies across the flat ground and the four lying figures; the mist keeps drifting.
-        camera: {size: extreme wide, move: static, angle: eye level, lens_mm: 24}
-      - action: >-
-          The mist keeps drifting slowly to the right through the golden light. The woman in the black denim jacket
-          slowly turns her head to one side; the other three lie still.
-        end_state: >-
-          The four lie in the golden light, the woman in the black denim jacket with her head turned to one side; the
-          mist keeps drifting to the right.
-        camera: {size: extreme wide, move: static, angle: eye level, lens_mm: 24}
     sound:
       sfx:
         - a single bird call far down the slope at about 2 seconds
@@ -1137,14 +1065,13 @@ shots:
       three, at heights from knee level to two metres, each one lit on one side by the low sun. At the far right, apart
       from the others, Mateo sits upright on a flat rock beside the entrance timber, in profile facing right toward the
       mountainside, his pale face clean.
-    action: &a403 >-
-      The hundreds of hanging pebbles turn slowly in place, each on its own axis at its own height; specks of dust
-      drift through the golden light. The woman in the black denim jacket slowly lifts her head off the ground and
-      stares up at them; the man in the yellow windbreaker tips his head further back. The pebbles keep their shape,
-      size and height.
+    action: >-
+      The hundreds of hanging pebbles turn slowly in place, each on its own axis at its own height, keeping their shape,
+      size and height; dust drifts through the golden light. [0s-4s] The woman in the black denim jacket slowly lifts
+      her head and stares up at them; the man in the yellow windbreaker tips his head further back. [4s-8s] The woman in
+      the burgundy cardigan slowly pushes herself up onto one elbow; the pale man stays still on his rock.
     end_state: >-
-      The woman in the burgundy cardigan is propped on one elbow, looking up at the pebbles; the pale man sits still on
-      his rock; the pebbles hang and turn slowly.
+      the woman in the burgundy cardigan is propped on one elbow; the pebbles still hang and turn slowly
     camera:
       size: wide
       move: push_in
@@ -1153,36 +1080,6 @@ shots:
       endpoint: a slightly tighter wide shot with the pebble cloud filling the upper half of the frame
       angle: eye level
       lens_mm: 35
-    clips:
-      - action: *a403
-        end_state: >-
-          The woman in the black denim jacket holds her head lifted, eyes on the pebbles; the pebbles keep turning
-          slowly in place.
-        camera:
-          size: wide
-          move: push_in
-          speed: very slow
-          target: the three on the ground under the hanging pebbles
-          endpoint: a slightly tighter wide shot with the pebble cloud filling the upper half of the frame
-          angle: eye level
-          lens_mm: 35
-      - action: >-
-          The pebbles keep rotating slowly in place in the golden light. The woman with round metal glasses and a
-          burgundy cardigan, lying on her side, stirs and slowly pushes herself up onto one elbow. At the right edge,
-          the pale man in the open blue-grey plaid flannel shirt sits upright and still on his rock, gazing at the
-          mountainside.
-        end_state: >-
-          The woman in the burgundy cardigan is propped on one elbow, looking up at the pebbles; the pale man sits
-          still on his rock; the pebbles hang and turn slowly.
-        camera:
-          size: wide
-          move: push_in
-          speed: very slow
-          target: the three on the ground under the hanging pebbles
-          endpoint: >-
-            a medium wide shot of the three on the ground under the pebble cloud, the man on the rock at the right edge
-          angle: eye level
-          lens_mm: 35
     sound:
       sfx:
         - faint dry ticks as pebbles touch in the air
@@ -1722,10 +1619,10 @@ shots:
       far end the street opens onto the plaza, where the lit stone clock tower stands above the rooftops.
     action: >-
       The four walk briskly away from the lens up the middle of the street, heels landing first in a strict left-right
-      rhythm. The man in the bright yellow windbreaker and backwards red cap bounces a step ahead and swings both arms
-      toward the plaza; the woman in the black denim jacket and the woman in the burgundy cardigan walk side by side,
-      their heads turned toward each other; the pale man in the open blue-grey plaid flannel shirt walks half a step
-      behind on the left at an even pace. Pools of warm streetlight slide over them as they pass under each lamp.
+      rhythm, pools of warm streetlight sliding over them. The man in the bright yellow windbreaker and backwards red
+      cap bounces a step ahead and swings both arms toward the plaza; the two women walk side by side; the pale man in
+      the plaid flannel walks half a step behind on the left. At the end of the street the man in the yellow windbreaker
+      skips out onto the open cobblestones and the others follow.
     end_state: >-
       The four stand at the edge of the plaza, small against the lit stone clock tower ahead of them.
     camera:
@@ -1736,40 +1633,6 @@ shots:
       endpoint: the four in the lower middle of the frame, the plaza opening ahead
       angle: eye level
       lens_mm: 28
-    clips:
-      - action: >-
-          The four walk briskly away from the lens up the middle of the street, heels landing first in a strict
-          left-right rhythm. The man in the bright yellow windbreaker and backwards red cap bounces a step ahead and
-          swings both arms toward the plaza; the woman in the black denim jacket and the woman in the burgundy cardigan
-          walk side by side, their heads turned toward each other; the pale man in the open blue-grey plaid flannel
-          shirt walks half a step behind on the left at an even pace. Pools of warm streetlight slide over them as they
-          pass under each lamp.
-        end_state: >-
-          The four are halfway up the street; ahead, the street opens onto the plaza with the lit clock tower.
-        camera:
-          size: wide
-          move: follow
-          speed: steady
-          target: the four
-          endpoint: the four in the lower middle of the frame, the plaza opening ahead
-          angle: eye level
-          lens_mm: 28
-      - action: >-
-          The four keep walking at the same brisk pace and reach the end of the street, where it opens onto the plaza;
-          the man in the yellow windbreaker skips ahead onto the open cobblestones, and the others follow him out of the
-          street.
-        end_state: >-
-          The four stand at the edge of the plaza, small against the lit stone clock tower ahead of them.
-        camera:
-          size: wide
-          move: follow
-          speed: steady
-          target: the four
-          endpoint: >-
-            the mouth of the street, where the view comes to rest with the four small at the edge of the plaza under
-            the clock tower
-          angle: eye level
-          lens_mm: 28
     sound:
       ambience:
         - "a quiet night street: a faint breeze, a dog barking far away"
