@@ -26,6 +26,7 @@ from fabrica import lab as lab_mod
 from fabrica import prompts as prompts_mod
 from fabrica import shotlist as shotlist_mod
 from fabrica import story as story_mod
+from fabrica import video as video_mod
 from fabrica import viewer as viewer_mod
 from fabrica import voice as voice_mod
 from fabrica.ledger import BudgetError, BudgetExceeded, BudgetNotConfigured, Ledger
@@ -70,7 +71,7 @@ def friendly(fn: Callable) -> Callable:
         except ValidationError as e:
             typer.echo(f"✗ дані не за схемою:\n{e}", err=True)
         except (ValueError, KeyError, voice_mod.VoiceError, voice_mod.ElevenLabsError, BudgetError,
-                lab_mod.GoldenError) as e:
+                lab_mod.GoldenError, video_mod.VideoError, video_mod.ProviderError) as e:
             typer.echo(f"✗ {e}", err=True)           # ConfigError, StoryFormatError, голоси, ключі …
         raise typer.Exit(1)
     return wrapper
@@ -214,6 +215,19 @@ def voices(search: str = typer.Option("", "--search", help="фільтр за н
             continue
         info = ", ".join(f"{k}: {val}" for k, val in labels.items() if val)
         typer.echo(f"{v.get('voice_id')}  {v.get('name')}  ({info})")
+
+
+@app.command()
+@friendly
+def video(slug: str = Slug, part: int = Part, out: Path = Out,
+          dry_run: bool = typer.Option(False, "--dry-run", help="без мережі й витрат: черга, причини блокування, кошторис"),
+          only: str = typer.Option(None, "--only", help="один шот, напр. 4.03"),
+          force: bool = typer.Option(False, "--force", help="дозволити понад ліміт (позначається в журналі)")) -> None:
+    """Етап video: черга відеошотів за golden-промптами лабораторії → output/<slug>/part<N>/video/."""
+    jobs = video_mod.run(slug, part, out, dry_run=dry_run, only=only, force=force, log=typer.echo)
+    typer.echo(f"Черга: {part_dir(out, slug, part) / 'video' / 'queue.json'}")
+    if not dry_run and any(j.state == "failed" for j in jobs):
+        raise typer.Exit(1)
 
 
 def _story(story: str | None) -> str:

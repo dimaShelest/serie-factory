@@ -271,10 +271,15 @@ def test_pack_items(data: Data, templates: dict[str, Template]) -> list[Item]:
     return items
 
 
-def part_items(data: Data, templates: dict[str, Template], part: int, out_root: Path = OUTPUT) -> list[Item]:
+def overlay_file(slug: str, part: int) -> Path:
+    """Англійські описи шотів частини: {shot_id: {composition, action, camera, light, variant}}."""
+    return bible_mod.SERIES / slug / f"part{part}_prompts_en.yaml"
+
+
+def part_items(data: Data, templates: dict[str, Template], part: int, out_root: Path | None = None) -> list[Item]:
     from fabrica.models import Script, Shots       # важкі моделі — лише коли збираємо частину
 
-    folder = out_root / data.slug / f"part{part}"
+    folder = (out_root or OUTPUT) / data.slug / f"part{part}"
     shots_path = folder / "shots.json"
     if not shots_path.exists():
         raise PromptError(f"немає {shots_path} — спершу `fabrica shotlist {data.slug} {part}`")
@@ -282,7 +287,7 @@ def part_items(data: Data, templates: dict[str, Template], part: int, out_root: 
     script_path = folder / "script.json"
     script = Script.model_validate_json(script_path.read_text(encoding="utf-8-sig")) if script_path.exists() else None
     delivery = {ln.id: ln.delivery for sc in (script.scenes if script else []) for ln in sc.lines}
-    overlay_path = bible_mod.SERIES / data.slug / f"part{part}_prompts_en.yaml"
+    overlay_path = overlay_file(data.slug, part)
     overlay = (yaml.safe_load(overlay_path.read_text(encoding="utf-8-sig")) or {}) if overlay_path.exists() else {}
     voices = {**{c: (data.characters[c].get("voice") or {}) for c in data.characters},
               **{m: (data.members[m].get("voice") or {}) for m in data.members},
@@ -323,7 +328,8 @@ def part_items(data: Data, templates: dict[str, Template], part: int, out_root: 
 
 
 def build(slug: str, set_name: str, kinds: list[str] | None = None, only: str | None = None,
-          out_root: Path = OUTPUT, templates: dict[str, Template] | None = None) -> list[Item]:
+          out_root: Path | None = None, templates: dict[str, Template] | None = None) -> list[Item]:
+    """out_root=None → prompts.OUTPUT на момент виклику (тести й --out підміняють)."""
     templates = templates or load_templates()
     data = Data(slug)
     if set_name == "casting":
